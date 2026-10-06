@@ -16,7 +16,8 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "contracts": "node --experimental-strip-types scripts/export-contracts.ts"
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.1.1",

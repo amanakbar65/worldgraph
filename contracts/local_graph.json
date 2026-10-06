@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z_]+:[a-z0-9][a-z0-9.-]*$"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "region",
+              "organization",
+              "person",
+              "commodity",
+              "sector",
+              "infrastructure",
+              "policy",
+              "indicator",
+              "story",
+              "forecast",
+              "user_entity"
+            ]
+          },
+          "subtype": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "degree": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "impact": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "risk",
+                  "opportunity",
+                  "neutral"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "is_sample": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "subtype",
+          "name",
+          "degree",
+          "impact",
+          "created_at",
+          "is_sample"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "pattern": "^[a-z_]+:[a-z0-9][a-z0-9.-]*$"
+          },
+          "target": {
+            "type": "string",
+            "pattern": "^[a-z_]+:[a-z0-9][a-z0-9.-]*$"
+          },
+          "type": {
+            "type": "string"
+          },
+          "causal": {
+            "type": "boolean"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "source",
+          "target",
+          "type",
+          "causal",
+          "confidence",
+          "created_at"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "focus": {
+      "type": "string",
+      "pattern": "^[a-z_]+:[a-z0-9][a-z0-9.-]*$"
+    },
+    "truncated": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "nodes",
+    "links",
+    "focus",
+    "truncated"
+  ],
+  "additionalProperties": false
+}

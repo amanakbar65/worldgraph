@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "regions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z_]+:[a-z0-9][a-z0-9.-]*$"
+              },
+              "name": {
+                "type": "string"
+              },
+              "subtype": {
+                "type": "string"
+              },
+              "country_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-z_]+:[a-z0-9][a-z0-9.-]*$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "subtype",
+              "country_id"
+            ],
+            "additionalProperties": false
+          },
+          "kpis": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z_]+:[a-z0-9][a-z0-9.-]*$"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "latest": {
+                  "type": "number"
+                },
+                "previous": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "change": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "as_of": {
+                  "type": "string"
+                },
+                "higher_is": {
+                  "type": "string",
+                  "enum": [
+                    "better",
+                    "worse",
+                    "neutral"
+                  ]
+                },
+                "series": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "d": {
+                        "type": "string"
+                      },
+                      "v": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "d",
+                      "v"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "source_name": {
+                  "type": "string"
+                },
+                "is_sample": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "unit",
+                "latest",
+                "previous",
+                "change",
+                "as_of",
+                "higher_is",
+                "series",
+                "source_name",
+                "is_sample"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "sector_pulse": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sector": {
+                  "type": "string",
+                  "enum": [
+                    "energy",
+                    "agri-food",
+                    "manufacturing",
+                    "logistics-trade",
+                    "finance",
+                    "tech",
+                    "health",
+                    "real-estate",
+                    "consumer"
+                  ]
+                },
+                "impact": {
+                  "type": "string",
+                  "enum": [
+                    "risk",
+                    "opportunity",
+                    "neutral"
+                  ]
+                },
+                "direction": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "up",
+                        "down"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "score": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "sector",
+                "impact",
+                "direction",
+                "count",
+                "score"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "risk": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "opportunity": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "neutral": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "risk",
+              "opportunity",
+              "neutral"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "region",
+          "kpis",
+          "sector_pulse",
+          "counts"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "regions"
+  ],
+  "additionalProperties": false
+}

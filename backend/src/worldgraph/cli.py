@@ -17,17 +17,6 @@ app.add_typer(seed_app, name="seed")
 app.add_typer(geo_app, name="geo")
 
 
-@app.command()
-def api(
-    port: int = typer.Option(8000, help="Port to listen on."),
-    reload: bool = typer.Option(True, help="Restart automatically when code changes."),
-) -> None:
-    """Start the API at http://localhost:8000 (docs at /docs)."""
-    import uvicorn
-
-    uvicorn.run("worldgraph.api.main:app", host="127.0.0.1", port=port, reload=reload)
-
-
 @db_app.command("migrate")
 def db_migrate() -> None:
     """Apply any database migrations that haven't run yet."""
@@ -81,6 +70,21 @@ def seed_load() -> None:
     typer.secho("Sample data loaded.", fg=typer.colors.GREEN)
     for label, value in counts.items():
         typer.echo(f"  {label}: {value}")
+
+
+@seed_app.command("sql")
+def seed_sql(
+    out: str = typer.Option("data/seed-sql", help="Folder for the SQL files."),
+    max_kb: int = typer.Option(400, help="Largest file size in KB."),
+) -> None:
+    """Write the sample data as SQL files (to apply through the Supabase connector)."""
+    from pathlib import Path
+
+    from worldgraph.seed.build import build_bundle
+    from worldgraph.seed.load import write_sql_chunks
+
+    paths = write_sql_chunks(build_bundle(), Path(out), max_kb * 1000)
+    typer.secho(f"Wrote {len(paths)} files to {out}/", fg=typer.colors.GREEN)
 
 
 @geo_app.command("gazetteer")

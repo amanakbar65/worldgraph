@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import uuid
 from collections.abc import Iterator
+from datetime import UTC, datetime
 
 import psycopg
 import pytest
@@ -19,6 +20,9 @@ from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from worldgraph.config import get_settings
 from worldgraph.db import connect
 from worldgraph.db.migrate import migrate
+
+# Sample data is loaded relative to this moment, so tests are repeatable.
+FIXED_NOW = datetime(2026, 10, 6, 12, 0, tzinfo=UTC)
 
 
 @pytest.fixture(autouse=True)
@@ -53,5 +57,25 @@ def migrated_db_url() -> Iterator[str]:
 def db(migrated_db_url: str) -> Iterator[psycopg.Connection]:
     """A connection whose changes are rolled back after each test."""
     with connect(migrated_db_url) as conn:
+        yield conn
+        conn.rollback()
+
+
+@pytest.fixture(scope="session")
+def seeded_db_url(migrated_db_url: str) -> str:
+    """The migrated test database with the sample data loaded (fixed clock)."""
+    from worldgraph.seed.build import build_bundle
+    from worldgraph.seed.load import load_bundle
+
+    bundle = build_bundle(now=FIXED_NOW)
+    with connect(migrated_db_url) as conn:
+        load_bundle(conn, bundle)
+    return migrated_db_url
+
+
+@pytest.fixture
+def sdb(seeded_db_url: str) -> Iterator[psycopg.Connection]:
+    """A connection to the seeded database; changes are rolled back."""
+    with connect(seeded_db_url) as conn:
         yield conn
         conn.rollback()

@@ -1,12 +1,10 @@
 [project]
 name = "worldgraph"
 version = "0.1.0"
-description = "WorldGraph backend: API, data pipeline and sample data"
+description = "WorldGraph backend: database, api.* SQL layer, sample data and live pipeline"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "fastapi>=0.142",
-    "uvicorn[standard]>=0.54",
     "pydantic>=2.13",
     "pydantic-settings>=2.15",
     "psycopg[binary]>=3.3",
@@ -24,7 +22,7 @@ wg = "worldgraph.cli:app"
 dev = [
     "pytest>=9.1",
     "ruff>=0.16",
-    "httpx2>=2.13",
+    "jsonschema>=4.25",
 ]
 
 [build-system]
@@ -32,7 +30,7 @@ requires = ["uv_build>=0.11,<0.13"]
 build-backend = "uv_build"
 
 [tool.ruff]
-line-length = 100
+line-length = 110
 target-version = "py312"
 
 [tool.ruff.lint]

@@ -1,0 +1,10 @@
+# The nine sector lenses. Icons are lucide names.
+- {id: sector:energy, type: sector, name: Energy, icon: zap, summary: "Oil, gas, coal, power, renewables and fuels."}
+- {id: sector:agri-food, type: sector, name: Agri and Food, icon: wheat, summary: "Crops, livestock, fertiliser, food processing and edible oils."}
+- {id: sector:manufacturing, type: sector, name: Manufacturing, icon: factory, summary: "Metals, autos, machinery, chemicals, textiles and electronics assembly."}
+- {id: sector:logistics-trade, type: sector, name: Logistics and Trade, icon: ship, summary: "Shipping, ports, freight, customs, tariffs and trade deals."}
+- {id: sector:finance, type: sector, name: Finance, icon: landmark, summary: "Interest rates, currencies, credit, banks and capital flows."}
+- {id: sector:tech, type: sector, name: Tech, icon: cpu, summary: "Semiconductors, software, data centres, telecoms and AI."}
+- {id: sector:health, type: sector, name: Health, icon: heart-pulse, summary: "Pharmaceuticals, medical devices, hospitals and public health."}
+- {id: sector:real-estate, type: sector, name: Real Estate, icon: building-2, summary: "Property, construction, housing finance and industrial land."}
+- {id: sector:consumer, type: sector, name: Consumer, icon: shopping-bag, summary: "Retail, consumer goods, travel and household demand."}

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z_]+:[a-z0-9][a-z0-9.-]*$"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "region",
+              "organization",
+              "person",
+              "commodity",
+              "sector",
+              "infrastructure",
+              "policy",
+              "indicator",
+              "story",
+              "forecast",
+              "user_entity"
+            ]
+          },
+          "subtype": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "context": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "score": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "subtype",
+          "name",
+          "context",
+          "score"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "results"
+  ],
+  "additionalProperties": false
+}

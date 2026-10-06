@@ -1,0 +1,11 @@
+# Groups of countries shown as regions.
+- id: region:eu
+  type: bloc
+  name: European Union
+  subtype: bloc
+  qid: Q458
+  lon: 9.0
+  lat: 50.0
+  summary: Political and economic union of 27 European countries with a single market.
+  facts: {iso2: EU, members: "27"}
+  members: [region:at, region:be, region:bg, region:hr, region:cy, region:cz, region:dk, region:ee, region:fi, region:fr, region:de, region:gr, region:hu, region:ie, region:it, region:lv, region:lt, region:lu, region:mt, region:nl, region:pl, region:pt, region:ro, region:sk, region:si, region:es, region:se]

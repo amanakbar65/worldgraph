@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "generated_at": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "live_stories": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "sample_stories": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "forecasts": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "entities": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "last_ingest_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "showing_sample": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "live_stories",
+        "sample_stories",
+        "forecasts",
+        "entities",
+        "last_ingest_at",
+        "showing_sample"
+      ],
+      "additionalProperties": false
+    },
+    "sectors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "energy",
+              "agri-food",
+              "manufacturing",
+              "logistics-trade",
+              "finance",
+              "tech",
+              "health",
+              "real-estate",
+              "consumer"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "icon"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "attribution": {
+            "type": "string"
+          },
+          "homepage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "attribution",
+          "homepage"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "generated_at",
+    "data",
+    "sectors",
+    "sources"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,183 @@
+id: red-sea-shipping
+title: Red Sea shipping disruption
+entities:
+  - {id: org:kestrel-lines, type: organization, subtype: company, name: Kestrel Lines, located_in: region:sg, sectors: [logistics-trade], summary: "Invented mid-sized container line used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:suez-transits-recover
+    short_title: Suez Canal traffic back to normal within six months?
+    question: Will weekly Suez Canal container transits return to their pre-disruption average within six months?
+    category: trade
+    location: infra:suez-canal
+    about: [infra:suez-canal, region:eg, sector:logistics-trade]
+    end_in_days: 180
+    resolution_rule: Resolves YES if the four-week average of container-ship transits reaches the pre-disruption average before the end date.
+    history: {days: 90, start: 0.46, end: 0.31, moves: [{days_ago: 0.6, delta: -0.12}], volume: 186000, liquidity: 26000}
+stories:
+  - id: story:red-sea-attacks-reroute
+    headline: Attacks near Bab-el-Mandeb push container lines onto the Cape route
+    so_what: Asia–Europe voyages lengthen by 10–14 days, tightening ship capacity and raising freight costs worldwide.
+    event_type: conflict
+    impact: risk
+    direction: up
+    magnitude: 5
+    horizon: weeks
+    confidence: 0.9
+    sectors: [logistics-trade]
+    at: infra:bab-el-mandeb
+    mentions: [region:ye, infra:suez-canal, infra:cape-of-good-hope]
+    age_hours: 70
+    sources: 34
+    actions: [Check contracts for war-risk surcharge clauses, Add two weeks to Europe lead times]
+  - id: story:asia-europe-rates-jump
+    headline: Asia–Europe container rates jump as ships sail around Africa
+    so_what: Importers face higher landed costs; spot rates react within days while contract rates follow later.
+    event_type: price-move
+    impact: risk
+    direction: up
+    magnitude: 4
+    horizon: now
+    confidence: 0.85
+    sectors: [logistics-trade]
+    at: infra:port-of-shanghai
+    mentions: [infra:port-of-rotterdam, org:kestrel-lines]
+    age_hours: 41
+    sources: 19
+    actions: [Lock in contract rates before renewals, Compare air freight for urgent orders]
+  - id: story:suez-revenue-falls
+    headline: Suez Canal revenue falls sharply as transits drop
+    so_what: Lower canal income adds pressure on Egypt's foreign-currency reserves and its import bill.
+    event_type: economic-data
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.8
+    sectors: [finance, logistics-trade]
+    at: infra:suez-canal
+    mentions: [region:eg, org:suez-canal-authority]
+    age_hours: 30
+    sources: 9
+    actions: [Review exposure to Egyptian-pound receivables]
+  - id: story:rotterdam-congestion
+    headline: Rotterdam berths bunch up as delayed ships arrive together
+    so_what: Ships that arrive in clusters cause yard congestion; European distributors see uneven stock arrivals.
+    event_type: disruption
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.7
+    sectors: [logistics-trade]
+    at: infra:port-of-rotterdam
+    mentions: [region:nl, region:eu]
+    age_hours: 9
+    sources: 6
+    actions: [Hold buffer stock for fast-moving items, Book drayage slots earlier]
+  - id: story:indian-exporters-margin-squeeze
+    headline: Indian engineering exporters report thinner margins on Europe orders
+    so_what: Exporters selling on delivered terms absorb freight increases; renegotiation pressure rises on new contracts.
+    event_type: business-sentiment
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.65
+    sectors: [manufacturing, logistics-trade]
+    at: infra:jnpa-port
+    mentions: [region:in, region:in-mh, region:eu]
+    age_hours: 20
+    sources: 7
+    actions: [Quote new Europe orders FOB, Add freight escalation clauses]
+  - id: story:air-freight-pharma-shift
+    headline: Pharma shippers move urgent Europe cargo from sea to air
+    so_what: Air capacity out of Mumbai and Hyderabad tightens; forwarders with block space gain pricing power.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: now
+    confidence: 0.6
+    sectors: [health, logistics-trade]
+    at: region:in-tg.hyderabad
+    mentions: [commodity:pharma-api, region:in]
+    age_hours: 0.5
+    sources: 4
+    actions: [Offer block air space to pharma clients]
+  - id: story:gulf-transshipment-boost
+    headline: Jebel Ali gains transshipment volumes as lines reshuffle networks
+    so_what: Gulf hubs pick up cargo re-routed through feeder services, creating room for regional logistics providers.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.55
+    sectors: [logistics-trade]
+    at: infra:jebel-ali-port
+    mentions: [region:ae, org:dp-world]
+    age_hours: 55
+    sources: 8
+    actions: [Explore Gulf feeder partnerships]
+  - id: story:europe-retail-restock-delays
+    kind: projected
+    headline: European retailers may face spring restocking delays
+    so_what: If longer routes persist, seasonal goods could arrive late, shifting orders to nearer suppliers.
+    event_type: projected-impact
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.5
+    sectors: [consumer, logistics-trade]
+    at: region:de
+    mentions: [region:eu, commodity:apparel]
+  - id: story:nearshore-turkey-orders
+    kind: projected
+    headline: Turkish and Moroccan suppliers could win quick-turn European orders
+    so_what: Shorter routes become more valuable for buyers needing reliable delivery times.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.45
+    sectors: [manufacturing, consumer]
+    at: region:tr
+    mentions: [region:ma, commodity:apparel]
+  - id: story:freight-rates-ease-on-return
+    kind: projected
+    headline: Freight rates could ease quickly once Suez traffic returns
+    so_what: Released capacity would push spot rates down, helping importers renegotiate.
+    event_type: projected-impact
+    impact: opportunity
+    direction: down
+    magnitude: 3
+    horizon: months
+    confidence: 0.5
+    sectors: [logistics-trade]
+    at: infra:suez-canal
+    mentions: [infra:port-of-rotterdam]
+  - id: story:surcharges-persist
+    kind: projected
+    headline: Surcharges and long transit times would persist through peak season
+    so_what: Importers would keep paying more and holding extra stock into the next season.
+    event_type: projected-impact
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.5
+    sectors: [logistics-trade, consumer]
+    at: infra:cape-of-good-hope
+    mentions: [region:eu]
+links:
+  - {from: story:red-sea-attacks-reroute, to: story:asia-europe-rates-jump, type: reported, mechanism: lengthens voyage times, direction: up, confidence: 0.9, lag_days: 2, evidence: "Sample evidence: carriers cited the Cape diversion when announcing new Asia–Europe surcharges."}
+  - {from: story:red-sea-attacks-reroute, to: story:suez-revenue-falls, type: reported, mechanism: cuts canal transits, direction: down, confidence: 0.85, lag_days: 14}
+  - {from: story:asia-europe-rates-jump, to: story:rotterdam-congestion, type: inferred, mechanism: bunches ship arrivals, direction: up, confidence: 0.6, lag_days: 10}
+  - {from: story:asia-europe-rates-jump, to: story:indian-exporters-margin-squeeze, type: reported, mechanism: raises delivered costs, direction: down, confidence: 0.7, lag_days: 7}
+  - {from: story:asia-europe-rates-jump, to: story:air-freight-pharma-shift, type: inferred, mechanism: shifts urgent cargo, direction: up, confidence: 0.55, lag_days: 3}
+  - {from: story:red-sea-attacks-reroute, to: story:gulf-transshipment-boost, type: inferred, mechanism: reshuffles shipping networks, direction: up, confidence: 0.5, lag_days: 21}
+  - {from: story:rotterdam-congestion, to: story:europe-retail-restock-delays, type: projected, mechanism: delays stock arrivals, direction: up, confidence: 0.5, lag_days: 45}
+  - {from: story:rotterdam-congestion, to: story:nearshore-turkey-orders, type: projected, mechanism: favours nearby suppliers, direction: up, confidence: 0.4, lag_days: 60}
+  - {from: story:asia-europe-rates-jump, to: story:freight-rates-ease-on-return, type: conditional, forecast: forecast:suez-transits-recover, outcome: "YES", mechanism: releases ship capacity, direction: down, confidence: 0.6, lag_days: 30}
+  - {from: story:asia-europe-rates-jump, to: story:surcharges-persist, type: conditional, forecast: forecast:suez-transits-recover, outcome: "NO", mechanism: keeps routes long, direction: up, confidence: 0.6, lag_days: 30}
