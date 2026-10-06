@@ -1,4 +1,7 @@
-.next
+dist
+dist-artifact
 node_modules
 package-lock.json
-next-env.d.ts
+src/platform/types
+public/snapshot
+public/geo

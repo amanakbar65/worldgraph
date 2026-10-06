@@ -1,345 +1,147 @@
-# WorldGraph — Plan
+# WorldGraph — Plan (v2)
 
-**Status:** approved on 6 Oct 2026 with one change: WorldGraph is a **global app**, not an India-first one (see section 1). Phase 0 is in progress.
-**Spec:** `BUILD_BRIEF.md` is the source of truth. This plan explains how I'll build it, which tools I'll use, and where I think the brief needs a fix. Where this plan changes the brief, the change is listed in section 1 and the plan wins.
+**Status:** building the complete app (6 Oct 2026). `BUILD_BRIEF.md` is the original brief and is kept word for word. Where this plan differs from it, this plan wins.
 
-Your goal for the feel of the app: **sleek, professional, simple, accurate and convenient.** Every screen gets checked against those five words.
+## The owner's direction (6 Oct 2026)
 
----
+- Claude builds the whole thing. The brief is a strong starting point, not a rulebook. Keep its core idea, screens and principles, and drop restrictions that don't help.
+- Make it sleek, professional, simple, accurate and convenient to use.
+- **One app, two ways to run it**, like Family Ledger:
+  1. **Test link (now):** a private claude.ai Artifact. It reads live data through the owner's Supabase connector. The AI (headlines, "why it matters", actions, cascades, Ask) runs on the owner's own Claude account, **only while the app is open**. There is no API bill.
+  2. **Website (later):** Netlify. It's fully built and documented, but **not deployed until the owner says so**. There, the AI runs on the Claude API with a **$2/day cap**.
+- **Global app:** anyone, anywhere, sees the same information.
+  - Every country drills down to states or provinces, then major cities.
+  - Numbers follow the viewer's locale, and money stays in its own currency.
+- **Live news every 15 minutes** from a GitHub Actions job. The repo is public, so the minutes are free.
 
-## 1. Decisions so far
-
-| Topic | Decision |
-| --- | --- |
-| Repository | A separate, private GitHub repo: `amanakbar65/worldgraph`. GitHub wouldn't let me create it, so you need to make it (two clicks, see section 12). Until then the brief and this plan sit on a temporary `worldgraph` branch of `Others`, and I'll move them across. |
-| Database | A free Supabase project called `worldgraph` in Mumbai (`ap-south-1`), created 6 Oct 2026. It's empty until Phase 0 step 4. Mumbai suits development, because your PC runs the backend until Phase 5. When we choose a host in Phase 5, we'll check whether to move the database closer to it; moving at that size is a simple copy. |
-| Users | **Anyone, anywhere.** Every viewer sees the same information. Numbers follow the viewer's own locale, so an Indian browser shows lakh/crore and others show million/billion. Money stays in its own currency: Indian fuel prices in ₹, US prices in $, and global figures such as commodities and trade in US$. That avoids conversion errors. |
-| Sample data | Balanced across all nine sectors and every continent, not built around one industry or country. Phase 4 ships three ready-made demo business profiles from different parts of the world. |
-
-### Changes to the brief (approved 6 Oct 2026)
-
-1. **Global, not India-first.** The brief gave India state and city depth and the rest of the world country depth only. Now **every country** drills down to states or provinces, then major cities.
-   - **Map:** free Natural Earth boundaries cover the whole world.
-   - **Stories:** they land on the right state anywhere, because GDELT tags its locations with state codes for every country.
-   - **KPI tiles:** they show whatever free data exists at each level. That's national figures for most places, and state figures where free sources have them, such as the US (FRED) and India (data.gov.in).
-2. **Same information for everyone. There is one exception, which your brief's legal rules require:** odds from real-money markets like Polymarket.
-   - They're **off by default**. If they're ever switched on, they're hidden wherever they're illegal, which includes India.
-   - Forecasts from non-money sources like Manifold are shown to everyone.
-   - So with default settings, every viewer anywhere sees exactly the same app.
-3. **Borders are the other unavoidable exception** (section 2, item 1). Some countries legally require their official map to be shown to viewers inside them. India does, so viewers in India see India's official borders. Everything else is identical.
-
----
-
-## 2. What I checked, and where the brief needs a fix
-
-I checked the brief's facts and tools against what's current in October 2026.
-
-**These are correct as written:**
-- MeitY ordered Polymarket blocked in India on 21 May 2026. India's Online Gaming Rules have been in force since 1 May 2026 and treat prediction markets as money games. Kalshi was reported to be next.
-- Manifold has been play-money only since March 2025, when it shut down its real-money mode.
-- Claude Haiku 4.5 and Claude Sonnet 5.5 exist.
-- Option A from the brief works today. deck.gl's docs state that MapLibre's globe projection is fully supported. Current versions are MapLibre GL JS 6.12 and deck.gl 9.4.
-
-**Proposed fixes and additions:**
-
-1. **India's borders.** This item is new, and it matters. Standard world-map data, including the default Natural Earth files and OpenStreetMap tiles, draws Jammu & Kashmir, Ladakh and Arunachal Pradesh differently from India's official map. Showing an incorrect map of India can cause legal trouble in India, and it would put off Indian users.
-   **Fix:** we draw all country and state borders ourselves and hide the basemap's own border lines.
-   - Viewers in India get borders matching India's official map. Natural Earth publishes an "India point of view" edition, and we'll pair it with Indian state boundaries that match the Survey of India.
-   - Everyone else gets Natural Earth's standard edition.
-   - Natural Earth has editions for other countries too, so we can add them if a market requires it.
-
-   Please add this to the list for your lawyer.
-2. **Node IDs.** The brief says to use the Wikidata QID as the ID when one exists. But we usually find a node's QID later, during linking, and the ID would then change, which breaks links and saved notes.
-   **Fix:** each node gets a permanent, readable ID such as `region:IN-GJ` or `commodity:cotton`. The QID is stored in its own column, kept unique, and used for matching.
-3. **Metaculus needs an account token.** Every Metaculus API call requires a token from a free account. Manifold's read API needs no key.
-   **Fix:** Phase 2 turns on **Manifold** as the non-money forecast provider. Metaculus can be added later if you're happy to create an account and its terms allow our use.
-4. **Some "free" sources need free keys:** NASA FIRMS, FRED, UN Comtrade, data.gov.in and Metaculus. I'll ask you before each one, in the phase that needs it.
-5. **Supabase free-plan limits.** The free plan allows 500 MB, and raw news fills that quickly.
-   **Fix:** raw articles are kept for 14 days. Stories, the graph and forecast history are kept permanently. An admin page shows how much space is used. Free projects also pause after 7 days without activity; once the pipeline runs every 15 minutes, it keeps the project awake.
-6. **Where the jobs run before Phase 5.** Until we deploy, the 15-minute jobs run only while your PC is running them. That's fine for building. Phase 5 picks a host, and I'll ask before anything paid.
-7. **My cloud workspace can't reach the data sources.** It can only reach package registries and GitHub. Phases 0 and 1 don't need the sources. For Phase 2 you have two options:
-   - Allow the source sites in this environment's **Network access** setting. I'll give you the exact list.
-   - Or I build against saved sample responses, and you run the live fetch on your PC.
-
-   Polymarket is built against sample responses from its docs either way, as your rules require.
-8. **Real-money gating fails closed.** If we can't tell which country a viewer is in, we treat them as restricted. The server filters forecasts out before sending anything, so hidden forecasts never reach the browser.
-9. **Sample data must never pass as real news.** The sample stories are made up but realistic. To keep it that way:
-   - Every screen shows a **Sample data** badge.
-   - Sample evidence has no outbound links.
-   - Real company names appear only in true background facts, such as where a plant is.
-   - Made-up events about a specific company use invented company names.
-10. **Sonnet 5.5 costs only twice as much as Haiku 4.5** ($2 and $10 per million input and output tokens, against $1 and $5). Model names live in config. In Phase 2 I'll compare extraction quality on both models before recommending one.
-11. **Screen readers can't read the globe**, because it's a canvas. Every globe view therefore gets an equivalent **List view** that works with a keyboard and a screen reader.
-12. **Hosting note for Phase 5:** Vercel's free plan is for non-commercial use only. Cloudflare Pages, which Family Ledger uses, is an option we'll compare then.
-
----
-
-## 3. Architecture at a glance
+## Architecture
 
 ```
- Free sources & forecast providers          (GDELT, RSS, USGS, Manifold, Polymarket[off], …)
-                 │
-                 ▼
- Python jobs  ── news pipeline (every 15 min) ── forecast sync (every 5–15 min)
-                 │      ingest → cluster → gate → extract → link → cascades → score → match
-                 ▼
- PostgreSQL on Supabase  (PostGIS for maps, pgvector for similarity; graph = node + edge tables)
-                 │
-                 ▼
- FastAPI  (/api/…; region gating + attribution applied here)
-                 │   JSON, polled every 60 s
-                 ▼
- Next.js web app  (globe, panels, cascades, graph, entity pages, forecasts)
+Free sources (GDELT, RSS, USGS, GDACS) + Manifold forecasts
+        │  every 15 min: GitHub Actions runs the Python pipeline (no AI)
+        ▼
+Supabase Postgres (PostGIS, pgvector, pg_trgm)
+  tables: node / edge / story / causal_link / forecast / indicator …
+  schema `api`: SQL functions that return ready-made JSON for every screen
+        │
+        ├── Test link: Artifact page → claude.use("mcp") → Supabase connector → select api.<fn>(…)
+        │              AI: claude.use("sample") on the owner's account → api.save_analysis(…)
+        └── Website:   Netlify Function /api/rpc → select api.<fn>(…)  (deployed later)
+                       AI: Netlify Function /api/ask + pipeline job, Claude API, $2/day cap
 ```
 
-The LLM is called only by the pipeline jobs and by Ask. Phases 0 and 1 make no LLM calls.
+- **The query layer lives in Postgres** (`api.*` functions returning JSON). Both ways of running the app call the same functions, so the logic exists once and is tested once with pytest against a real PostGIS database.
+- **The frontend is a static single-page app** (Vite + React + TypeScript). The same build runs as an Artifact and on Netlify. A data adapter picks the transport (connector or HTTP), and an AI adapter picks the engine (`sample` or the API).
+- **The pipeline is Python on GitHub Actions** (every 15 minutes), plus a production-only AI job with a spend cap.
+- **Built-in sample data** (about 200 stories, about 30 forecasts) is clearly labelled. It makes the app complete before live data flows. Once live data exists, sample data is hidden by default and can be switched on in Settings.
 
----
+## Changes from the brief, and why
 
-## 4. Tech choices
-
-| Area | Choice | Why |
+| Brief | Now | Why |
 | --- | --- | --- |
-| Python tooling | **uv** | It installs Python 3.12 for you and runs everything with one command. You don't install Python separately. |
-| API | **FastAPI** + **Pydantic** | As in the brief. Popular and well documented, and it generates API docs automatically at `/docs`. |
-| Database access | **psycopg 3** + plain **SQL migration files** | The graph queries are recursive SQL, which is clearer written as SQL. Plain SQL is also easier to learn from than an ORM. |
-| Database | **Supabase Postgres** with **PostGIS** + **pgvector** | As in the brief. No Postgres install on Windows. |
-| Scheduler (Phase 2) | **APScheduler** in one worker process | Simple, and enough for the MVP. |
-| Embeddings (Phase 2) | **sentence-transformers**, a small multilingual model, CPU-only | Free and local. I'll install the CPU-only build of PyTorch to keep the download small. |
-| Spatial bins | **H3** (`h3` for Python, `h3-js` in the browser) | Hex heat at each zoom level. |
-| Web app | **Next.js 16**, TypeScript, **Tailwind CSS 4**, **shadcn/ui**, **lucide** icons, **Inter** font | As in the brief. |
-| Globe and map | **Option A:** **MapLibre GL JS** globe + **deck.gl** layers | See below. |
-| Basemap tiles | **OpenFreeMap** | Free with no key, no sign-up and no view limits, and commercial use is allowed. The map data comes from OpenStreetMap, with attribution shown. I'll restyle it dark to match the app. |
-| Knowledge graph | **react-force-graph-2d** | As in the brief. Sigma.js is the fallback if it gets slow. |
-| Cascade view | **React Flow** (`@xyflow/react`) + **dagre** layout | Cascades are small (under about 30 nodes). dagre is tiny and simple; elkjs is much heavier and we don't need it. |
-| Charts | **Recharts**, through shadcn/ui's chart component, for full-size charts | One library, themed like the rest of the app. Sparklines, probability rings and bars are small hand-made SVG components, which keeps the globe screen light. |
-| Data loading | **TanStack Query** | Caching, skeleton states and polling every 60 seconds. |
-| UI state | The **URL** holds what you're looking at; **Zustand** holds small UI-only state | Links and the browser's back button work everywhere. |
-| Search | shadcn **Command** (Ctrl/Cmd+K) | Search from anywhere. |
-| Mobile sheets | shadcn **Drawer** (vaul) | Bottom sheets with snap points. |
-| Tests | **pytest** for the backend; **Vitest** for frontend logic; **Playwright** for a click-through smoke test that fails on any console error | Covers the brief's definition of done. |
-| Code style | **ruff** for Python; **ESLint** + **Prettier** for TypeScript | Automatic formatting, so you don't have to think about it. |
+| Next.js frontend | Vite + React SPA | A static bundle runs both as an Artifact and on Netlify. No server rendering is needed. |
+| FastAPI server | Postgres `api.*` functions + a thin Netlify function | No server to host; one query layer for both ways of running. Python stays for the pipeline and tooling. |
+| India at state level, the world at country level | Every country to states/provinces and cities | The owner asked for a global app; Natural Earth and GDELT cover the whole world. |
+| Beginner workflow, stopping after each phase | Claude builds end to end | The owner's direction. |
+| Phases 0–5 with reviews | One complete build, then a test link | The owner's direction. |
+| OpenFreeMap basemap | Our own vector layers (Natural Earth countries, states, cities, coastlines). OpenFreeMap streets are added on the website at high zoom. | Artifacts can't load map tiles from other sites, and our own layers give a calmer, consistent look. |
+| Polymarket first | Manifold (play money) on everywhere; Polymarket adapter built, off by default, never shown in India | Legal: real-money markets are blocked or banned in some countries (India: MeitY block, 21 May 2026). |
 
-**Why Option A (MapLibre globe + deck.gl) over Option B (react-globe.gl):**
-- It's one map engine with one camera. The globe flattens into a detailed 2D map as you zoom in, which is exactly the brief's "zoom past country level" behaviour, with no hand-off.
-- Every layer exists once: points, hex heat, arcs, borders and labels. Option B needs a second map engine at country level, a visible jump, two copies of every layer and a bigger download, which is harder on a mid-range phone.
-- Keyboard pan and zoom are built in, and basemap labels appear naturally as you zoom.
-- What we give up is react-globe.gl's ready-made glow effects. I'll recreate the look with MapLibre's atmosphere, a soft star-field background and deck.gl arcs.
+Kept from the brief:
+- the product principles (visual first, three taps to depth, three questions per insight, facts/inferences/forecasts kept apart, calm wording)
+- every screen
+- the knowledge-graph model, including the four causal link types
+- the colour rules (amber risk, teal opportunity, slate neutral, violet forecasts; never red against green)
+- no full article text
+- no private individuals
+- prediction markets as information only
 
-**How each globe element is drawn:**
-- Events are deck.gl points.
-- Hex heat is deck.gl H3 hexagons, shown when zoomed out.
-- Cross-border cascades are deck.gl great-circle arcs.
-- Forecast rings are small SVG markers. There are only a few dozen, they stay crisp, they're focusable with the keyboard and they carry screen-reader labels. Their violet ring shape can't be confused with an event dot.
+India's official borders are shown to viewers in India, detected from the timezone or the site's geo header, with a switch in Settings.
 
----
+## Screens (all built)
 
-## 5. Data model
-
-Everything is nodes and typed edges, as in the brief, with a few typed side tables so queries stay simple and fast.
-
-| Table | Holds |
-| --- | --- |
-| `node` | Every entity: `id` (permanent and readable), `type`, `subtype`, `name`, `aliases`, `summary`, `qid` (Wikidata, optional), `props`, `geom` (PostGIS), `is_sample` |
-| `edge` | Structural, mention and forecast edges: `src`, `dst`, `type`, `props` (for example value and year on `exports_to`), validity dates |
-| `story` | One row per Story node: headline (12 words or fewer), so-what (20 words or fewer), event type, impact (risk, opportunity or neutral), direction, magnitude 1–5, horizon (now, weeks or months), confidence, importance, first and last seen, sectors, H3 cell |
-| `article` | Headline, URL, source, date, language and at most a one-sentence snippet. **No full text, ever.** |
-| `causal_link` | Story → story: `link_type` (reported, inferred, projected or conditional), mechanism (2–4 words), direction, expected lag, confidence, `forecast_id` + outcome for conditional links, method, model version, timestamp |
-| `evidence` | For each causal link: source name, URL, date and a one-sentence snippet |
-| `forecast`, `forecast_snapshot` | Question (full title plus a short title of 12 words or fewer), outcomes, end date, resolution rule, provider, a real-money flag, category; and the time series of probability, volume and liquidity |
-| `indicator_series`, `indicator_point` | KPI time series attached to a region or commodity |
-| `region_agg` | Pre-computed counts and risk/opportunity scores per region or H3 cell, per sector and time window, for fast map rendering |
-| `source` | Licence and attribution text for each data source (shown in the app) |
-| Later | `user_profile`, `user_entity`, `note`, `watchlist`, `alert` (Phases 4–5), `llm_call_log` (Phase 2) |
-
-Regions form a tree (country → state → district → city) through `part_of` edges, so other countries can be deepened later without rework. The map uses simplified borders served as small static files, while exact shapes stay in PostGIS.
-
----
-
-## 6. API
-
-All endpoints are read-only in Phases 0–3. Every response carries attributions and the viewer's allowed forecast providers.
-
-- `GET /api/meta`: sectors, entity types, colours, attributions, the viewer's region and allowed providers
-- `GET /api/globe?window=24h&sectors=…`: points, hexes, arcs and forecast rings in a compact format
-- `GET /api/top?window=…`: the "Top 5 now" stack, including the biggest odds moves
-- `GET /api/regions/{id}`: everything the region panel needs; `…/children` returns sub-region shading
-- `GET /api/stories/{id}` and `GET /api/stories/{id}/cascade`: the story card and its cascade with branches
-- `GET /api/entities/{id}`: the entity page, with backlinks, timeline and forecasts
-- `GET /api/graph?…` (global, filtered) and `GET /api/graph/local/{id}?depth=1..3`
-- `GET /api/forecasts?…` (list) and `GET /api/forecasts/{id}` (detail, history and branches)
-- `GET /api/search?q=…`: one search across every node type
-
----
-
-## 7. Look and feel
-
-- **Dark by default**, with a near-black space background behind the globe. A light theme is one tap away.
-- **Impact colours**, always paired with an icon and ▲/▼:
-  - risk: amber
-  - opportunity: teal
-  - neutral: slate
-
-  There's never red against green.
-- **Forecasts** get their own violet, a "crowd" icon and a ring shape. The percentage is large and the 24-hour change is shown in points (for example ▲ 8). Thin markets are faded and tagged "thin market".
-- **One fixed colour per entity type**, the same on the globe, in the graph and on chips. I'll check every colour against WCAG AA contrast in both themes and against common colour blindness with a contrast and colour-blindness checker.
-- **Inter, at most three text sizes per screen**, with large numbers.
-- **Desktop** gets a right-hand side panel. **Mobile** gets a bottom sheet with three heights: peek, half and full. Controls sit within thumb reach.
-- **Three taps to depth:** icon + headline → card with the so-what and three chips → cascade, graph and sources.
-- **Motion** is limited to smooth camera flights and a soft pulse on items from the last hour, all switched off when the device asks for reduced motion.
-- **Skeleton loaders** instead of spinners, and friendly empty states that suggest a next tap.
-
-**Home screen, desktop:**
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│ ◎ WorldGraph   [⌘K Search…]        Energy Agri Mfg Logistics …  ◐ ☰ │
-│                                                                      │
-│   ┌ Top 5 now ┐                                                      │
-│   │ ▲ icon  headline   │          ( dark 3D globe )                  │
-│   │ ◔ 62%  odds moved  │       points · hex heat · arcs · ◯ rings    │
-│   │ …                  │                                             │
-│   └────────────────────┘                                             │
-│                                                                      │
-│   ◀ ▶ replay   [24 h | 7 d | 30 d] ──●────────────    ◯ Forecasts    │
-│                                                    Sample data · ©   │
-└──────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 8. Sample dataset (Phase 0)
-
-- **About 200 stories** grouped into about 25 storylines. Each storyline has 4–12 linked stories with causes, effects and evidence. The stories cover all nine sectors and every continent, about 60 countries in total. States or provinces are filled in for about 10 large economies: the US, China, India, Brazil, Germany, Japan, Indonesia, Mexico, Australia and Nigeria. About 60 major cities appear worldwide.
-- **About 400 entities:**
-  - regions
-  - companies
-  - about 30 commodities with HS codes
-  - ports and chokepoints (Hormuz, Bab-el-Mandeb, Suez, Panama, Malacca, Rotterdam, Shanghai, Singapore, Mundra and others)
-  - policies
-  - indicators with sparkline data
-- **About 30 forecasts** with 30–90 days of probability history. Some moved 10 or more points in a day, some are thin markets, and about 10 drive **If YES / If NO** branches.
-- **All four causal link types** appear: reported, inferred, projected and conditional.
-- **Times are relative to "now"**, so the app always looks current, and a few items are under an hour old so you can see the pulse.
-- **How it's built:** readable storyline files plus a small Python generator. Tests check every word limit: headline 12 words, so-what 20 words, action 8 words.
-
-Example storylines (all fictional, labelled as sample):
-- Red Sea shipping disruption → Asia–Europe container rates up → European importers' costs and Asian exporters' margins → air freight for pharma
-- US Federal Reserve decision (a forecast with If YES / If NO) → dollar strength → emerging-market currencies → importers' costs in Turkey, India and Brazil
-- OPEC+ output decision (a forecast) → crude prices → diesel → trucking and airline costs worldwide
-- Drought at the Panama Canal → fewer transits → US East Coast freight costs; Gulf Coast ports as the opportunity
-- Frost in Brazil's coffee belt → arabica prices → roasters in the US and Europe; Vietnamese and Colombian growers as the opportunity
-- Earthquake near Taiwan's chip hub → chip supply → car production in Germany, Japan and Mexico
-- Rare-earth export curbs from China → EV motor makers → critical-minerals deals in Australia and Africa
-- Palm-oil export levy in Indonesia → edible-oil costs → food makers in India, Pakistan and Egypt
-- EU carbon border tax → steel and aluminium exporters in India, Turkey and Ukraine; green steel as the opportunity
-- Weak monsoon in India → rice export curbs (a forecast) → food prices in West Africa and Southeast Asia
-
----
-
-## 9. Phases and small steps
-
-Each step is small and leaves something working, and each ends with a commit. I stop after every phase for your review and give you a 3–5 step "how to try it" guide with exact PowerShell commands and what you should see.
-
-### Phase 0: Plan and scaffold (next, once you approve)
-1. Move the brief and plan into the new repo. Add the root README, `.gitignore`, `.env.example`, a short `CLAUDE.md` (under 200 lines), `PROGRESS.md` and `SOURCES.md` (every source with its terms, limits and attribution; items not yet checked are marked "to verify before use").
-2. Backend skeleton: a uv project, FastAPI with `/api/health`, ruff and pytest. **One command:** `uv run wg api`.
-3. Frontend skeleton: Next.js, Tailwind, shadcn/ui, Inter, dark and light themes. **One command:** `npm run dev`.
-4. Database schema as SQL migrations. `uv run wg db migrate` applies them to Supabase. You'll paste the connection string into `.env`, and I'll show you where to copy it from. It is never committed.
-5. Sample dataset: storylines, generator and validation tests. `uv run wg seed load` loads it.
-6. Update `PROGRESS.md`, and give you the how-to-try guide.
-
-**What you'll install in Phase 0** (I'll explain each one when we get there):
-- Git for Windows
-- Node.js LTS
-- uv
-
-You'll also add a few VS Code extensions: Python, Ruff, ESLint and Tailwind CSS.
-
-### Phase 1: Visual shell on sample data
-1. App shell: header, Ctrl/Cmd+K search, side panel and bottom sheet, theme toggle, "Sample data" badge, attributions.
-2. Globe:
-   - points and hex heat
-   - pulses
-   - arcs
+1. **Globe:**
+   - event points and hex heat
+   - pulses for items under an hour old
+   - cross-border cascade arcs
+   - forecast rings (fill = probability, glow = big 24-hour move)
    - sector lens chips
-   - 24 h / 7 d / 30 d slider with replay
-   - "Top 5 now"
-3. Forecasts layer: probability rings, with a glow on big 24-hour movers.
-4. Zoom into a region: camera flight, any country's states or provinces shaded by activity, city bubbles, detailed 2D map.
-5. Region panel:
-   - KPI tiles with sparklines
+   - 24 h / 7 d / 30 d with replay
+   - Top 5 now
+   - smooth zoom into regions
+2. **Region panel:**
+   - breadcrumb
+   - 4 KPI tiles with sparklines
    - sector pulse
    - top stories
-   - upcoming decisions with gauges and 24-hour change
+   - upcoming decisions
    - mini local graph
+   - actions: Cascades, Graph, Forecasts, Ask, Compare
+3. **Story card and cascade view:**
+   - links are solid (reported), dashed (inferred) or dotted (projected and conditional)
+   - If YES / If NO branches
+   - an evidence popover
+4. **Knowledge graph:** global and local, with filters, hover focus, search-to-node and a time-lapse.
+5. **Entity pages:**
+   - facts
+   - timeline
+   - backlinks
+   - forecasts
+   - local graph
+   - "impact on you"
+   - private notes with [[links]]
+6. **My Business:**
+   - a two-minute chip onboarding
+   - a private business graph
+   - an "Affects you" feed
+   - a forecast watchlist with alerts
+7. **Opportunities:** cards plus a momentum × relevance radar.
+8. **Forecasts view:** probability bars, detail with history, and If YES / If NO effects.
+9. **Ask** (answers from stored data only, with citations) and a six-card **Daily brief**.
 
-   The action buttons appear only once each one works.
-6. Story card and cascade view: line styles for each link type, If YES / If NO branches, and an evidence popover.
-7. Graph view: force-directed, with hover highlighting, filters, search-to-node and a local graph with a depth slider.
-8. Entity page: summary, chips, timeline, "Linked from", forecasts panel and local graph.
-9. Forecasts view and detail: probability bars, history chart and the permanent "crowd forecasts can be wrong" note.
-10. List view, keyboard shortcuts, reduced motion and a mobile pass.
-11. Playwright click-through test with zero console errors.
+Also: Ctrl/Cmd+K search, a keyboard-friendly list view of everything on the globe, bottom sheets on mobile and side panels on desktop, dark and light themes, and reduced-motion support.
 
-### Phase 2: Live data v1
-- News pipeline:
-  - GDELT 2.0, using its 15-minute files, which already carry locations
-  - about 10 RSS feeds: a global mix of business news plus official sources such as central banks (the Fed, ECB and RBI) and India's PIB and SEBI; we'll choose the list together
-  - USGS
+## Where user data lives
 
-  Then clustering, a rules gate, a small LLM gate and LLM extraction into validated JSON.
-- Forecast sync: Manifold switched on. Polymarket's adapter is built against sample responses, sits behind its own flag, and is **off by default** and hidden wherever restricted.
-- An LLM cost log, a daily spend cap and caching, so an unchanged item is never processed twice.
-- **Before the LLM is switched on,** I'll give you a cost estimate based on measured volumes.
-- The frontend switches to real data, and the sample data can be cleared with one command.
+- **Test link:** the Artifact's private per-person store (`db` capability, `data/users/<id>/…`). It holds the business profile, watchlist, notes and last visit.
+- **Website:**
+  - Before sign-in, the browser stores this data.
+  - With sign-in (Supabase Auth, email link), it moves to Supabase tables protected by row-level security.
 
-### Phase 3: Knowledge graph and cascades
-Wikidata linking; structural edges (trade flows for top commodities from UN Comtrade, ports, company ownership); causal inference; projected and conditional impacts; linking forecasts to entities; the graph time-lapse; full entity pages.
+## AI
 
-### Phase 4: Business layer
-My Business onboarding (chips and search, about two minutes, with three demo profiles from different parts of the world), the "Affects you" feed, forecast watchlist and alerts (a threshold, or a move of 10+ points in a day), Opportunities with the radar, Ask with citations ("not enough evidence" when true), the six-card daily brief, and region Compare.
+- One set of prompts and output schemas in `prompts/`, used by both engines.
+- **Analysis** turns a story cluster into:
+  - a headline (≤12 words)
+  - a so-what (≤20 words)
+  - impact, direction, magnitude, horizon and confidence
+  - sectors and entities
+  - up to 3 actions (≤8 words each)
+- **Cascades:** for a new story, candidate stories from the last 30 days that share entities, regions or sectors are proposed. The model judges plausibility and wording; links are stored with type, mechanism, confidence and evidence.
+- **Ask:** retrieval from stored stories, forecasts and the graph, then an answer of 3 bullets plus a mini cascade with citations. It says "Not enough evidence" when that's true.
+- **Test link:** analysis runs when the app opens, on the newest important stories (in batches, with a visible "Analysing 12 new stories…" status), and results are saved.
+- **Website:** a pipeline job does the same with Haiku 4.5 (analysis) and Sonnet 5.5 (cascades and Ask). Spend is logged per call and stops at the daily cap.
 
-### Phase 5: Polish and launch prep
-Performance and mobile polish, accounts (Supabase Auth fits here; the free plan includes it), region gating checked against your legal advice, export any view as an image, deployment options (I'll ask before anything paid) and basic privacy-friendly analytics.
+## Data sources
 
----
+See `SOURCES.md`. Each source's terms are checked before it's integrated and its attribution is shown in the app.
 
-## 10. Costs
+## Build order
 
-- **Phases 0–1: free.** The Supabase free plan, OpenFreeMap tiles and no LLM calls.
-- **From Phase 2: the Claude API is the main cost.** A rough first estimate, to be replaced with measured numbers before anything is switched on:
+1. Foundation:
+   - this plan
+   - the switch to Vite
+   - the `api.*` contract and SQL functions
+   - the sample dataset
+   - map assets (Natural Earth TopoJSON with India's view)
+2. Screens: globe and regions, stories and cascades, graph and entities, forecasts.
+3. Business layer: My Business, Affects you, watchlist, Opportunities, Ask, Brief, Compare.
+4. Live pipeline: GDELT, RSS, USGS, GDACS, Manifold; Polymarket adapter (off); GitHub Actions every 15 minutes; production AI job with the cap.
+5. Website mode: Netlify functions, `netlify.toml` and a deploy guide (not deployed).
+6. Quality: Playwright end-to-end tests, adversarial reviews, accessibility and performance passes. Then publish the test link.
 
-| Step | Model | Assumed volume per day | About |
-| --- | --- | --- | --- |
-| Relevance gate | Haiku 4.5 | about 800 story clusters | $0.70 |
-| Extraction | Haiku 4.5 | about 250 stories | $1.10 |
-| Wikidata disambiguation | Haiku 4.5 | about 250 stories | $0.45 |
-| Cascade reasoning | Sonnet 5.5 | about 250 stories | $3.50 |
-| Forecast linking | Haiku 4.5 | about 30 new questions | $0.10 |
-| **Total, before savings** | | | **about $6 per day** |
+## What the owner needs to do
 
-- Prompt caching, a tighter rules gate and running cascades only for important stories should bring this to about **$2–4 per day ($60–120 a month)**. I'll suggest starting with a **$2 per day cap**, which you control in `.env`.
-- **Ask** costs about $0.01–0.03 per question on Sonnet 5.5.
-- No other paid services are planned. I'll ask before any.
-
----
-
-## 11. How we'll work
-
-- I build and test in this cloud workspace, including against a local copy of Postgres for tests. You run the app on Windows.
-- Every step gives you exact PowerShell commands and tells you what you should see.
-- Secrets live only in `.env`, which is never committed. `.env.example` lists every key and where to get it.
-- `PROGRESS.md` is updated after each step, so any new session can pick up where the last one stopped.
-- If something in the brief turns out to be wrong or unwise, I'll say so and propose a fix instead of quietly working around it.
-
----
-
-## 12. What I need from you
-
-1. **Approve this plan,** or tell me what to change.
-2. **Create the empty GitHub repo** (GitHub wouldn't let me):
-   - At <https://github.com/new>, set the name to `worldgraph`, choose **Private**, and leave "Add a README" **unticked**. Click **Create repository**.
-   - If the Claude GitHub app is limited to selected repositories, add `worldgraph` to it. You can manage this at <https://claude.ai/connect-github>.
-
-   Tell me when it's done, and I'll move the brief and plan across, then delete the temporary branch in `Others`.
-3. Nothing else for now. Later phases will ask for free keys only when they're needed.
+- **Make the GitHub repo public:** worldgraph → Settings → General → Danger Zone → Change visibility.
+- **When the pipeline is ready, add one secret** (`DATABASE_URL`) to GitHub. Claude will give exact steps.
+- **Open the test link** and allow it to use the Supabase connector and Claude when asked.
