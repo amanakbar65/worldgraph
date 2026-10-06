@@ -1,0 +1,141 @@
+id: europe-gas-storage
+title: Europe's gas storage and industrial energy costs
+entities:
+  - {id: org:europe-gas-storage-auenfeld-chemie, type: organization, subtype: company, name: Auenfeld Chemie, located_in: region:de-rp, sectors: [manufacturing], summary: "Invented mid-sized chemicals maker in Rhineland-Palatinate used in sample stories.", sample: true}
+  - {id: org:europe-gas-storage-tarnmoor-energy, type: organization, subtype: company, name: Tarnmoor Energy, located_in: region:gb-wsm.london, sectors: [energy], summary: "Invented LNG trading house used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:eu-gas-storage-90-percent
+    short_title: EU gas storage 90% full before the heating season?
+    question: Will EU gas storage reach 90% of capacity before the start of the heating season?
+    category: energy
+    location: region:eu
+    about: [region:eu, commodity:natural-gas, region:de]
+    end_in_days: 50
+    resolution_rule: Resolves YES if the published EU-wide storage fill level reaches 90% of capacity on any day before the end date.
+    history: {days: 120, start: 0.81, end: 0.57, volume: 96000, liquidity: 15000}
+stories:
+  - id: story:norway-gas-field-maintenance
+    headline: Norwegian field maintenance trims pipeline gas flows to Europe
+    so_what: Lower flows from Europe's largest pipeline supplier slow storage filling and tighten prompt gas prices.
+    event_type: disruption
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.85
+    sectors: [energy]
+    at: region:no-12
+    mentions: [region:no, commodity:natural-gas, region:de, region:gb]
+    age_hours: 560
+    sources: 15
+    actions: [Check gas supply contract flexibility]
+  - id: story:eu-gas-storage-injections-slow
+    headline: EU gas storage injections run below the usual seasonal pace
+    so_what: A slower build leaves less buffer for winter and keeps forward gas prices elevated.
+    event_type: economic-data
+    impact: risk
+    direction: down
+    magnitude: 4
+    horizon: months
+    confidence: 0.85
+    sectors: [energy, manufacturing]
+    at: region:eu
+    mentions: [commodity:natural-gas, region:de, region:nl, region:it]
+    age_hours: 380
+    sources: 21
+    actions: [Hedge part of winter gas needs now, Review demand-response options with suppliers]
+  - id: story:ttf-gas-prices-rise
+    headline: Dutch TTF gas prices rise on storage and supply worries
+    so_what: Gas-fired power and heat costs climb for European manufacturers buying on short-term contracts.
+    event_type: price-move
+    impact: risk
+    direction: up
+    magnitude: 4
+    horizon: now
+    confidence: 0.9
+    sectors: [energy, finance]
+    at: region:nl-nh.amsterdam
+    mentions: [commodity:natural-gas, commodity:electricity, region:nl, region:eu]
+    age_hours: 120
+    sources: 27
+    actions: [Compare fixed and index-linked energy tariffs]
+  - id: story:qatari-lng-cargoes-shift-europe
+    headline: Qatari LNG cargoes shift toward Europe as price gap widens
+    so_what: Traders with flexible LNG cargoes can capture the European premium, easing some supply pressure.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.7
+    sectors: [energy, logistics-trade]
+    at: infra:ras-laffan
+    mentions: [region:qa, commodity:natural-gas, org:europe-gas-storage-tarnmoor-energy, infra:port-of-rotterdam, region:it]
+    age_hours: 84
+    sources: 10
+    actions: [Explore flexible LNG supply contracts]
+  - id: story:rhineland-chemicals-trim-output
+    headline: Rhineland-Palatinate chemical plants trim output as gas costs climb
+    so_what: Buyers of basic chemicals, resins and fertiliser inputs may see longer lead times and higher prices.
+    event_type: business-sentiment
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.75
+    sectors: [manufacturing, energy]
+    at: region:de-rp
+    mentions: [org:europe-gas-storage-auenfeld-chemie, commodity:natural-gas, commodity:fertilisers, region:de]
+    age_hours: 45
+    sources: 9
+    actions: [Line up second suppliers for key chemicals, Check price-adjustment clauses in chemical contracts]
+  - id: story:german-heat-pump-orders-climb
+    headline: German heat-pump installers report rising orders as gas bills climb
+    so_what: Installers, component makers and electricians gain steady work as households and offices switch heating.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.65
+    sectors: [real-estate, consumer, energy]
+    at: region:de-nw
+    mentions: [region:de, commodity:electricity, commodity:natural-gas]
+    age_hours: 22
+    sources: 7
+    actions: [Stock heat pumps ahead of the heating season, Train staff for faster installs]
+  - id: story:eu-gas-prices-ease-winter
+    kind: projected
+    headline: Gas prices could ease as winter supply worries fade
+    so_what: Full storage would give European manufacturers room to lock in cheaper winter energy contracts.
+    event_type: projected-impact
+    impact: opportunity
+    direction: down
+    magnitude: 3
+    horizon: months
+    confidence: 0.5
+    sectors: [energy, manufacturing]
+    at: region:nl-nh.amsterdam
+    mentions: [commodity:natural-gas, region:eu, region:de]
+  - id: story:german-plants-asked-cut-gas
+    kind: projected
+    headline: Energy-heavy German plants may be asked to cut gas use
+    so_what: A short storage build would raise the chance of voluntary demand cuts during cold spells.
+    event_type: projected-impact
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: months
+    confidence: 0.4
+    sectors: [manufacturing, energy]
+    at: region:de-rp
+    mentions: [org:europe-gas-storage-auenfeld-chemie, commodity:natural-gas, region:de-nw]
+links:
+  - {from: story:norway-gas-field-maintenance, to: story:eu-gas-storage-injections-slow, type: reported, mechanism: cuts pipeline supply, direction: down, confidence: 0.8, lag_days: 7, evidence: "Sample evidence: storage operators linked the slower injections to reduced Norwegian pipeline deliveries."}
+  - {from: story:eu-gas-storage-injections-slow, to: story:ttf-gas-prices-rise, type: reported, mechanism: raises supply worries, direction: up, confidence: 0.8, lag_days: 10}
+  - {from: story:ttf-gas-prices-rise, to: story:qatari-lng-cargoes-shift-europe, type: inferred, mechanism: draws spot cargoes, direction: up, confidence: 0.6, lag_days: 1}
+  - {from: story:ttf-gas-prices-rise, to: story:rhineland-chemicals-trim-output, type: reported, mechanism: raises energy costs, direction: down, confidence: 0.8, lag_days: 3}
+  - {from: story:ttf-gas-prices-rise, to: story:german-heat-pump-orders-climb, type: inferred, mechanism: lifts heating bills, direction: up, confidence: 0.5, lag_days: 4}
+  - {from: story:qatari-lng-cargoes-shift-europe, to: story:eu-gas-prices-ease-winter, type: projected, mechanism: adds import supply, direction: down, confidence: 0.45, lag_days: 30}
+  - {from: story:eu-gas-storage-injections-slow, to: story:eu-gas-prices-ease-winter, type: conditional, forecast: forecast:eu-gas-storage-90-percent, outcome: "YES", mechanism: eases winter supply fears, direction: down, confidence: 0.55, lag_days: 45}
+  - {from: story:eu-gas-storage-injections-slow, to: story:german-plants-asked-cut-gas, type: conditional, forecast: forecast:eu-gas-storage-90-percent, outcome: "NO", mechanism: tightens winter gas balance, direction: down, confidence: 0.5, lag_days: 60}

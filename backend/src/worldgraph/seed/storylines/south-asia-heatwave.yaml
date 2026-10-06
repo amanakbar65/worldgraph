@@ -1,0 +1,158 @@
+id: south-asia-heatwave
+title: South Asia heatwave strains power, crops and workers
+entities:
+  - {id: org:south-asia-heatwave-himkara-appliances, type: organization, subtype: company, name: Himkara Appliances, located_in: region:in-up, sectors: [consumer, manufacturing], summary: "Invented maker of air conditioners and air coolers used in sample stories.", sample: true}
+  - {id: org:south-asia-heatwave-suryatap-rooftops, type: organization, subtype: company, name: Suryatap Rooftop Solar, located_in: region:in-rj.jaipur, sectors: [energy, real-estate], summary: "Invented rooftop solar installer used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:india-peak-demand-270gw
+    short_title: India's peak power demand above 270 GW this season?
+    question: Will India's all-India peak power demand exceed 270 GW before the monsoon reaches north India?
+    category: energy
+    location: region:in-dl.new-delhi
+    about: [region:in, commodity:electricity, region:in-dl]
+    end_in_days: 40
+    resolution_rule: Resolves YES if the national grid operator's daily report shows all-India peak demand met above 270 GW on any day before the end date.
+    history: {days: 45, start: 0.21, end: 0.46, moves: [{days_ago: 0.6, delta: 0.12}], volume: 58000, liquidity: 9500}
+stories:
+  - id: story:heatwave-north-india-pakistan
+    headline: Severe heatwave spreads across North India and Pakistan
+    so_what: Days above 45°C strain power grids, crops and outdoor workers from Rajasthan to Punjab.
+    event_type: extreme-weather
+    impact: risk
+    direction: up
+    magnitude: 4
+    horizon: now
+    confidence: 0.9
+    sectors: [energy, agri-food, consumer]
+    at: region:in-up
+    mentions: [region:in-dl, region:in-rj, region:in-pb, region:pk, region:pk-pb]
+    age_hours: 200
+    sources: 41
+    actions: [Shift outdoor work to cooler hours, Check cold-chain capacity for perishables]
+  - id: story:delhi-peak-power-record
+    headline: Delhi's peak power demand breaks its all-time record
+    so_what: Utilities buy costly spot power, and businesses face a higher risk of short outages.
+    event_type: economic-data
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: now
+    confidence: 0.9
+    sectors: [energy]
+    at: region:in-dl.delhi
+    mentions: [commodity:electricity, region:in-up, region:in-hr]
+    age_hours: 0.6
+    sources: 17
+    actions: [Test backup generators before peak hours, Shift heavy loads to night shifts]
+  - id: story:paradip-coal-loadings-climb
+    headline: Paradip coal loadings climb as power plants rebuild stocks
+    so_what: Coal gets priority on ships and rail, so other bulk cargo on the east coast may wait longer.
+    event_type: logistics
+    impact: neutral
+    direction: up
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.75
+    sectors: [logistics-trade, energy]
+    at: infra:paradip-port
+    mentions: [commodity:coal, region:in-or, region:in-tn, region:in-ap]
+    age_hours: 90
+    sources: 8
+    actions: [Book rail rakes and berths early]
+  - id: story:punjab-cotton-heat-stress
+    headline: Heat stress slows cotton sowing in Pakistan and Indian Punjab
+    so_what: Weaker early cotton growth could tighten yarn supply for South Asian textile mills later in the season.
+    event_type: crop-conditions
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: months
+    confidence: 0.7
+    sectors: [agri-food, manufacturing]
+    at: region:pk-pb.multan
+    mentions: [commodity:cotton, commodity:apparel, region:in-pb, region:in-hr]
+    age_hours: 70
+    sources: 10
+    actions: [Secure cotton yarn contracts early]
+  - id: story:heat-cuts-daytime-shifts
+    headline: Factories and building sites cut daytime shifts in the heat
+    so_what: Lower output per worker delays construction projects and stretches delivery times for manufactured goods.
+    event_type: labour
+    impact: risk
+    direction: down
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.7
+    sectors: [manufacturing, real-estate]
+    at: region:in-up.kanpur
+    mentions: [region:in-up.lucknow, region:in-rj.jaipur, region:pk-sd.karachi]
+    age_hours: 40
+    sources: 12
+    actions: [Move site work to early mornings, Add buffer to delivery promises]
+  - id: story:ac-cooler-sales-surge
+    headline: Air conditioner and cooler sales surge across northern cities
+    so_what: Appliance makers and retailers sell through stock fast; compressor and copper suppliers see repeat orders.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: now
+    confidence: 0.8
+    sectors: [consumer, manufacturing]
+    at: region:in-up.lucknow
+    mentions: [org:south-asia-heatwave-himkara-appliances, region:in-dl.delhi, region:pk-pb.lahore, commodity:copper]
+    age_hours: 28
+    sources: 16
+    actions: [Restock fast-selling cooling models now, Offer installation within a day]
+  - id: story:rooftop-solar-inquiries-jump
+    headline: Rooftop solar inquiries jump as households seek lower power bills
+    so_what: Installers with stock and trained crews can convert demand quickly, helped by state subsidy schemes.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.65
+    sectors: [energy, real-estate, consumer]
+    at: region:in-rj.jaipur
+    mentions: [org:south-asia-heatwave-suryatap-rooftops, commodity:solar-modules, commodity:electricity, region:in-up]
+    age_hours: 9
+    sources: 7
+    actions: [Bundle rooftop solar with financing offers, Hire and train installation crews]
+  - id: story:northern-factories-peak-power-cuts
+    kind: projected
+    headline: Northern factories may face scheduled power cuts at peak hours
+    so_what: Record demand would push utilities to limit industrial supply, raising diesel backup costs.
+    event_type: projected-impact
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.5
+    sectors: [manufacturing, energy]
+    at: region:in-up
+    mentions: [commodity:electricity, commodity:refined-fuels, region:in-hr, region:in-pb]
+  - id: story:power-exchange-prices-ease
+    kind: projected
+    headline: Exchange power prices could ease as peak demand passes
+    so_what: Industrial buyers on short-term power contracts would see lower bills once temperatures fall.
+    event_type: projected-impact
+    impact: opportunity
+    direction: down
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.45
+    sectors: [energy, manufacturing]
+    at: region:in-dl.new-delhi
+    mentions: [commodity:electricity, region:in]
+links:
+  - {from: story:heatwave-north-india-pakistan, to: story:delhi-peak-power-record, type: reported, mechanism: drives cooling demand, direction: up, confidence: 0.9, lag_days: 7, evidence: "Sample evidence: the city's power distributors attributed the record peak to round-the-clock air-conditioner use."}
+  - {from: story:heatwave-north-india-pakistan, to: story:paradip-coal-loadings-climb, type: inferred, mechanism: raises coal burn, direction: up, confidence: 0.6, lag_days: 4}
+  - {from: story:heatwave-north-india-pakistan, to: story:punjab-cotton-heat-stress, type: reported, mechanism: stresses young crops, direction: down, confidence: 0.8, lag_days: 5}
+  - {from: story:heatwave-north-india-pakistan, to: story:heat-cuts-daytime-shifts, type: reported, mechanism: cuts safe working hours, direction: down, confidence: 0.85, lag_days: 6}
+  - {from: story:heatwave-north-india-pakistan, to: story:ac-cooler-sales-surge, type: reported, mechanism: lifts cooling demand, direction: up, confidence: 0.85, lag_days: 7}
+  - {from: story:ac-cooler-sales-surge, to: story:rooftop-solar-inquiries-jump, type: inferred, mechanism: raises household power bills, direction: up, confidence: 0.5, lag_days: 1}
+  - {from: story:paradip-coal-loadings-climb, to: story:northern-factories-peak-power-cuts, type: projected, mechanism: limits coal stock buffers, direction: down, confidence: 0.4, lag_days: 14}
+  - {from: story:rooftop-solar-inquiries-jump, to: story:power-exchange-prices-ease, type: projected, mechanism: trims daytime grid demand, direction: down, confidence: 0.35, lag_days: 30}
+  - {from: story:delhi-peak-power-record, to: story:northern-factories-peak-power-cuts, type: conditional, forecast: forecast:india-peak-demand-270gw, outcome: "YES", mechanism: pushes demand past supply, direction: down, confidence: 0.5, lag_days: 10}
+  - {from: story:delhi-peak-power-record, to: story:power-exchange-prices-ease, type: conditional, forecast: forecast:india-peak-demand-270gw, outcome: "NO", mechanism: eases peak grid strain, direction: down, confidence: 0.5, lag_days: 14}
