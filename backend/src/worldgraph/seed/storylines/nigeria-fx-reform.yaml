@@ -1,0 +1,139 @@
+id: nigeria-fx-reform
+title: Nigeria's currency reform and prices
+entities:
+  - {id: org:nigeria-fx-reform-sahel-gate-foods, type: organization, subtype: company, name: Sahel Gate Foods, located_in: region:ng-kn.kano, sectors: [agri-food, manufacturing], summary: "Invented Nigerian food processor used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:cbn-cut-next-meeting
+    short_title: Will Nigeria's central bank cut rates at its next meeting?
+    question: Will the Central Bank of Nigeria lower its monetary policy rate at its next scheduled committee meeting?
+    category: finance
+    location: region:ng-fc.abuja
+    about: [region:ng, org:cbn, sector:finance]
+    end_in_days: 41
+    resolution_rule: Resolves YES if the Central Bank of Nigeria announces a lower monetary policy rate at the end of its next scheduled committee meeting.
+    history: {days: 60, start: 0.29, end: 0.41, volume: 3400, liquidity: 650, noise: 0.025}
+stories:
+  - id: story:naira-slides-official-window
+    headline: Naira slides at the official window as dollar demand rises
+    so_what: A weaker naira raises the cost of imported goods, parts and raw materials for Nigerian firms.
+    event_type: price-move
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.85
+    sectors: [finance, consumer]
+    at: region:ng-la.lagos
+    mentions: [region:ng, org:cbn]
+    age_hours: 560
+    sources: 14
+    actions: [Price imports with a currency buffer, Shorten quote validity periods]
+  - id: story:nigeria-petrol-prices-rise
+    headline: Petrol pump prices rise again in Abuja and Lagos
+    so_what: Higher fuel costs feed into transport, generator power and food prices for businesses.
+    event_type: price-move
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: now
+    confidence: 0.8
+    sectors: [energy, consumer, logistics-trade]
+    at: region:ng-fc.abuja
+    mentions: [commodity:refined-fuels, region:ng, region:ng-la]
+    age_hours: 330
+    sources: 18
+    actions: [Plan delivery routes to cut fuel use, Budget for higher generator fuel costs]
+  - id: story:lagos-food-prices-climb
+    headline: Lagos food prices climb as transport costs rise
+    so_what: Households trim spending on non-essentials, squeezing retailers and consumer-goods makers in Lagos.
+    event_type: economic-data
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.75
+    sectors: [agri-food, consumer]
+    at: region:ng-la
+    mentions: [region:ng-la.lagos, commodity:rice, commodity:wheat]
+    age_hours: 170
+    sources: 9
+    actions: [Offer smaller pack sizes, Stock more value product lines]
+  - id: story:kano-processors-switch-local-grain
+    headline: Kano food processors switch to local grain as imports cost more
+    so_what: Local sourcing lifts demand for northern farm output and cuts processors' need for dollars.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.7
+    sectors: [agri-food, manufacturing]
+    at: region:ng-kn.kano
+    mentions: [org:nigeria-fx-reform-sahel-gate-foods, commodity:maize, commodity:wheat, region:ng-kd.kaduna]
+    age_hours: 120
+    sources: 5
+    actions: [Line up local grain supply contracts, Explore partnerships with northern farm cooperatives]
+  - id: story:nigeria-remittances-rise
+    headline: Remittances into southeast Nigeria rise as the naira gap narrows
+    so_what: More dollars through banks improve currency supply and support household spending across the southeast.
+    event_type: economic-data
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.7
+    sectors: [finance, consumer]
+    at: region:ng-an
+    mentions: [region:ng-en, region:gb, region:gb-wsm.london, region:us, region:us-tx.houston]
+    age_hours: 60
+    sources: 7
+    actions: [Partner with licensed remittance providers]
+  - id: story:nigeria-inflation-eases
+    headline: Nigeria's headline inflation eases, though food costs stay high
+    so_what: Slower price rises raise the chance of a rate cut, which would ease working-capital costs.
+    event_type: economic-data
+    impact: opportunity
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.85
+    sectors: [consumer, finance]
+    at: region:ng-fc.abuja
+    mentions: [region:ng, org:cbn]
+    age_hours: 26
+    sources: 16
+    actions: [Review short-term loan repricing options]
+  - id: story:nigeria-cheaper-credit-local-factories
+    kind: projected
+    headline: Cheaper credit could help Nigerian factories replace imported goods
+    so_what: Lower borrowing costs would support factory investment in Ogun and Lagos that substitutes for imports.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.45
+    sectors: [manufacturing, finance]
+    at: region:ng-og
+    mentions: [region:ng, region:ng-la, org:cbn]
+  - id: story:nigeria-working-capital-squeeze
+    kind: projected
+    headline: High rates would keep squeezing working capital for Nigerian traders
+    so_what: Small firms in Lagos and Ibadan would keep paying steep loan rates, limiting stock and hiring.
+    event_type: projected-impact
+    impact: risk
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.45
+    sectors: [finance, consumer]
+    at: region:ng-oy.ibadan
+    mentions: [region:ng-la.lagos, org:cbn]
+links:
+  - {from: story:naira-slides-official-window, to: story:nigeria-petrol-prices-rise, type: reported, mechanism: raises fuel import costs, direction: up, confidence: 0.8, lag_days: 10, evidence: "Sample evidence: fuel marketers cited the weaker naira when announcing higher pump prices."}
+  - {from: story:nigeria-petrol-prices-rise, to: story:lagos-food-prices-climb, type: reported, mechanism: raises transport costs, direction: up, confidence: 0.75, lag_days: 7, evidence: "Sample evidence: Lagos market traders said higher haulage fares from farming states pushed up food prices."}
+  - {from: story:naira-slides-official-window, to: story:kano-processors-switch-local-grain, type: inferred, mechanism: makes imports dearer, direction: up, confidence: 0.55, lag_days: 18, evidence: "Sample evidence: a weaker naira makes imported grain costlier, so local supply becomes more competitive."}
+  - {from: story:naira-slides-official-window, to: story:nigeria-remittances-rise, type: inferred, mechanism: narrows exchange-rate gap, direction: up, confidence: 0.5, lag_days: 21, evidence: "Sample evidence: when official and street rates converge, senders tend to move more money through banks."}
+  - {from: story:nigeria-inflation-eases, to: story:nigeria-cheaper-credit-local-factories, type: conditional, forecast: forecast:cbn-cut-next-meeting, outcome: "YES", mechanism: lowers borrowing costs, direction: up, confidence: 0.5, lag_days: 60, evidence: "Sample evidence: a lower policy rate would reduce loan costs for manufacturers planning new local capacity."}
+  - {from: story:nigeria-inflation-eases, to: story:nigeria-working-capital-squeeze, type: conditional, forecast: forecast:cbn-cut-next-meeting, outcome: "NO", mechanism: keeps loans expensive, direction: up, confidence: 0.5, lag_days: 30, evidence: "Sample evidence: if the central bank holds, bank lending rates for small firms would stay high."}
+  - {from: story:lagos-food-prices-climb, to: story:nigeria-working-capital-squeeze, type: projected, mechanism: erodes trader margins, direction: up, confidence: 0.4, lag_days: 45, evidence: "Sample evidence: traders paying more for stock while selling to stretched households have less cash to spare."}

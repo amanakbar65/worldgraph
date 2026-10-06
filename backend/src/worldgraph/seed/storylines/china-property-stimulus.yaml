@@ -1,0 +1,168 @@
+id: china-property-stimulus
+title: China property slowdown and stimulus
+entities:
+  - {id: org:china-property-stimulus-silver-lotus, type: organization, subtype: company, name: Silver Lotus Developments, located_in: region:cn-gd.guangzhou, sectors: [real-estate], summary: "Invented Chinese property developer used in sample stories.", sample: true}
+  - {id: org:china-property-stimulus-copperleaf-machinery, type: organization, subtype: company, name: Copperleaf Heavy Machinery, located_in: region:cn-hn.changsha, sectors: [manufacturing], summary: "Invented Chinese excavator and crane maker used in sample stories.", sample: true}
+  - {id: org:china-property-stimulus-redgum-iron, type: organization, subtype: company, name: Redgum Ridge Iron, located_in: region:au-wa, sectors: [manufacturing], summary: "Invented Pilbara iron ore miner used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:china-lpr-cut-next-fixing
+    short_title: Will China cut its one-year loan prime rate next month?
+    question: Will China's one-year loan prime rate be set lower at the next monthly fixing?
+    category: finance
+    location: region:cn-bj.beijing
+    about: [region:cn, org:pboc, sector:real-estate]
+    end_in_days: 16
+    resolution_rule: Resolves YES if the one-year loan prime rate published at the next monthly fixing is lower than the current rate.
+    history: {days: 60, start: 0.31, end: 0.47, moves: [{days_ago: 1.4, delta: 0.07}], volume: 96000, liquidity: 14000}
+  - id: forecast:iron-ore-higher-in-three-months
+    short_title: Will iron ore prices be higher in three months?
+    question: Will the benchmark seaborne iron ore price be higher three months after this question opened than on its opening date?
+    category: commodities
+    location: infra:port-hedland
+    about: [region:au-wa, commodity:iron-ore, region:cn, region:br]
+    end_in_days: 62
+    resolution_rule: Resolves YES if the benchmark seaborne iron ore price on the end date is above its level on the opening date.
+    history: {days: 28, start: 0.44, end: 0.55, moves: [{days_ago: 0.8, delta: 0.07}], volume: 64000, liquidity: 9500}
+stories:
+  - id: story:china-new-home-sales-slide
+    headline: New home sales keep falling across major Chinese cities
+    so_what: Weak sales drain developers' cash, slowing construction and demand for steel and cement.
+    event_type: economic-data
+    impact: risk
+    direction: down
+    magnitude: 4
+    horizon: months
+    confidence: 0.85
+    sectors: [real-estate, consumer]
+    at: region:cn-gd.guangzhou
+    mentions: [region:cn, region:cn-js.nanjing, region:cn-zj.hangzhou, org:china-property-stimulus-silver-lotus]
+    age_hours: 610
+    sources: 22
+    actions: [Tighten credit terms for developer clients, Shift sales toward infrastructure projects]
+  - id: story:hebei-steel-mills-trim-output
+    headline: Steel mills in Hebei and Jiangsu trim output as orders slow
+    so_what: Lower output cuts iron ore demand, while surplus steel heads to export markets at lower prices.
+    event_type: market-shift
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.8
+    sectors: [manufacturing]
+    at: region:cn-he.tangshan
+    mentions: [commodity:steel, commodity:iron-ore, region:cn-he, region:cn-js]
+    age_hours: 380
+    sources: 11
+    actions: [Ask suppliers for cheaper steel offers, Review steel contract price terms]
+  - id: story:iron-ore-prices-slip
+    headline: Iron ore prices slip as Chinese steel demand softens
+    so_what: Lower prices cut revenue for Pilbara miners and royalties for the Western Australian budget.
+    event_type: price-move
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.85
+    sectors: [manufacturing, logistics-trade]
+    at: infra:port-hedland
+    mentions: [commodity:iron-ore, region:au-wa, region:au-wa.perth, region:cn, org:china-property-stimulus-redgum-iron]
+    age_hours: 260
+    sources: 15
+    actions: [Plan for slower mining services orders]
+  - id: story:brazil-iron-ore-exports-slow
+    headline: Brazilian iron ore exports lose pace as Chinese orders thin
+    so_what: Fewer cargoes from northern Brazil cut freight work and port revenue around São Luís.
+    event_type: economic-data
+    impact: risk
+    direction: down
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.75
+    sectors: [manufacturing, logistics-trade]
+    at: region:br-ma.sao-luis
+    mentions: [region:br, region:br-pa, region:br-mg, commodity:iron-ore]
+    age_hours: 90
+    sources: 6
+    actions: [Review dry-bulk charter commitments]
+  - id: story:china-eases-home-buying-rules
+    headline: China eases home-buying rules and cuts down-payment ratios
+    so_what: Looser rules may revive home sales, lifting demand for steel, cement and construction equipment.
+    event_type: policy-decision
+    impact: opportunity
+    direction: up
+    magnitude: 4
+    horizon: months
+    confidence: 0.85
+    sectors: [real-estate, finance]
+    at: region:cn-bj.beijing
+    mentions: [region:cn, org:pboc, region:cn-sh.shanghai, region:cn-gd.shenzhen]
+    age_hours: 36
+    sources: 38
+    actions: [Watch Chinese construction orders for recovery, Prepare supply for building-material demand]
+  - id: story:iron-ore-rebounds-on-stimulus
+    headline: Iron ore rebounds as stimulus lifts Chinese steel futures
+    so_what: Higher prices support miners' cash flow in Western Australia and Brazil after weeks of declines.
+    event_type: price-move
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: now
+    confidence: 0.8
+    sectors: [manufacturing]
+    at: region:cn-sd.qingdao
+    mentions: [commodity:iron-ore, commodity:steel, infra:port-hedland, region:au-wa, region:br]
+    age_hours: 20
+    sources: 17
+    actions: [Revisit contracts priced on index averages]
+  - id: story:excavator-inquiries-rise
+    headline: Excavator dealers in Hunan and Jiangsu report more buyer inquiries
+    so_what: Equipment makers and parts suppliers could gain orders as stalled building projects restart.
+    event_type: business-sentiment
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.65
+    sectors: [manufacturing, real-estate]
+    at: region:cn-hn.changsha
+    mentions: [region:cn-js, region:cn-js.xuzhou, region:cn-zj, org:china-property-stimulus-copperleaf-machinery]
+    age_hours: 0.8
+    sources: 4
+    actions: [Prepare parts stock for machinery makers, Contact Chinese equipment distributors]
+  - id: story:china-rate-cut-lifts-home-sales
+    kind: projected
+    headline: A rate cut could lift home sales in coastal provinces
+    so_what: Cheaper mortgages would help developers sell stock and restart stalled projects in Zhejiang and Guangdong.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.45
+    sectors: [real-estate, finance]
+    at: region:cn-zj.hangzhou
+    mentions: [region:cn-zj, region:cn-gd, region:cn-js, org:china-property-stimulus-silver-lotus]
+  - id: story:china-steel-exports-climb
+    kind: projected
+    headline: Chinese steel exports could climb, pressuring steelmakers abroad
+    so_what: Without more stimulus, mills would sell surplus abroad, undercutting steelmakers in India, Vietnam and Turkey.
+    event_type: projected-impact
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.4
+    sectors: [manufacturing, logistics-trade]
+    at: region:cn-tj.tianjin
+    mentions: [commodity:steel, region:in, region:in-jh.jamshedpur, region:vn, region:tr]
+    actions: [Watch for anti-dumping duties on steel]
+links:
+  - {from: story:china-new-home-sales-slide, to: story:hebei-steel-mills-trim-output, type: reported, mechanism: cuts construction steel demand, direction: down, confidence: 0.8, lag_days: 10, evidence: "Sample evidence: mill operators blamed fewer property starts for weaker orders of rebar and wire rod."}
+  - {from: story:hebei-steel-mills-trim-output, to: story:iron-ore-prices-slip, type: reported, mechanism: reduces ore purchases, direction: down, confidence: 0.85, lag_days: 5, evidence: "Sample evidence: ore buyers cited lower mill run rates as port stockpiles in northern China grew."}
+  - {from: story:iron-ore-prices-slip, to: story:brazil-iron-ore-exports-slow, type: inferred, mechanism: thins export demand, direction: down, confidence: 0.6, lag_days: 7, evidence: "Sample evidence: Brazil competes with Australia for the same Chinese mills, so softer demand reaches both."}
+  - {from: story:china-new-home-sales-slide, to: story:china-eases-home-buying-rules, type: inferred, mechanism: prompts policy support, direction: up, confidence: 0.6, lag_days: 24, evidence: "Sample evidence: past easing steps have followed long runs of falling home sales."}
+  - {from: story:china-eases-home-buying-rules, to: story:iron-ore-rebounds-on-stimulus, type: reported, mechanism: lifts steel demand hopes, direction: up, confidence: 0.8, lag_days: 1, evidence: "Sample evidence: commodity desks linked the rebound in steel and ore futures to the new housing measures."}
+  - {from: story:china-eases-home-buying-rules, to: story:excavator-inquiries-rise, type: inferred, mechanism: restarts stalled projects, direction: up, confidence: 0.6, lag_days: 1, evidence: "Sample evidence: equipment dealers usually see more inquiries soon after support for construction is announced."}
+  - {from: story:china-eases-home-buying-rules, to: story:china-rate-cut-lifts-home-sales, type: conditional, forecast: forecast:china-lpr-cut-next-fixing, outcome: "YES", mechanism: lowers mortgage costs, direction: up, confidence: 0.5, lag_days: 45, evidence: "Sample evidence: a lower loan prime rate would feed into cheaper mortgages on top of the looser buying rules."}
+  - {from: story:china-eases-home-buying-rules, to: story:china-steel-exports-climb, type: conditional, forecast: forecast:china-lpr-cut-next-fixing, outcome: "NO", mechanism: leaves steel surplus, direction: up, confidence: 0.45, lag_days: 45, evidence: "Sample evidence: without cheaper credit, home demand may stay weak and mills would push surplus steel abroad."}
+  - {from: story:china-new-home-sales-slide, to: story:china-steel-exports-climb, type: projected, mechanism: adds export surplus, direction: up, confidence: 0.4, lag_days: 60, evidence: "Sample evidence: steel not used in domestic construction tends to be sold overseas at lower prices."}

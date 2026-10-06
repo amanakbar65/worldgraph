@@ -1,0 +1,155 @@
+id: fed-rate-path
+title: US rate path and the dollar
+entities:
+  - {id: org:fed-rate-path-larkspur-lending, type: organization, subtype: company, name: Larkspur Home Lending, located_in: region:us-tx.dallas, sectors: [finance, real-estate], summary: "Invented Texas mortgage lender used in sample stories.", sample: true}
+  - {id: org:fed-rate-path-kestane-components, type: organization, subtype: company, name: Kestane Auto Components, located_in: region:tr-16.bursa, sectors: [manufacturing], summary: "Invented Turkish car-parts maker with dollar loans, used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:fed-cut-next-meeting
+    short_title: Will the Fed cut rates at its next meeting?
+    question: Will the US Federal Reserve lower its federal funds target range at its next scheduled policy meeting?
+    category: finance
+    location: region:us-dc.washington-d-c
+    about: [region:us, org:us-fed, sector:finance]
+    end_in_days: 24
+    resolution_rule: Resolves YES if the Federal Reserve announces a lower federal funds target range at the end of its next scheduled policy meeting.
+    history: {days: 90, start: 0.36, end: 0.63, moves: [{days_ago: 0.45, delta: 0.14}], volume: 412000, liquidity: 58000}
+stories:
+  - id: story:turkish-firms-dollar-loan-costs
+    headline: Turkish manufacturers pay more to roll over dollar loans
+    so_what: High US rates keep dollar funding expensive for firms in Bursa and Istanbul with unhedged foreign debt.
+    event_type: market-shift
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.8
+    sectors: [manufacturing, finance]
+    at: region:tr-16.bursa
+    mentions: [region:tr, region:tr-34.istanbul, org:us-fed, org:fed-rate-path-kestane-components]
+    age_hours: 470
+    sources: 8
+    actions: [Match loan currency to sales currency, Stagger dollar debt maturities]
+  - id: story:us-hiring-slows
+    headline: US hiring slows more than expected as payroll gains cool
+    so_what: Softer hiring strengthens the case for a rate cut, which would lower borrowing costs.
+    event_type: economic-data
+    impact: neutral
+    direction: down
+    magnitude: 4
+    horizon: weeks
+    confidence: 0.9
+    sectors: [finance, consumer]
+    at: region:us-dc.washington-d-c
+    mentions: [region:us, org:us-fed]
+    age_hours: 11
+    sources: 44
+    actions: [Review floating-rate loan reset dates]
+  - id: story:treasury-yields-drop
+    headline: Short-term Treasury yields fall as investors price a Fed cut
+    so_what: Lower yields cut the cost of new company borrowing and narrow the dollar's interest-rate edge.
+    event_type: price-move
+    impact: opportunity
+    direction: down
+    magnitude: 3
+    horizon: now
+    confidence: 0.85
+    sectors: [finance]
+    at: region:us-ny.new-york
+    mentions: [region:us, org:us-fed]
+    age_hours: 9
+    sources: 27
+    actions: [Request refinancing quotes while yields are lower, Compare fixed and floating loan offers]
+  - id: story:texas-mortgage-quotes-fall
+    headline: Texas lenders trim mortgage quotes as Treasury yields fall
+    so_what: Cheaper home loans could revive buyer demand for builders, movers and home-goods sellers.
+    event_type: price-move
+    impact: opportunity
+    direction: down
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.75
+    sectors: [real-estate, finance, consumer]
+    at: region:us-tx.dallas
+    mentions: [region:us-tx.houston, region:us-tx.austin, org:fed-rate-path-larkspur-lending]
+    age_hours: 5
+    sources: 7
+    actions: [Prepare for more home-buyer enquiries, Stock up on home-improvement lines]
+  - id: story:rupee-firms-on-softer-dollar
+    headline: Rupee firms as a softer dollar draws funds into India
+    so_what: A firmer rupee trims India's oil and electronics import bills, easing input costs for manufacturers.
+    event_type: price-move
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: now
+    confidence: 0.8
+    sectors: [finance, manufacturing, energy]
+    at: region:in-mh.mumbai
+    mentions: [region:in, org:rbi, commodity:crude-oil, commodity:semiconductors]
+    age_hours: 7
+    sources: 15
+    actions: [Bring forward dollar invoice payments, Review currency hedge ratios]
+  - id: story:rupiah-recovers-food-importers
+    headline: Rupiah recovers, easing costs for Indonesian food importers
+    so_what: Wheat and soybean importers in Java gain room on prices after a long stretch of currency weakness.
+    event_type: price-move
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.7
+    sectors: [agri-food, consumer]
+    at: region:id-jk.jakarta
+    mentions: [region:id, region:id-ji.surabaya, commodity:wheat, commodity:soybeans]
+    age_hours: 4.5
+    sources: 6
+    actions: [Lock in forward cover on import contracts]
+  - id: story:indian-software-exporters-rupee-squeeze
+    kind: projected
+    headline: A firmer rupee could trim margins for Indian software exporters
+    so_what: Firms billing in dollars but paying staff in rupees would earn less per contract.
+    event_type: projected-impact
+    impact: risk
+    direction: down
+    magnitude: 2
+    horizon: months
+    confidence: 0.45
+    sectors: [tech]
+    at: region:in-ka.bengaluru
+    mentions: [region:in, region:in-tg.hyderabad, region:us]
+    actions: [Hedge a share of dollar receivables]
+  - id: story:em-dollar-debt-relief
+    kind: projected
+    headline: A Fed cut would ease dollar-debt costs for emerging-market firms
+    so_what: Borrowers in Brazil, Turkey and Indonesia could refinance dollar loans on better terms.
+    event_type: projected-impact
+    impact: opportunity
+    direction: down
+    magnitude: 3
+    horizon: months
+    confidence: 0.5
+    sectors: [finance, manufacturing]
+    at: region:br-sp.sao-paulo
+    mentions: [region:br, org:bcb, region:tr, region:id]
+  - id: story:em-importers-dollar-squeeze
+    kind: projected
+    headline: A Fed hold would revive the dollar and squeeze emerging-market importers
+    so_what: Turkish and Indonesian importers would face pricier dollar invoices and tighter credit.
+    event_type: projected-impact
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.45
+    sectors: [finance, consumer]
+    at: region:tr-34.istanbul
+    mentions: [region:tr, region:id, region:id-jk.jakarta, region:br]
+links:
+  - {from: story:us-hiring-slows, to: story:treasury-yields-drop, type: reported, mechanism: lifts rate-cut expectations, direction: down, confidence: 0.88, lag_days: 0, evidence: "Sample evidence: bond desks cited the weak payroll figures as two-year yields fell soon after the release."}
+  - {from: story:treasury-yields-drop, to: story:texas-mortgage-quotes-fall, type: reported, mechanism: lowers home-loan rates, direction: down, confidence: 0.8, lag_days: 0, evidence: "Sample evidence: Texas lenders said lower Treasury yields let them reprice fixed-rate home loans."}
+  - {from: story:treasury-yields-drop, to: story:rupee-firms-on-softer-dollar, type: inferred, mechanism: softens the dollar, direction: up, confidence: 0.6, lag_days: 0, evidence: "Sample evidence: a narrower US yield advantage usually draws portfolio money back into higher-yielding markets such as India."}
+  - {from: story:treasury-yields-drop, to: story:rupiah-recovers-food-importers, type: inferred, mechanism: softens the dollar, direction: up, confidence: 0.55, lag_days: 0, evidence: "Sample evidence: the rupiah tends to recover when US yields fall and the dollar weakens broadly."}
+  - {from: story:rupee-firms-on-softer-dollar, to: story:indian-software-exporters-rupee-squeeze, type: projected, mechanism: cuts rupee revenue, direction: down, confidence: 0.45, lag_days: 30, evidence: "Sample evidence: software exporters earn mostly in dollars, so a firmer rupee lowers revenue in local terms."}
+  - {from: story:us-hiring-slows, to: story:em-dollar-debt-relief, type: conditional, forecast: forecast:fed-cut-next-meeting, outcome: "YES", mechanism: cheapens dollar funding, direction: down, confidence: 0.55, lag_days: 45, evidence: "Sample evidence: lower US policy rates usually reduce the cost of dollar loans and bonds for emerging-market borrowers."}
+  - {from: story:us-hiring-slows, to: story:em-importers-dollar-squeeze, type: conditional, forecast: forecast:fed-cut-next-meeting, outcome: "NO", mechanism: revives dollar strength, direction: up, confidence: 0.5, lag_days: 30, evidence: "Sample evidence: if the Fed holds, the dollar's yield advantage would persist and weigh on importers' currencies."}
+  - {from: story:turkish-firms-dollar-loan-costs, to: story:em-importers-dollar-squeeze, type: projected, mechanism: prolongs funding strain, direction: up, confidence: 0.4, lag_days: 60, evidence: "Sample evidence: firms already paying more on dollar loans have little room to absorb a stronger dollar."}

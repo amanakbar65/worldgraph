@@ -1,0 +1,141 @@
+id: egypt-currency-suez
+title: Egypt's pound, reserves and Suez income
+entities:
+  - {id: org:egypt-currency-suez-dunecrest-capital, type: organization, subtype: company, name: Dunecrest Capital, located_in: region:ae-az.abu-dhabi, sectors: [finance, real-estate], summary: "Invented Gulf investment firm used in sample stories.", sample: true}
+  - {id: org:egypt-currency-suez-coral-shore-hotels, type: organization, subtype: company, name: Coral Shore Hotels, located_in: region:eg-ba, sectors: [consumer], summary: "Invented Red Sea resort operator used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:egypt-imf-review-on-time
+    short_title: Will the IMF board approve Egypt's next review on schedule?
+    question: Will the IMF Executive Board complete the next review of Egypt's lending programme by its scheduled date?
+    category: economy
+    location: region:eg-c.cairo
+    about: [region:eg, org:cbe, sector:finance]
+    end_in_days: 75
+    resolution_rule: Resolves YES if the IMF announces that its Executive Board has completed the review on or before the end date.
+    history: {days: 120, start: 0.54, end: 0.72, moves: [{days_ago: 5.8, delta: 0.09}], volume: 41000, liquidity: 6200}
+stories:
+  - id: story:red-sea-resorts-strong-bookings
+    headline: Red Sea resorts report strong bookings from European visitors
+    so_what: A cheaper pound draws tourists, lifting hard-currency income for hotels and their local suppliers.
+    event_type: business-sentiment
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.75
+    sectors: [consumer]
+    at: region:eg-ba
+    mentions: [org:egypt-currency-suez-coral-shore-hotels, region:eg-js, region:de, region:gb]
+    age_hours: 680
+    sources: 8
+    actions: [Pitch supply contracts to Red Sea hotels, Price tour packages in euros]
+  - id: story:gulf-investor-alexandria-logistics
+    headline: Gulf investor commits funds to an Alexandria logistics park
+    so_what: Dollar inflows support reserves and create work for local builders, hauliers and warehouse operators.
+    event_type: investment
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.7
+    sectors: [real-estate, logistics-trade]
+    at: region:eg-alx.alexandria
+    mentions: [org:egypt-currency-suez-dunecrest-capital, region:ae, region:ae-az.abu-dhabi]
+    age_hours: 260
+    sources: 7
+    actions: [Bid for construction subcontracts in Alexandria, Explore warehouse space near Alexandria port]
+  - id: story:imf-staff-agreement-egypt
+    headline: IMF staff and Egypt reach agreement on the next programme review
+    so_what: Board approval would release new funding and ease dollar shortages for Egyptian importers.
+    event_type: policy-decision
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.85
+    sectors: [finance]
+    at: region:eg-c.cairo
+    mentions: [region:eg, org:cbe]
+    age_hours: 140
+    sources: 20
+    actions: [Plan import orders around the board decision]
+  - id: story:egypt-reserves-dip
+    headline: Egypt's foreign reserves dip as canal income weakens
+    so_what: Thinner reserves limit dollar supply for importers and add pressure on the pound.
+    event_type: economic-data
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.8
+    sectors: [finance]
+    at: region:eg-c.cairo
+    mentions: [region:eg, org:cbe, infra:suez-canal, org:suez-canal-authority]
+    age_hours: 16
+    sources: 11
+    actions: [Shorten payment terms with Egyptian buyers]
+  - id: story:egyptian-pound-eases
+    headline: Egyptian pound eases against the dollar at Cairo banks
+    so_what: Importers pay more for dollar-priced goods, while exporters gain some price advantage abroad.
+    event_type: price-move
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: now
+    confidence: 0.8
+    sectors: [finance, consumer]
+    at: region:eg-c
+    mentions: [region:eg, region:eg-c.cairo, org:cbe]
+    age_hours: 10
+    sources: 9
+    actions: [Price Egypt contracts in dollars where possible, Hedge pound receivables]
+  - id: story:giza-food-makers-raise-prices
+    headline: Giza food makers raise shelf prices as import costs climb
+    so_what: Higher wheat and packaging costs reach shoppers, slowing volumes for retailers in greater Cairo.
+    event_type: business-sentiment
+    impact: risk
+    direction: up
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.7
+    sectors: [agri-food, consumer]
+    at: region:eg-gz.giza
+    mentions: [commodity:wheat, region:eg-c.cairo]
+    age_hours: 3
+    sources: 5
+    actions: [Review price lists for Egyptian buyers, Source local packaging where possible]
+  - id: story:egypt-imf-funds-steady-pound
+    kind: projected
+    headline: IMF funds would rebuild reserves and steady the pound
+    so_what: Steadier dollar supply would help importers clear cargo and plan purchases with less risk.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.5
+    sectors: [finance, logistics-trade]
+    at: region:eg-c.cairo
+    mentions: [region:eg, org:cbe]
+  - id: story:egypt-import-backlog-builds
+    kind: projected
+    headline: A delayed review could leave importers short of dollars at ports
+    so_what: Cargo could wait longer at Port Said and Alexandria, delaying inputs for Egyptian factories.
+    event_type: projected-impact
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.45
+    sectors: [logistics-trade, manufacturing]
+    at: region:eg-pts
+    mentions: [region:eg, region:eg-alx.alexandria, infra:suez-canal]
+links:
+  - {from: story:suez-revenue-falls, to: story:egypt-reserves-dip, type: reported, mechanism: cuts dollar inflows, direction: down, confidence: 0.8, lag_days: 1, evidence: "Sample evidence: the central bank's figures pointed to lower canal receipts as a drag on reserves."}
+  - {from: story:egypt-reserves-dip, to: story:egyptian-pound-eases, type: inferred, mechanism: tightens dollar supply, direction: down, confidence: 0.6, lag_days: 0, evidence: "Sample evidence: falling reserves usually leave banks with fewer dollars to sell, weighing on the pound."}
+  - {from: story:egyptian-pound-eases, to: story:giza-food-makers-raise-prices, type: reported, mechanism: raises import costs, direction: up, confidence: 0.75, lag_days: 0, evidence: "Sample evidence: food producers said dearer imported wheat and packaging forced new price lists."}
+  - {from: story:imf-staff-agreement-egypt, to: story:egypt-imf-funds-steady-pound, type: conditional, forecast: forecast:egypt-imf-review-on-time, outcome: "YES", mechanism: releases programme funding, direction: up, confidence: 0.55, lag_days: 30, evidence: "Sample evidence: board approval would unlock the next tranche and support confidence in the pound."}
+  - {from: story:imf-staff-agreement-egypt, to: story:egypt-import-backlog-builds, type: conditional, forecast: forecast:egypt-imf-review-on-time, outcome: "NO", mechanism: delays dollar inflows, direction: up, confidence: 0.5, lag_days: 45, evidence: "Sample evidence: a delayed review would hold back funding and leave banks short of dollars for importers."}
+  - {from: story:red-sea-resorts-strong-bookings, to: story:egypt-imf-funds-steady-pound, type: projected, mechanism: adds hard-currency income, direction: up, confidence: 0.4, lag_days: 60, evidence: "Sample evidence: strong tourism receipts would add to reserves alongside any programme funding."}
+  - {from: story:gulf-investor-alexandria-logistics, to: story:egypt-imf-funds-steady-pound, type: projected, mechanism: adds investment inflows, direction: up, confidence: 0.4, lag_days: 90, evidence: "Sample evidence: direct investment from the Gulf brings dollars that help rebuild reserves."}
+  - {from: story:suez-revenue-falls, to: story:egypt-import-backlog-builds, type: projected, mechanism: strains import financing, direction: up, confidence: 0.4, lag_days: 60, evidence: "Sample evidence: lower canal income leaves fewer dollars to pay for imports waiting at ports."}

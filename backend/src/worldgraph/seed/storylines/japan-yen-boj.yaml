@@ -1,0 +1,142 @@
+id: japan-yen-boj
+title: Bank of Japan, the yen and the carry trade
+entities:
+  - {id: org:japan-yen-boj-aokaze-motors, type: organization, subtype: company, name: Aokaze Motors, located_in: region:jp-23.nagoya, sectors: [manufacturing, consumer], summary: "Invented Japanese carmaker used in sample stories.", sample: true}
+  - {id: org:japan-yen-boj-shirasagi-machine-works, type: organization, subtype: company, name: Shirasagi Machine Works, located_in: region:jp-27.osaka, sectors: [manufacturing], summary: "Invented Japanese machine-tool maker used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:boj-hike-next-meeting
+    short_title: Will the Bank of Japan raise rates at its next meeting?
+    question: Will the Bank of Japan raise its short-term policy rate at its next scheduled monetary policy meeting?
+    category: finance
+    location: region:jp-13.tokyo
+    about: [region:jp, org:boj, sector:finance]
+    end_in_days: 19
+    resolution_rule: Resolves YES if the Bank of Japan announces a higher short-term policy rate at the end of its next scheduled meeting.
+    history: {days: 90, start: 0.27, end: 0.58, moves: [{days_ago: 0.7, delta: 0.12}], volume: 238000, liquidity: 31000}
+stories:
+  - id: story:japan-machine-tool-orders-rise
+    headline: Foreign orders for Japanese machine tools climb on a weak yen
+    so_what: Factories in India and Vietnam can buy Japanese equipment for much less than before.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.8
+    sectors: [manufacturing]
+    at: region:jp-27.osaka
+    mentions: [region:jp, region:in, region:vn, region:in-tn.chennai, region:vn-hn.hanoi, org:japan-yen-boj-shirasagi-machine-works]
+    age_hours: 540
+    sources: 7
+    actions: [Request quotes from Japanese machinery makers, Hedge yen costs on pending orders]
+  - id: story:tokyo-inflation-beats-forecasts
+    headline: Tokyo consumer prices rise faster than expected
+    so_what: Firm inflation gives the Bank of Japan room to raise rates and lift borrowing costs.
+    event_type: economic-data
+    impact: risk
+    direction: up
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.85
+    sectors: [consumer, finance]
+    at: region:jp-13
+    mentions: [region:jp, org:boj]
+    age_hours: 40
+    sources: 12
+    actions: [Review yen loan rate reset dates]
+  - id: story:boj-signals-hike-readiness
+    headline: Bank of Japan signals it is ready to raise rates
+    so_what: Higher Japanese rates would lift the yen and draw money home from overseas investments.
+    event_type: policy-signal
+    impact: neutral
+    direction: up
+    magnitude: 4
+    horizon: weeks
+    confidence: 0.85
+    sectors: [finance]
+    at: region:jp-13.tokyo
+    mentions: [region:jp, org:boj]
+    age_hours: 18
+    sources: 31
+    actions: [Check exposure to yen-funded credit lines]
+  - id: story:yen-jumps-on-hike-odds
+    headline: Yen jumps as markets price a Japanese rate rise
+    so_what: A stronger yen makes imported fuel, food and parts cheaper for Japanese companies.
+    event_type: price-move
+    impact: opportunity
+    direction: up
+    magnitude: 4
+    horizon: now
+    confidence: 0.85
+    sectors: [finance, energy, consumer]
+    at: region:jp-13.tokyo
+    mentions: [region:jp, org:boj, commodity:natural-gas]
+    age_hours: 8
+    sources: 29
+    actions: [Lock in yen costs for imported fuel, Review yen pricing with Japanese suppliers]
+  - id: story:carry-unwind-hits-peso-rand
+    headline: Carry-trade unwinding knocks the Mexican peso and South African rand
+    so_what: Investors repay yen loans by selling higher-yielding assets, raising currency swings for emerging-market firms.
+    event_type: price-move
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: now
+    confidence: 0.75
+    sectors: [finance, manufacturing]
+    at: region:mx-dif.mexico-city
+    mentions: [region:mx, region:mx-nle.monterrey, region:za, region:za-gt.johannesburg]
+    age_hours: 6
+    sources: 13
+    actions: [Hedge peso and rand payables, Avoid large currency conversions this week]
+  - id: story:japanese-carmaker-warns-on-yen
+    headline: Japanese carmaker warns a firmer yen could cut profits
+    so_what: A firmer yen shrinks exporters' overseas profits, which can slow orders to their parts suppliers.
+    event_type: business-sentiment
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.75
+    sectors: [manufacturing]
+    at: region:jp-23.nagoya
+    mentions: [org:japan-yen-boj-aokaze-motors, region:us, region:th-21]
+    age_hours: 0.4
+    sources: 5
+    actions: [Ask Japanese customers about order volumes, Review pricing in yen-denominated contracts]
+  - id: story:carry-selling-extends
+    kind: projected
+    headline: A Japanese hike could extend selling of emerging-market assets
+    so_what: Further yen gains would push more investors to close carry positions, unsettling South African and Brazilian markets.
+    event_type: projected-impact
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.45
+    sectors: [finance]
+    at: region:za-gt.johannesburg
+    mentions: [region:za, region:br, region:mx]
+  - id: story:asian-factories-buy-japanese-machinery
+    kind: projected
+    headline: Asian factories would keep buying cheap Japanese machinery
+    so_what: A weak yen would keep Japanese equipment affordable for expanding plants in India and Vietnam.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.5
+    sectors: [manufacturing]
+    at: region:vn-sg.ho-chi-minh-city
+    mentions: [region:vn, region:in, region:in-tn.chennai, org:japan-yen-boj-shirasagi-machine-works]
+    actions: [Plan equipment purchases before the yen firms]
+links:
+  - {from: story:tokyo-inflation-beats-forecasts, to: story:boj-signals-hike-readiness, type: reported, mechanism: supports policy tightening, direction: up, confidence: 0.8, lag_days: 1, evidence: "Sample evidence: the central bank's statement pointed to persistent price gains in Tokyo as a reason to act."}
+  - {from: story:boj-signals-hike-readiness, to: story:yen-jumps-on-hike-odds, type: reported, mechanism: lifts rate expectations, direction: up, confidence: 0.85, lag_days: 0, evidence: "Sample evidence: currency desks linked the yen's rise to the central bank's signal on rates."}
+  - {from: story:treasury-yields-drop, to: story:yen-jumps-on-hike-odds, type: inferred, mechanism: narrows rate gap, direction: up, confidence: 0.55, lag_days: 0, evidence: "Sample evidence: falling US yields shrink the gap with Japanese rates that has kept the yen weak."}
+  - {from: story:yen-jumps-on-hike-odds, to: story:carry-unwind-hits-peso-rand, type: inferred, mechanism: triggers carry unwinding, direction: down, confidence: 0.6, lag_days: 0, evidence: "Sample evidence: investors who borrowed cheaply in yen tend to sell higher-yielding currencies when the yen rises fast."}
+  - {from: story:yen-jumps-on-hike-odds, to: story:japanese-carmaker-warns-on-yen, type: reported, mechanism: cuts overseas profits, direction: down, confidence: 0.8, lag_days: 0, evidence: "Sample evidence: the carmaker said a firmer yen would reduce the value of its overseas sales."}
+  - {from: story:boj-signals-hike-readiness, to: story:carry-selling-extends, type: conditional, forecast: forecast:boj-hike-next-meeting, outcome: "YES", mechanism: extends carry unwinding, direction: down, confidence: 0.5, lag_days: 30, evidence: "Sample evidence: a hike would raise yen borrowing costs and prompt more investors to close yen-funded positions."}
+  - {from: story:boj-signals-hike-readiness, to: story:asian-factories-buy-japanese-machinery, type: conditional, forecast: forecast:boj-hike-next-meeting, outcome: "NO", mechanism: keeps yen weak, direction: up, confidence: 0.5, lag_days: 30, evidence: "Sample evidence: without a hike the yen would likely stay weak, keeping Japanese equipment cheap abroad."}
+  - {from: story:japan-machine-tool-orders-rise, to: story:asian-factories-buy-japanese-machinery, type: projected, mechanism: sustains buyer demand, direction: up, confidence: 0.45, lag_days: 60, evidence: "Sample evidence: buyers already ordering Japanese machine tools are likely to keep expanding while prices stay low."}
