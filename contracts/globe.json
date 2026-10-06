@@ -102,49 +102,6 @@
         "additionalProperties": false
       }
     },
-    "hexes": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "h3": {
-            "type": "string"
-          },
-          "count": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "risk": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "opportunity": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "neutral": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "importance": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "h3",
-          "count",
-          "risk",
-          "opportunity",
-          "neutral",
-          "importance"
-        ],
-        "additionalProperties": false
-      }
-    },
     "arcs": {
       "type": "array",
       "items": {
@@ -495,7 +452,6 @@
   "required": [
     "window",
     "events",
-    "hexes",
     "arcs",
     "forecasts",
     "countries"

@@ -8,6 +8,8 @@
  * - Every key is always present; "no value" is `null`, never a missing key.
  * - Timestamps are ISO 8601 strings in UTC; dates are YYYY-MM-DD.
  * - Probabilities and confidences are 0..1; importance is 0..100.
+ * - Unknown ids make the function raise an error whose message starts with
+ *   "Not found" (the client shows a "no longer available" state).
  * - `npm run contracts` exports these to /contracts/*.json for the Python
  *   tests, which check every SQL function against them. Change both together.
  */
@@ -255,7 +257,11 @@ export const MetaResponse = z.object({
 });
 export type MetaResponse = z.infer<typeof MetaResponse>;
 
-/** api.globe({window, sectors?, sample?}) */
+/**
+ * api.globe({window, sectors?, sample?})
+ * Hex heat is computed in the browser from `events` (h3-js), at a
+ * resolution that suits the zoom level.
+ */
 export const GlobeResponse = z.object({
   window: TimeWindow,
   events: z.array(
@@ -270,16 +276,6 @@ export const GlobeResponse = z.object({
       first_seen: Iso,
       headline: z.string(),
       country_id: Id.nullable(),
-    }),
-  ),
-  hexes: z.array(
-    z.object({
-      h3: z.string(), // H3 resolution 3 cell
-      count: z.number().int(),
-      risk: z.number().int(),
-      opportunity: z.number().int(),
-      neutral: z.number().int(),
-      importance: z.number(), // sum of member importance
     }),
   ),
   arcs: z.array(
