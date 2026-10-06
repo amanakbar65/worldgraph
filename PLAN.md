@@ -1,7 +1,7 @@
 # WorldGraph — Plan
 
-**Status:** draft for your approval (6 Oct 2026). Nothing gets built until you say OK.
-**Spec:** `BUILD_BRIEF.md` is the source of truth. This plan explains how I'll build it, which tools I'll use, and where I think the brief needs a fix.
+**Status:** approved on 6 Oct 2026 with one change: WorldGraph is a **global app**, not an India-first one (see section 1). Phase 0 is in progress.
+**Spec:** `BUILD_BRIEF.md` is the source of truth. This plan explains how I'll build it, which tools I'll use, and where I think the brief needs a fix. Where this plan changes the brief, the change is listed in section 1 and the plan wins.
 
 Your goal for the feel of the app: **sleek, professional, simple, accurate and convenient.** Every screen gets checked against those five words.
 
@@ -12,9 +12,21 @@ Your goal for the feel of the app: **sleek, professional, simple, accurate and c
 | Topic | Decision |
 | --- | --- |
 | Repository | A separate, private GitHub repo: `amanakbar65/worldgraph`. GitHub wouldn't let me create it, so you need to make it (two clicks, see section 12). Until then the brief and this plan sit on a temporary `worldgraph` branch of `Others`, and I'll move them across. |
-| Database | A free Supabase project called `worldgraph` in Mumbai (`ap-south-1`), created 6 Oct 2026. It's empty and nothing is stored in it yet. |
-| Users | India and abroad. Viewers in India see ₹ with lakh/crore; everyone else sees $ with million/billion. Each viewer can switch. Forecast sources are gated by the viewer's country. |
-| Sample data | Balanced across all nine sectors, covering India and the world, not built around one industry. Phase 4 ships three ready-made demo business profiles you can switch between. |
+| Database | A free Supabase project called `worldgraph` in Mumbai (`ap-south-1`), created 6 Oct 2026. It's empty until Phase 0 step 4. Mumbai suits development, because your PC runs the backend until Phase 5. When we choose a host in Phase 5, we'll check whether to move the database closer to it; moving at that size is a simple copy. |
+| Users | **Anyone, anywhere.** Every viewer sees the same information. Numbers follow the viewer's own locale, so an Indian browser shows lakh/crore and others show million/billion. Money stays in its own currency: Indian fuel prices in ₹, US prices in $, and global figures such as commodities and trade in US$. That avoids conversion errors. |
+| Sample data | Balanced across all nine sectors and every continent, not built around one industry or country. Phase 4 ships three ready-made demo business profiles from different parts of the world. |
+
+### Changes to the brief (approved 6 Oct 2026)
+
+1. **Global, not India-first.** The brief gave India state and city depth and the rest of the world country depth only. Now **every country** drills down to states or provinces, then major cities.
+   - **Map:** free Natural Earth boundaries cover the whole world.
+   - **Stories:** they land on the right state anywhere, because GDELT tags its locations with state codes for every country.
+   - **KPI tiles:** they show whatever free data exists at each level. That's national figures for most places, and state figures where free sources have them, such as the US (FRED) and India (data.gov.in).
+2. **Same information for everyone. There is one exception, which your brief's legal rules require:** odds from real-money markets like Polymarket.
+   - They're **off by default**. If they're ever switched on, they're hidden wherever they're illegal, which includes India.
+   - Forecasts from non-money sources like Manifold are shown to everyone.
+   - So with default settings, every viewer anywhere sees exactly the same app.
+3. **Borders are the other unavoidable exception** (section 2, item 1). Some countries legally require their official map to be shown to viewers inside them. India does, so viewers in India see India's official borders. Everything else is identical.
 
 ---
 
@@ -31,7 +43,12 @@ I checked the brief's facts and tools against what's current in October 2026.
 **Proposed fixes and additions:**
 
 1. **India's borders.** This item is new, and it matters. Standard world-map data, including the default Natural Earth files and OpenStreetMap tiles, draws Jammu & Kashmir, Ladakh and Arunachal Pradesh differently from India's official map. Showing an incorrect map of India can cause legal trouble in India, and it would put off Indian users.
-   **Fix:** we draw all country and state borders ourselves using India's official depiction. Natural Earth publishes an "India point of view" edition, and we'll pair it with India state boundaries that match the Survey of India. The basemap's own border lines get hidden. Please add this to the list for your lawyer.
+   **Fix:** we draw all country and state borders ourselves and hide the basemap's own border lines.
+   - Viewers in India get borders matching India's official map. Natural Earth publishes an "India point of view" edition, and we'll pair it with Indian state boundaries that match the Survey of India.
+   - Everyone else gets Natural Earth's standard edition.
+   - Natural Earth has editions for other countries too, so we can add them if a market requires it.
+
+   Please add this to the list for your lawyer.
 2. **Node IDs.** The brief says to use the Wikidata QID as the ID when one exists. But we usually find a node's QID later, during linking, and the ID would then change, which breaks links and saved notes.
    **Fix:** each node gets a permanent, readable ID such as `region:IN-GJ` or `commodity:cotton`. The QID is stored in its own column, kept unique, and used for matching.
 3. **Metaculus needs an account token.** Every Metaculus API call requires a token from a free account. Manifold's read API needs no key.
@@ -192,12 +209,12 @@ All endpoints are read-only in Phases 0–3. Every response carries attributions
 
 ## 8. Sample dataset (Phase 0)
 
-- **About 200 stories** grouped into about 25 storylines. Each storyline has 4–12 linked stories with causes, effects and evidence. The stories cover all nine sectors, every Indian state and union territory, about 25 major Indian cities and about 40 other countries.
+- **About 200 stories** grouped into about 25 storylines. Each storyline has 4–12 linked stories with causes, effects and evidence. The stories cover all nine sectors and every continent, about 60 countries in total. States or provinces are filled in for about 10 large economies: the US, China, India, Brazil, Germany, Japan, Indonesia, Mexico, Australia and Nigeria. About 60 major cities appear worldwide.
 - **About 400 entities:**
   - regions
   - companies
   - about 30 commodities with HS codes
-  - ports and chokepoints (Hormuz, Bab-el-Mandeb, Suez, Malacca, Mundra, JNPT, Chennai and others)
+  - ports and chokepoints (Hormuz, Bab-el-Mandeb, Suez, Panama, Malacca, Rotterdam, Shanghai, Singapore, Mundra and others)
   - policies
   - indicators with sparkline data
 - **About 30 forecasts** with 30–90 days of probability history. Some moved 10 or more points in a day, some are thin markets, and about 10 drive **If YES / If NO** branches.
@@ -206,16 +223,16 @@ All endpoints are read-only in Phases 0–3. Every response carries attributions
 - **How it's built:** readable storyline files plus a small Python generator. Tests check every word limit: headline 12 words, so-what 20 words, action 8 words.
 
 Example storylines (all fictional, labelled as sample):
-- Red Sea shipping disruption → container freight rates up → margins of engineering and apparel exporters → air freight for pharma
-- Weak monsoon in the Deccan → pulse and onion prices → food inflation → RBI rate decision (a forecast with If YES / If NO) → home loans and real estate
-- OPEC+ output decision (a forecast) → crude prices → diesel → trucking and airline costs
-- US tariff talks with India (a forecast) → Tiruppur and Surat textile orders; the India–EU trade deal as the opportunity side
-- Heatwave in North India → record power demand → coal logistics; cooling appliances as the opportunity
-- Earthquake near a chip hub → chip supply → auto production in Pune and Chennai
-- Rare-earth export curbs → EV motor makers → India's critical-minerals push
-- Palm-oil export levy → edible-oil import costs → FMCG margins
-- EU carbon border tax → Indian steel and aluminium exporters; green steel as the opportunity
-- Cyclone on the east coast → Paradip and Visakhapatnam ports → metals logistics
+- Red Sea shipping disruption → Asia–Europe container rates up → European importers' costs and Asian exporters' margins → air freight for pharma
+- US Federal Reserve decision (a forecast with If YES / If NO) → dollar strength → emerging-market currencies → importers' costs in Turkey, India and Brazil
+- OPEC+ output decision (a forecast) → crude prices → diesel → trucking and airline costs worldwide
+- Drought at the Panama Canal → fewer transits → US East Coast freight costs; Gulf Coast ports as the opportunity
+- Frost in Brazil's coffee belt → arabica prices → roasters in the US and Europe; Vietnamese and Colombian growers as the opportunity
+- Earthquake near Taiwan's chip hub → chip supply → car production in Germany, Japan and Mexico
+- Rare-earth export curbs from China → EV motor makers → critical-minerals deals in Australia and Africa
+- Palm-oil export levy in Indonesia → edible-oil costs → food makers in India, Pakistan and Egypt
+- EU carbon border tax → steel and aluminium exporters in India, Turkey and Ukraine; green steel as the opportunity
+- Weak monsoon in India → rice export curbs (a forecast) → food prices in West Africa and Southeast Asia
 
 ---
 
@@ -248,7 +265,7 @@ You'll also add a few VS Code extensions: Python, Ruff, ESLint and Tailwind CSS.
    - 24 h / 7 d / 30 d slider with replay
    - "Top 5 now"
 3. Forecasts layer: probability rings, with a glow on big 24-hour movers.
-4. Zoom into a region: camera flight, Indian states shaded by activity, city bubbles, detailed 2D map.
+4. Zoom into a region: camera flight, any country's states or provinces shaded by activity, city bubbles, detailed 2D map.
 5. Region panel:
    - KPI tiles with sparklines
    - sector pulse
@@ -267,7 +284,7 @@ You'll also add a few VS Code extensions: Python, Ruff, ESLint and Tailwind CSS.
 ### Phase 2: Live data v1
 - News pipeline:
   - GDELT 2.0, using its 15-minute files, which already carry locations
-  - about 10 RSS feeds, including PIB, RBI and SEBI; we'll choose the list together
+  - about 10 RSS feeds: a global mix of business news plus official sources such as central banks (the Fed, ECB and RBI) and India's PIB and SEBI; we'll choose the list together
   - USGS
 
   Then clustering, a rules gate, a small LLM gate and LLM extraction into validated JSON.
@@ -280,7 +297,7 @@ You'll also add a few VS Code extensions: Python, Ruff, ESLint and Tailwind CSS.
 Wikidata linking; structural edges (trade flows for top commodities from UN Comtrade, ports, company ownership); causal inference; projected and conditional impacts; linking forecasts to entities; the graph time-lapse; full entity pages.
 
 ### Phase 4: Business layer
-My Business onboarding (chips and search, about two minutes, with three demo profiles), the "Affects you" feed, forecast watchlist and alerts (a threshold, or a move of 10+ points in a day), Opportunities with the radar, Ask with citations ("not enough evidence" when true), the six-card daily brief, and region Compare.
+My Business onboarding (chips and search, about two minutes, with three demo profiles from different parts of the world), the "Affects you" feed, forecast watchlist and alerts (a threshold, or a move of 10+ points in a day), Opportunities with the radar, Ask with citations ("not enough evidence" when true), the six-card daily brief, and region Compare.
 
 ### Phase 5: Polish and launch prep
 Performance and mobile polish, accounts (Supabase Auth fits here; the free plan includes it), region gating checked against your legal advice, export any view as an image, deployment options (I'll ask before anything paid) and basic privacy-friendly analytics.
