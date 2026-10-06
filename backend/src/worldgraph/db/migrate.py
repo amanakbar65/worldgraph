@@ -23,7 +23,8 @@ create table if not exists public.schema_migrations (
     version text primary key,
     name text not null,
     applied_at timestamptz not null default now()
-)
+);
+alter table public.schema_migrations enable row level security;
 """
 
 
