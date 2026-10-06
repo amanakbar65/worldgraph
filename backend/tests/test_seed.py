@@ -34,3 +34,11 @@ def test_loading_twice_is_safe(sdb):
     load_bundle(sdb, build_bundle(now=FIXED_NOW))
     after = sdb.execute("select count(*) as n from node").fetchone()["n"]
     assert before == after
+
+
+def test_sample_clock_keeps_newest_story_fresh(sdb):
+    row = sdb.execute(
+        """select now() - max(s.first_seen) as age from story s
+           join node n on n.id = s.node_id where n.is_sample"""
+    ).fetchone()
+    assert row["age"].total_seconds() < 3600

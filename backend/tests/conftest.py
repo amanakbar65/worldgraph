@@ -70,6 +70,9 @@ def seeded_db_url(migrated_db_url: str) -> str:
     bundle = build_bundle(now=FIXED_NOW)
     with connect(migrated_db_url) as conn:
         load_bundle(conn, bundle)
+        # Move the sample clock to real time so "last 24 hours" means something.
+        conn.execute("select api.refresh_sample_clock()")
+        conn.commit()
     return migrated_db_url
 
 
