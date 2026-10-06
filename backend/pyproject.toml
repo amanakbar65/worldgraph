@@ -1,0 +1,45 @@
+[project]
+name = "worldgraph"
+version = "0.1.0"
+description = "WorldGraph backend: API, data pipeline and sample data"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.142",
+    "uvicorn[standard]>=0.54",
+    "pydantic>=2.13",
+    "pydantic-settings>=2.15",
+    "psycopg[binary]>=3.3",
+    "psycopg-pool>=3.3",
+    "typer>=0.27",
+    "pyyaml>=6.0",
+    "h3>=4.5",
+    "httpx>=0.28",
+]
+
+[project.scripts]
+wg = "worldgraph.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1",
+    "ruff>=0.16",
+    "httpx2>=2.13",
+]
+
+[build-system]
+requires = ["uv_build>=0.11,<0.13"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "db: needs a Postgres database (set TEST_DATABASE_URL)",
+]
