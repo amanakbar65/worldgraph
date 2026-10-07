@@ -1,0 +1,158 @@
+id: black-sea-wheat
+title: Black Sea wheat, export quotas and Egypt's bread bill
+entities:
+  - {id: org:black-sea-wheat-wheatbelt-coast-grain, type: organization, subtype: company, name: Wheatbelt Coast Grain, located_in: region:au-wa.perth, sectors: [agri-food, logistics-trade], summary: "Invented Western Australian grain exporter used in sample stories.", sample: true}
+  - {id: org:black-sea-wheat-pampa-sur-granos, type: organization, subtype: company, name: Pampa Sur Granos, located_in: region:ar-b, sectors: [agri-food, logistics-trade], summary: "Invented Argentine grain exporter used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:russia-smaller-grain-quota
+    short_title: Will Russia set a smaller grain export quota than last season?
+    question: Will Russia's next seasonal grain export quota be set below the previous season's quota?
+    category: trade
+    location: region:ru-mos.moscow
+    about: [region:ru, commodity:wheat, region:eg, infra:bosporus]
+    end_in_days: 70
+    resolution_rule: Resolves YES if the government decree setting the next seasonal grain export quota gives a total below the previous season's total and is published before the end date.
+    history: {days: 60, start: 0.45, end: 0.61, moves: [{days_ago: 3.1, delta: 0.08}], volume: 46000, liquidity: 7400}
+stories:
+  - id: story:russia-wheat-outlook-trimmed
+    headline: Forecasters trim Russia's wheat harvest outlook after dry weather in the south
+    so_what: A smaller crop in Krasnodar and Rostov would leave less wheat for export.
+    event_type: crop-conditions
+    impact: risk
+    direction: down
+    magnitude: 4
+    horizon: months
+    confidence: 0.8
+    sectors: [agri-food]
+    at: region:ru-kda
+    mentions: [region:ru, region:ru-ros, region:ru-sta, commodity:wheat]
+    age_hours: 520
+    sources: 18
+    actions: [Review wheat cover for coming months, Ask millers about alternative origins]
+  - id: story:bosporus-grain-traffic-peaks
+    headline: Grain ship traffic through the Bosporus reaches its seasonal peak
+    so_what: Longer transit queues add days and demurrage to Black Sea grain cargoes.
+    event_type: logistics
+    impact: neutral
+    direction: up
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.75
+    sectors: [logistics-trade, agri-food]
+    at: infra:bosporus
+    mentions: [region:tr, region:tr-34.istanbul, region:ru, commodity:wheat]
+    age_hours: 150
+    sources: 8
+    actions: [Add demurrage buffer to Black Sea cargoes]
+  - id: story:constanta-wheat-exports-climb
+    headline: Romanian wheat exports climb through Constanța as buyers diversify
+    so_what: Farmers and traders in Romania's southeast win Middle East orders at firm prices.
+    event_type: trade-flow
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.7
+    sectors: [agri-food, logistics-trade]
+    at: region:ro-ct
+    mentions: [region:ro, region:eu, region:eg, region:sa, commodity:wheat]
+    age_hours: 120
+    sources: 7
+    actions: [Offer Romanian wheat to Middle East mills]
+  - id: story:russia-proposes-smaller-export-quota
+    headline: Russia's farm ministry proposes a smaller grain export quota
+    so_what: Tighter limits would cut Black Sea supply late in the season and lift import prices.
+    event_type: policy-signal
+    impact: risk
+    direction: down
+    magnitude: 4
+    horizon: months
+    confidence: 0.8
+    sectors: [agri-food, logistics-trade]
+    at: region:ru-mos.moscow
+    mentions: [region:ru, region:eg, region:tr, commodity:wheat]
+    age_hours: 75
+    sources: 20
+    actions: [Book wheat cargoes before quota limits bite, Diversify wheat origins for next season]
+  - id: story:egypt-books-costlier-wheat
+    headline: Egypt's state buyer books Black Sea wheat at higher prices
+    so_what: A larger import bill adds to bread subsidy costs and Egypt's need for dollars.
+    event_type: tender
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.8
+    sectors: [agri-food, finance]
+    at: region:eg-c.cairo
+    mentions: [region:eg, region:ru, infra:bosporus, commodity:wheat]
+    age_hours: 46
+    sources: 14
+    actions: [Review flour price clauses with Egyptian buyers]
+  - id: story:perth-wheat-exporters-asian-demand
+    headline: Western Australian wheat exporters see stronger demand from Asia
+    so_what: Growers and exporters around Perth sell more forward as buyers hedge against Black Sea supply.
+    event_type: trade-flow
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.7
+    sectors: [agri-food, logistics-trade]
+    at: region:au-wa.perth
+    mentions: [org:black-sea-wheat-wheatbelt-coast-grain, region:au-wa, region:id, region:eg, commodity:wheat]
+    age_hours: 34
+    sources: 9
+    actions: [Offer forward wheat sales to Asian mills, Book export elevator slots early]
+  - id: story:argentine-wheat-cargoes-north-africa
+    headline: Argentine exporters book more wheat cargoes for North Africa
+    so_what: Shippers at Bahía Blanca gain business as importers look beyond Black Sea origins.
+    event_type: trade-flow
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.7
+    sectors: [agri-food, logistics-trade]
+    at: region:ar-b
+    mentions: [org:black-sea-wheat-pampa-sur-granos, region:ar, region:eg, region:dz, commodity:wheat]
+    age_hours: 0.7
+    sources: 5
+    actions: [Quote Argentine wheat to North African buyers, Secure port slots at Bahía Blanca]
+  - id: story:egypt-bread-subsidy-bill-climbs
+    kind: projected
+    headline: Egypt's bread subsidy bill could climb with dearer wheat
+    so_what: Higher subsidy costs would strain the budget and add to Egypt's demand for dollars.
+    event_type: projected-impact
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.5
+    sectors: [agri-food, finance]
+    at: region:eg-c.cairo
+    mentions: [region:eg, region:eg-gz.giza, commodity:wheat]
+  - id: story:millers-keep-cheaper-black-sea-wheat
+    kind: projected
+    headline: Ample Black Sea supply would keep wheat costs in check for millers
+    so_what: Flour mills in Egypt and Turkey could lock in steady prices for bread and pasta.
+    event_type: projected-impact
+    impact: opportunity
+    direction: down
+    magnitude: 3
+    horizon: months
+    confidence: 0.45
+    sectors: [agri-food, consumer]
+    at: region:tr-33
+    mentions: [region:tr, region:eg, infra:bosporus, commodity:wheat]
+links:
+  - {from: story:russia-wheat-outlook-trimmed, to: story:russia-proposes-smaller-export-quota, type: reported, mechanism: shrinks exportable surplus, direction: down, confidence: 0.8, lag_days: 18, evidence: "Sample evidence: the ministry linked its quota proposal to a smaller expected harvest in the south."}
+  - {from: story:russia-wheat-outlook-trimmed, to: story:constanta-wheat-exports-climb, type: inferred, mechanism: opens room for rivals, direction: up, confidence: 0.55, lag_days: 17}
+  - {from: story:bosporus-grain-traffic-peaks, to: story:egypt-books-costlier-wheat, type: inferred, mechanism: adds freight delays, direction: up, confidence: 0.45, lag_days: 4}
+  - {from: story:russia-proposes-smaller-export-quota, to: story:egypt-books-costlier-wheat, type: reported, mechanism: lifts tender prices, direction: up, confidence: 0.75, lag_days: 1, evidence: "Sample evidence: traders said offers in the tender rose after the quota proposal tightened the outlook for Black Sea supply."}
+  - {from: story:russia-proposes-smaller-export-quota, to: story:perth-wheat-exporters-asian-demand, type: inferred, mechanism: shifts demand to rivals, direction: up, confidence: 0.55, lag_days: 2}
+  - {from: story:russia-proposes-smaller-export-quota, to: story:argentine-wheat-cargoes-north-africa, type: inferred, mechanism: diverts importer demand, direction: up, confidence: 0.55, lag_days: 3}
+  - {from: story:egypt-books-costlier-wheat, to: story:giza-food-makers-raise-prices, type: inferred, mechanism: raises flour costs, direction: up, confidence: 0.55, lag_days: 2, evidence: "Sample evidence: dearer imported wheat feeds into flour prices for bakeries and food makers around Cairo."}
+  - {from: story:egypt-books-costlier-wheat, to: story:egypt-bread-subsidy-bill-climbs, type: projected, mechanism: adds to subsidy spending, direction: up, confidence: 0.45, lag_days: 45}
+  - {from: story:russia-proposes-smaller-export-quota, to: story:egypt-bread-subsidy-bill-climbs, type: conditional, forecast: forecast:russia-smaller-grain-quota, outcome: "YES", mechanism: raises wheat import costs, direction: up, confidence: 0.5, lag_days: 60, evidence: "Sample evidence: a smaller quota would tighten supply late in the season, when Egypt still needs cargoes."}
+  - {from: story:russia-proposes-smaller-export-quota, to: story:millers-keep-cheaper-black-sea-wheat, type: conditional, forecast: forecast:russia-smaller-grain-quota, outcome: "NO", mechanism: keeps supply ample, direction: down, confidence: 0.5, lag_days: 60, evidence: "Sample evidence: an unchanged quota would keep Black Sea wheat flowing to nearby millers at competitive prices."}

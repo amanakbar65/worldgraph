@@ -1,0 +1,144 @@
+id: brazil-coffee-frost
+title: Brazil coffee frost and the arabica squeeze
+entities:
+  - {id: org:brazil-coffee-frost-elbkrone-kaffee, type: organization, subtype: company, name: Elbkrone Kaffee, located_in: region:de-hh.hamburg, sectors: [consumer, agri-food], summary: "Invented Hamburg coffee roaster used in sample stories.", sample: true}
+  - {id: org:brazil-coffee-frost-bramblecrest-roasters, type: organization, subtype: company, name: Bramblecrest Roasters, located_in: region:us-wa.seattle, sectors: [consumer, agri-food], summary: "Invented Seattle coffee roaster used in sample stories.", sample: true}
+  - {id: org:brazil-coffee-frost-altamesa-cooperative, type: organization, subtype: cooperative, name: Altamesa Growers Cooperative, located_in: region:co-hui, sectors: [agri-food], summary: "Invented Colombian coffee growers' cooperative used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:arabica-record-high-three-months
+    short_title: Will arabica futures hit a record high within three months?
+    question: Will front-month arabica coffee futures in New York settle at a record high within three months?
+    category: commodities
+    location: region:br-mg
+    about: [region:br-mg, commodity:coffee, region:br, region:vn-33]
+    end_in_days: 90
+    resolution_rule: Resolves YES if the front-month New York arabica futures contract settles above its all-time highest settlement on any trading day before the end date.
+    history: {days: 60, start: 0.16, end: 0.43, moves: [{days_ago: 6.6, delta: 0.1}, {days_ago: 0.37, delta: 0.13}], volume: 74000, liquidity: 11500}
+stories:
+  - id: story:minas-gerais-frost-hits-coffee
+    headline: Frost damages coffee trees across southern Minas Gerais
+    so_what: Burnt leaves and buds cut next season's arabica crop, tightening supply for roasters worldwide.
+    event_type: extreme-weather
+    impact: risk
+    direction: down
+    magnitude: 4
+    horizon: months
+    confidence: 0.9
+    sectors: [agri-food]
+    at: region:br-mg
+    mentions: [commodity:coffee, region:br, region:br-sp]
+    age_hours: 160
+    sources: 34
+    actions: [Ask suppliers for frost damage estimates, Review green coffee cover for next season]
+  - id: story:central-highlands-robusta-climbs
+    headline: Robusta prices climb in Vietnam's Central Highlands as blenders switch
+    so_what: Farmers and exporters in Đắk Lắk and Lâm Đồng earn more as roasters add robusta to blends.
+    event_type: price-move
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.75
+    sectors: [agri-food]
+    at: region:vn-33
+    mentions: [region:vn-35, region:vn-30, region:vn-72, region:vn, commodity:coffee]
+    age_hours: 96
+    sources: 11
+    actions: [Offer forward robusta contracts to blenders, Stagger sales to catch firmer prices]
+  - id: story:huila-growers-sell-forward
+    headline: Colombian growers in Huila sell next crop forward at higher prices
+    so_what: Washed arabica from Huila and Antioquia earns stronger premiums as buyers diversify away from Brazil.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.7
+    sectors: [agri-food]
+    at: region:co-hui
+    mentions: [org:brazil-coffee-frost-altamesa-cooperative, region:co-ant, region:co-cal, region:co, commodity:coffee]
+    age_hours: 64
+    sources: 8
+    actions: [Sell part of next crop forward, Secure Colombian supply contracts early]
+  - id: story:hamburg-roaster-raises-coffee-prices
+    headline: Hamburg roaster Elbkrone raises wholesale coffee prices for cafés
+    so_what: Cafés, offices and supermarkets in Germany face higher coffee costs on new contracts.
+    event_type: company-update
+    impact: risk
+    direction: up
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.75
+    sectors: [consumer, agri-food]
+    at: region:de-hh.hamburg
+    mentions: [org:brazil-coffee-frost-elbkrone-kaffee, region:de, region:eu, commodity:coffee]
+    age_hours: 30
+    sources: 6
+    actions: [Lock in café coffee prices now, Trial blends with more robusta]
+  - id: story:arabica-nears-record-high
+    headline: Arabica futures climb toward their record as Brazil trims its crop estimate
+    so_what: Roasters buying beans without hedges face sharply higher costs within weeks.
+    event_type: price-move
+    impact: risk
+    direction: up
+    magnitude: 4
+    horizon: now
+    confidence: 0.85
+    sectors: [agri-food, consumer]
+    at: region:us-ny.new-york
+    mentions: [commodity:coffee, region:br-mg, region:br-df.brasilia, region:br]
+    age_hours: 9
+    sources: 27
+    actions: [Hedge part of next quarter's coffee needs, Review retail coffee price lists]
+  - id: story:seattle-roaster-value-blend
+    headline: Seattle roaster Bramblecrest launches a lower-cost blend with more robusta
+    so_what: Cafés and offices gain a cheaper option as arabica climbs, helping them hold prices for customers.
+    event_type: company-update
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.7
+    sectors: [consumer, agri-food]
+    at: region:us-wa.seattle
+    mentions: [org:brazil-coffee-frost-bramblecrest-roasters, region:us, region:br-es, region:vn-33, commodity:coffee]
+    age_hours: 4
+    sources: 4
+    actions: [Request samples of value blends, Review drink prices against bean costs]
+  - id: story:coffee-shelf-prices-rise-again
+    kind: projected
+    headline: Supermarket coffee prices could rise again in Europe and the US
+    so_what: A record arabica price would reach shelves within months, cutting volumes for premium brands.
+    event_type: projected-impact
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.5
+    sectors: [consumer, agri-food]
+    at: region:de
+    mentions: [region:us, region:eu, region:de-hh.hamburg, commodity:coffee]
+  - id: story:coffee-roaster-margins-recover
+    kind: projected
+    headline: Roasters' margins could recover as arabica prices settle
+    so_what: Easing bean costs would let roasters rebuild margins without further price rises for cafés.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.45
+    sectors: [consumer, agri-food]
+    at: region:us-wa.seattle
+    mentions: [region:us, region:de-hh.hamburg, commodity:coffee]
+links:
+  - {from: story:minas-gerais-frost-hits-coffee, to: story:arabica-nears-record-high, type: reported, mechanism: cuts expected supply, direction: up, confidence: 0.85, lag_days: 6, evidence: "Sample evidence: traders tied the rally to frost damage in Minas Gerais and a lower official crop estimate."}
+  - {from: story:minas-gerais-frost-hits-coffee, to: story:hamburg-roaster-raises-coffee-prices, type: reported, mechanism: raises green bean costs, direction: up, confidence: 0.75, lag_days: 5, evidence: "Sample evidence: the roaster pointed to higher Brazilian arabica costs when announcing new wholesale prices."}
+  - {from: story:minas-gerais-frost-hits-coffee, to: story:central-highlands-robusta-climbs, type: inferred, mechanism: shifts demand to robusta, direction: up, confidence: 0.6, lag_days: 3}
+  - {from: story:minas-gerais-frost-hits-coffee, to: story:huila-growers-sell-forward, type: inferred, mechanism: lifts washed arabica premiums, direction: up, confidence: 0.55, lag_days: 4}
+  - {from: story:minas-gerais-frost-hits-coffee, to: story:seattle-roaster-value-blend, type: inferred, mechanism: raises arabica blend costs, direction: up, confidence: 0.5, lag_days: 6}
+  - {from: story:asia-europe-rates-jump, to: story:hamburg-roaster-raises-coffee-prices, type: inferred, mechanism: raises robusta freight costs, direction: up, confidence: 0.45, lag_days: 1, evidence: "Sample evidence: Vietnamese robusta bound for Hamburg sails the longer Asia–Europe route, adding freight to bean costs."}
+  - {from: story:hamburg-roaster-raises-coffee-prices, to: story:coffee-shelf-prices-rise-again, type: projected, mechanism: lifts wholesale prices, direction: up, confidence: 0.45, lag_days: 45}
+  - {from: story:huila-growers-sell-forward, to: story:coffee-roaster-margins-recover, type: projected, mechanism: widens supply options, direction: up, confidence: 0.35, lag_days: 90}
+  - {from: story:arabica-nears-record-high, to: story:coffee-shelf-prices-rise-again, type: conditional, forecast: forecast:arabica-record-high-three-months, outcome: "YES", mechanism: passes costs to shelves, direction: up, confidence: 0.55, lag_days: 60, evidence: "Sample evidence: a record bean price would push roasters to raise retail prices again."}
+  - {from: story:arabica-nears-record-high, to: story:coffee-roaster-margins-recover, type: conditional, forecast: forecast:arabica-record-high-three-months, outcome: "NO", mechanism: eases bean costs, direction: up, confidence: 0.45, lag_days: 75, evidence: "Sample evidence: if prices peak below the record, roasters could restore margins as hedges roll off."}
