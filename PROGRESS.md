@@ -12,6 +12,22 @@ Newest entries first. Each entry says what changed, how it was checked, and what
   - the leftover `worldgraph` branch in `amanakbar65/Others` can be deleted (the integration couldn't).
 - **Before a public launch (owner decisions):** feed and Manifold terms for commercial use, the GDACS reuse licence, an Anthropic API key and budget, and the go-ahead to deploy on Netlify.
 
+## Resume here (saved 7 Oct 2026, 22:27 UTC, before a usage-limit pause)
+
+Work in flight when paused, and how to pick it up:
+
+1. **Agents that were running** (workflow run `wf_2e661656-b6f`, script `worldgraph-content-api-wf_e02d89e8-b5a.js` in the session's `workflows/scripts/`):
+   - `sql:forecasts-business-ai`: migration 0006 (forecasts, forecast, affects, opportunities, ask_context, pending_analysis, save_analysis with `skipped`, and a faster `api.forecast_card`). Partial work is on branch **`wip/sql-forecasts-business-ai`** (one file, about 1,700 lines, untested).
+   - `map-assets`: `wg geo assets` builder, TopoJSON in `frontend/public/geo/`, `frontend/src/lib/geo.ts`. Partial work is on branch **`wip/map-assets`**.
+   - `ui-kit`: not started yet.
+   - If the run finished, merge its branches (`worktree-wf_2e661656-b6f-*`). If not, relaunch it with `args.done` set to the six storyline/indicator labels plus `sql:map-region-brief` and `sql:story-graph-search`, and tell the two agents to start from their `wip/` branch.
+   - Push `main` first: worktrees branch from `origin/main`.
+2. **After merging 0006:** run the full backend suite. Its save_analysis tests may expect `analysis_status = 'skipped'`; migration 0009 now deletes skipped stories (by design), so adjust those tests. Apply 0006 to Supabase with `ops.apply_migration` (commit-SHA URL + md5). Check it doesn't use `set pg_trgm.similarity_threshold` (Supabase refuses it).
+3. **Then launch the screens build:** script `worldgraph-screens.js` in the same `workflows/scripts/` folder (8 agents: globe, ai-artifact-web, story-cascade, region, forecasts, business, graph-entity, ask-brief-search-settings). Needs the UI kit and map assets merged first.
+4. **Then:** QA (Playwright E2E, adversarial review), build the artifact (`npm run build:artifact`), publish the test link, update README and this log.
+
+Supabase state: migrations 0001–0005, 0007–0009 applied; sample data loaded; pg_cron sample clock every 30 minutes.
+
 ## Log
 
 ### 7 Oct 2026: live pipeline, AI job, CI
