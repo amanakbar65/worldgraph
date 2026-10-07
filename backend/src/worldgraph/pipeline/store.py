@@ -46,7 +46,11 @@ def known_urls(conn: psycopg.Connection, urls: list[str]) -> set[str]:
     if not urls:
         return set()
     with conn.cursor() as cur:
-        cur.execute("select url from article where url = any(%s)", (urls,))
+        cur.execute(
+            "select url from article where url = any(%(urls)s) "
+            "union select url from skipped_url where url = any(%(urls)s)",
+            {"urls": urls},
+        )
         return {r["url"] for r in cur.fetchall()}
 
 

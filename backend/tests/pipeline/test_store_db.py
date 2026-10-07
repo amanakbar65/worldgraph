@@ -143,3 +143,17 @@ def test_forecast_upsert(sdb):
         about = {r["dst"] for r in cur.fetchall()}
     assert row["card"]["probability"] == 0.45 and row["card"]["url"] == "https://manifold.markets/x/saudi-cut"
     assert row["region_id"] == "region:sa" and "commodity:crude-oil" in about
+
+
+def test_skipped_stories_disappear_and_are_not_ingested_again(sdb):
+    embedder = HashEmbedder()
+    first = item("https://c.example/skip", "Brazil coffee frost hits harvest", provider="rss")
+    run.process(sdb, [first], embedder, datetime.now(UTC))
+    (sid,) = stories(sdb)
+    with sdb.cursor() as cur:
+        cur.execute("update story set analysis_status = 'skipped' where node_id = %s", (sid,))
+        cur.execute("select count(*) as n from node where id = %s", (sid,))
+        assert cur.fetchone()["n"] == 0
+        cur.execute("select count(*) as n from skipped_url where url = 'https://c.example/skip'")
+        assert cur.fetchone()["n"] == 1
+    assert run.process(sdb, [first], embedder, datetime.now(UTC))["new"] == 0
