@@ -1,0 +1,149 @@
+id: vietnam-electronics-boom
+title: Vietnam's electronics export boom
+entities:
+  - {id: org:vietnam-electronics-boom-tamarind-circuits, type: organization, subtype: company, name: Tamarind Circuits, located_in: region:vn-56, sectors: [tech, manufacturing], summary: "Invented maker of circuit boards and camera modules used in sample stories.", sample: true}
+  - {id: org:vietnam-electronics-boom-lotusgate-parks, type: organization, subtype: company, name: Lotusgate Industrial Parks, located_in: region:vn-hp.haiphong, sectors: [real-estate], summary: "Invented industrial park developer in northern Vietnam used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:vietnam-export-growth-10
+    short_title: Vietnam's export growth above 10% for the full year?
+    question: Will Vietnam's total goods exports for the current calendar year grow by more than 10% on the previous year?
+    category: trade
+    location: region:vn-hn.hanoi
+    about: [region:vn, commodity:smartphones, sector:tech, sector:manufacturing]
+    end_in_days: 95
+    resolution_rule: Resolves YES if official full-year customs figures show goods exports more than 10% higher than in the previous calendar year.
+    history: {days: 120, start: 0.49, end: 0.64, moves: [{days_ago: 0.6, delta: 0.07}], volume: 54000, liquidity: 8200}
+  - id: forecast:vietnam-power-price-rise
+    short_title: Vietnam raises retail electricity prices within three months?
+    question: Will Vietnam announce an increase in the average retail electricity price within three months?
+    category: energy
+    location: region:vn-56
+    about: [region:vn, commodity:electricity, sector:manufacturing]
+    end_in_days: 90
+    resolution_rule: Resolves YES if the government or the state power utility announces a higher average retail electricity price before the end date.
+    history: {days: 60, start: 0.42, end: 0.57, volume: 16000, liquidity: 2600}
+stories:
+  - id: story:tamarind-bac-ninh-plant
+    headline: Tamarind Circuits commits to a large new plant in Bac Ninh
+    so_what: The component plant would employ thousands and pull suppliers, housing and logistics demand into the province.
+    event_type: investment
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.85
+    sectors: [tech, manufacturing, real-estate]
+    at: region:vn-56
+    mentions: [org:vietnam-electronics-boom-tamarind-circuits, region:vn-hn.hanoi, commodity:smartphones, commodity:semiconductors]
+    age_hours: 455
+    sources: 17
+    actions: [Register as a local supplier early, Scout worker housing sites near Bac Ninh]
+  - id: story:shenzhen-suppliers-move-lines-vietnam
+    headline: Shenzhen component makers move more lines to northern Vietnam
+    so_what: Suppliers follow assemblers across the border to cut tariff risk, adding demand for factory space near Hanoi.
+    event_type: market-shift
+    impact: neutral
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.75
+    sectors: [manufacturing, tech]
+    at: region:cn-gd.shenzhen
+    mentions: [region:cn-gd.dongguan, region:vn-56, region:vn-54, region:vn-hn.hanoi, region:us]
+    age_hours: 350
+    sources: 12
+    actions: [Map which suppliers are relocating, Plan dual sourcing across both countries]
+  - id: story:northern-vietnam-power-cuts
+    headline: Northern Vietnam factories face power cuts as hydropower runs low
+    so_what: Heat and low reservoirs strain the northern grid, forcing industrial parks to ration supply at peak hours.
+    event_type: disruption
+    impact: risk
+    direction: down
+    magnitude: 4
+    horizon: weeks
+    confidence: 0.85
+    sectors: [energy, manufacturing]
+    at: region:vn-54
+    mentions: [region:vn-56, region:vn-hn.hanoi, region:vn-69, commodity:electricity, commodity:coal]
+    age_hours: 230
+    sources: 24
+    actions: [Test backup generators and fuel supply, Price rooftop solar with battery storage]
+  - id: story:north-vietnam-land-rents-climb
+    headline: Industrial land rents climb in Bac Ninh and Hai Phong parks
+    so_what: Ready-built factories near ports and highways lease quickly, lifting returns for park developers.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.75
+    sectors: [real-estate, manufacturing]
+    at: region:vn-hp.haiphong
+    mentions: [region:vn-56, region:vn-13, org:vietnam-electronics-boom-lotusgate-parks]
+    age_hours: 140
+    sources: 8
+    actions: [Lock in long leases before rents rise, Consider ready-built factories to save time]
+  - id: story:vietnam-component-suppliers-orders
+    headline: Local suppliers win more component orders from northern assemblers
+    so_what: Vietnamese makers of plastics, cables and metal parts gain as assemblers raise local content.
+    event_type: business-sentiment
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.7
+    sectors: [manufacturing, tech]
+    at: region:vn-69
+    mentions: [region:vn-56, region:vn-hn.hanoi, org:vietnam-electronics-boom-tamarind-circuits, commodity:smartphones]
+    age_hours: 70
+    sources: 7
+    actions: [Get quality certifications assemblers require, Bid for second-source supply contracts]
+  - id: story:vietnam-electronics-exports-jump
+    headline: Vietnam's electronics exports jump on phone and laptop shipments
+    so_what: Strong monthly data raise the odds of double-digit export growth and keep northern factories busy.
+    event_type: economic-data
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.85
+    sectors: [tech, manufacturing, logistics-trade]
+    at: region:vn-hn.hanoi
+    mentions: [region:vn, region:vn-hp.haiphong, commodity:smartphones, commodity:semiconductors, region:us]
+    age_hours: 16
+    sources: 22
+    actions: [Book Hai Phong export space early, Plan overtime for peak orders]
+  - id: story:north-vietnam-factory-space-tight
+    kind: projected
+    headline: Northern industrial parks could run short of ready factory space
+    so_what: Strong export growth would keep tenants arriving, pushing rents up and favouring early lease holders.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.45
+    sectors: [real-estate, manufacturing]
+    at: region:vn-56
+    mentions: [region:vn-hp.haiphong, org:vietnam-electronics-boom-lotusgate-parks]
+  - id: story:vietnam-supplier-orders-level-off
+    kind: projected
+    headline: Vietnamese component suppliers could see order growth level off
+    so_what: Slower exports would leave newer suppliers with spare capacity and pressure on prices.
+    event_type: projected-impact
+    impact: risk
+    direction: down
+    magnitude: 2
+    horizon: months
+    confidence: 0.4
+    sectors: [manufacturing, tech]
+    at: region:vn-69
+    mentions: [region:vn-56, commodity:smartphones]
+links:
+  - {from: story:tamarind-bac-ninh-plant, to: story:vietnam-component-suppliers-orders, type: reported, mechanism: raises local sourcing, direction: up, confidence: 0.75, lag_days: 16, evidence: "Sample evidence: suppliers in Thai Nguyen cited new orders from the Bac Ninh plant's purchasing team."}
+  - {from: story:tamarind-bac-ninh-plant, to: story:north-vietnam-land-rents-climb, type: inferred, mechanism: lifts factory space demand, direction: up, confidence: 0.6, lag_days: 13}
+  - {from: story:shenzhen-suppliers-move-lines-vietnam, to: story:north-vietnam-land-rents-climb, type: reported, mechanism: fills industrial parks, direction: up, confidence: 0.75, lag_days: 9}
+  - {from: story:northern-vietnam-power-cuts, to: story:transformer-lead-times-stretch, type: inferred, mechanism: adds grid equipment orders, direction: up, confidence: 0.4, lag_days: 9}
+  - {from: story:tamarind-bac-ninh-plant, to: story:asian-factories-buy-japanese-machinery, type: projected, mechanism: lifts machinery imports, direction: up, confidence: 0.35, lag_days: 90}
+  - {from: story:vietnam-electronics-exports-jump, to: story:north-vietnam-factory-space-tight, type: conditional, forecast: forecast:vietnam-export-growth-10, outcome: "YES", mechanism: keeps tenants arriving, direction: up, confidence: 0.5, lag_days: 90}
+  - {from: story:vietnam-electronics-exports-jump, to: story:vietnam-supplier-orders-level-off, type: conditional, forecast: forecast:vietnam-export-growth-10, outcome: "NO", mechanism: slows assembler orders, direction: down, confidence: 0.45, lag_days: 60}

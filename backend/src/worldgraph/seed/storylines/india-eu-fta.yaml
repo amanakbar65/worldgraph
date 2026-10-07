@@ -1,0 +1,154 @@
+id: india-eu-fta
+title: India–EU free trade agreement moves toward signing
+entities:
+  - {id: org:india-eu-fta-rheinhalde-maschinenbau, type: organization, subtype: company, name: Rheinhalde Maschinenbau, located_in: region:de-bw.stuttgart, sectors: [manufacturing], summary: "Invented German maker of machine tools and textile machinery used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:india-eu-fta-signed
+    short_title: India and the EU sign their trade deal within six months?
+    question: Will India and the European Union formally sign their free trade agreement within six months?
+    category: trade
+    location: region:be-bru.brussels
+    about: [region:in, region:eu, org:european-commission, sector:logistics-trade]
+    end_in_days: 180
+    resolution_rule: Resolves YES if representatives of India and the EU sign the agreement text before the end date; ratification is not required.
+    history: {days: 180, start: 0.41, end: 0.56, moves: [{days_ago: 9, delta: 0.06}], volume: 71000, liquidity: 10500}
+stories:
+  - id: story:india-eu-legal-review-advances
+    headline: India and EU finish legal review of most trade deal chapters
+    so_what: Lower tariffs on cars, wine and machinery, and easier services access, move closer to taking effect.
+    event_type: policy
+    impact: opportunity
+    direction: up
+    magnitude: 4
+    horizon: months
+    confidence: 0.85
+    sectors: [logistics-trade, manufacturing]
+    at: region:be-bru.brussels
+    mentions: [region:eu, region:in, org:european-commission, region:in-dl.new-delhi]
+    age_hours: 640
+    sources: 26
+    actions: [Check EU tariff schedules for your products, Prepare rules-of-origin paperwork]
+  - id: story:indian-carmakers-brace-european-imports
+    headline: Indian carmakers brace for cheaper European imports under the deal
+    so_what: Phased tariff cuts on European cars could pressure premium pricing, while parts suppliers may gain new customers.
+    event_type: business-sentiment
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.75
+    sectors: [manufacturing, consumer]
+    at: region:in-mh.pune
+    mentions: [region:in-tn.chennai, region:de-by.munich, region:de-bw.stuttgart, region:eu]
+    age_hours: 470
+    sources: 15
+    actions: [Review premium model pricing, Pitch parts supply to European carmakers]
+  - id: story:cbam-costs-indian-steel
+    headline: EU carbon border charge adds costs for Indian steel exporters
+    so_what: EU importers face charges on embedded emissions, pressing Odisha and Jharkhand mills on price and data.
+    event_type: policy
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.8
+    sectors: [manufacturing, energy]
+    at: region:in-or
+    mentions: [region:in-jh.jamshedpur, policy:eu-cbam, commodity:steel, commodity:aluminium, region:eu]
+    age_hours: 330
+    sources: 12
+    actions: [Measure product-level emissions now, Share verified emissions data with EU buyers]
+  - id: story:european-wine-spirits-eye-india
+    headline: European wine and spirits makers prepare for lower Indian duties
+    so_what: Importers in Mumbai and Bengaluru expect wider ranges at lower prices, while Nashik wineries face sharper competition.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.7
+    sectors: [consumer, agri-food]
+    at: region:fr-33
+    mentions: [region:fr, region:it, region:in-mh.mumbai, region:in-ka.bengaluru, region:in-mh.nasik]
+    age_hours: 260
+    sources: 8
+    actions: [Line up Indian importers and distributors, Register labels with Indian food regulators]
+  - id: story:indian-apparel-courts-eu-buyers
+    headline: Indian garment exporters court EU buyers ahead of duty cuts
+    so_what: Duty-free access would put Tiruppur and Surat on equal terms with Bangladesh in Europe.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.7
+    sectors: [manufacturing, consumer, logistics-trade]
+    at: region:in-tn
+    mentions: [region:in-gj.surat, region:de, region:fr, region:bd, commodity:apparel]
+    age_hours: 180
+    sources: 10
+    actions: [Get certifications EU buyers require, Pitch EU buyers for next-season programmes]
+  - id: story:german-machinery-india-inquiries
+    headline: German machinery makers field more inquiries from Indian factories
+    so_what: Expected tariff cuts make European machine tools and textile machinery cheaper for Indian plant upgrades.
+    event_type: business-sentiment
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.7
+    sectors: [manufacturing]
+    at: region:de-bw.stuttgart
+    mentions: [org:india-eu-fta-rheinhalde-maschinenbau, region:de-by, region:it-mi.milan, region:in-mh.pune, region:in-gj.ahmedabad]
+    age_hours: 110
+    sources: 7
+    actions: [Quote Indian buyers in rupees and euros, Set up local service partners in India]
+  - id: story:indian-apparel-eu-equal-terms
+    kind: projected
+    headline: Indian apparel could compete with Bangladesh on equal EU terms
+    so_what: Signing would start the clock on duty-free access, drawing EU sourcing teams to Indian mills.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.5
+    sectors: [manufacturing, consumer]
+    at: region:in-gj.surat
+    mentions: [region:in-tn, region:eu, region:bd, commodity:apparel]
+  - id: story:indian-apparel-eu-duty-gap-persists
+    kind: projected
+    headline: Indian garments would stay at a duty disadvantage in Europe
+    so_what: EU buyers would keep favouring duty-free suppliers, capping Indian apparel growth in the region.
+    event_type: projected-impact
+    impact: risk
+    direction: down
+    magnitude: 2
+    horizon: months
+    confidence: 0.45
+    sectors: [manufacturing, consumer]
+    at: region:in-tn.coimbatore
+    mentions: [region:in-tn, region:eu, region:bd, commodity:apparel]
+  - id: story:indian-generics-win-eu-tenders
+    kind: projected
+    headline: Indian generic makers could win more European hospital tenders
+    so_what: Closer regulatory cooperation and new capacity would help Indian firms bid for supply contracts across Europe.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.4
+    sectors: [health]
+    at: region:in-tg.hyderabad
+    mentions: [region:in-gj.ahmedabad, region:eu, commodity:pharma-api]
+links:
+  - {from: story:india-eu-legal-review-advances, to: story:indian-carmakers-brace-european-imports, type: reported, mechanism: phases out car tariffs, direction: up, confidence: 0.75, lag_days: 7, evidence: "Sample evidence: Indian carmakers cited the agreed car tariff schedule when revising their premium launch plans."}
+  - {from: story:india-eu-legal-review-advances, to: story:european-wine-spirits-eye-india, type: reported, mechanism: lowers liquor duties, direction: up, confidence: 0.75, lag_days: 16}
+  - {from: story:india-eu-legal-review-advances, to: story:german-machinery-india-inquiries, type: inferred, mechanism: lowers machinery tariffs, direction: up, confidence: 0.55, lag_days: 22}
+  - {from: story:india-eu-legal-review-advances, to: story:indian-apparel-courts-eu-buyers, type: inferred, mechanism: promises duty-free access, direction: up, confidence: 0.6, lag_days: 19}
+  - {from: story:us-tariffs-weigh-indian-exports, to: story:indian-apparel-courts-eu-buyers, type: inferred, mechanism: redirects export orders, direction: up, confidence: 0.6, lag_days: 20}
+  - {from: story:cbam-costs-indian-steel, to: story:indian-exporters-margin-squeeze, type: inferred, mechanism: adds carbon compliance costs, direction: down, confidence: 0.45, lag_days: 13}
+  - {from: story:india-eu-legal-review-advances, to: story:indian-generics-win-eu-tenders, type: projected, mechanism: eases regulatory approvals, direction: up, confidence: 0.35, lag_days: 180}
+  - {from: story:india-eu-legal-review-advances, to: story:indian-apparel-eu-equal-terms, type: conditional, forecast: forecast:india-eu-fta-signed, outcome: "YES", mechanism: removes apparel duties, direction: up, confidence: 0.55, lag_days: 120}
+  - {from: story:india-eu-legal-review-advances, to: story:indian-apparel-eu-duty-gap-persists, type: conditional, forecast: forecast:india-eu-fta-signed, outcome: "NO", mechanism: keeps apparel duties, direction: down, confidence: 0.5, lag_days: 90}

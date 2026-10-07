@@ -1,0 +1,156 @@
+id: panama-canal-drought
+title: Panama Canal drought reshapes trade routes
+entities:
+  - {id: org:panama-canal-drought-pelican-reach-grain, type: organization, subtype: company, name: Pelican Reach Grain, located_in: region:us-la, sectors: [agri-food, logistics-trade], summary: "Invented grain exporter with an elevator on the lower Mississippi used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:panama-draft-limits-lifted
+    short_title: Panama Canal lifts its draft limits within three months?
+    question: Will the Panama Canal Authority restore the standard maximum draft at its neopanamax locks within three months?
+    category: trade
+    location: infra:panama-canal
+    about: [region:pa, infra:panama-canal, org:panama-canal-authority, sector:logistics-trade]
+    end_in_days: 90
+    resolution_rule: Resolves YES if the canal authority announces that the standard maximum authorised draft applies again at the neopanamax locks before the end date.
+    history: {days: 90, start: 0.58, end: 0.35, moves: [{days_ago: 0.6, delta: 0.11}], volume: 128000, liquidity: 17500}
+stories:
+  - id: story:gatun-lake-below-average
+    headline: Gatun Lake sits well below its seasonal average after weak rains
+    so_what: Each lock transit uses lake water, so low levels limit how deep and how often ships can pass.
+    event_type: extreme-weather
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.9
+    sectors: [logistics-trade]
+    at: infra:panama-canal
+    mentions: [region:pa, region:pa-3, org:panama-canal-authority]
+    age_hours: 600
+    sources: 18
+    actions: [Check which of your lanes transit Panama, Add buffer days to Panama-routed shipments]
+  - id: story:panama-canal-cuts-draft-and-slots
+    headline: Panama Canal lowers draft limits and trims daily transit slots
+    so_what: Ships must carry less cargo or wait for slots, raising costs on Asia–US East and Gulf Coast routes.
+    event_type: policy-decision
+    impact: risk
+    direction: down
+    magnitude: 4
+    horizon: weeks
+    confidence: 0.9
+    sectors: [logistics-trade]
+    at: infra:panama-canal
+    mentions: [org:panama-canal-authority, region:pa-8.panama-city, region:us]
+    age_hours: 380
+    sources: 29
+    actions: [Ask carriers about cargo weight surcharges, Compare West Coast routing for Midwest cargo]
+  - id: story:brazil-soybeans-win-china-orders
+    headline: Brazilian soybeans win Chinese orders from US Gulf shippers
+    so_what: Higher canal costs widen the freight gap, so US Gulf exporters lose Asian sales to Santos.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.7
+    sectors: [agri-food, logistics-trade]
+    at: infra:port-of-santos
+    mentions: [region:br-mt, commodity:soybeans, region:cn, region:us-la, org:panama-canal-drought-pelican-reach-grain]
+    age_hours: 150
+    sources: 11
+    actions: [Lock in Brazilian supply for the next quarter, Hedge soybean basis exposure]
+  - id: story:asian-buyers-wait-us-lng
+    headline: Japanese and Korean buyers wait longer for US Gulf LNG
+    so_what: Cargoes sailing around Africa add about two weeks, raising delivered costs for Asian utilities and factories.
+    event_type: supply-chain
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.75
+    sectors: [energy, logistics-trade]
+    at: region:jp-13.tokyo
+    mentions: [region:kr-11.seoul, region:us-la, commodity:natural-gas, infra:cape-of-good-hope]
+    age_hours: 48
+    sources: 12
+    actions: [Review LNG delivery windows with suppliers, Hedge winter fuel costs early]
+  - id: story:west-coast-ports-rail-gain
+    headline: West Coast ports and railroads gain cargo diverted from Panama
+    so_what: Intermodal trains to Chicago and grain trains to Pacific Northwest terminals run fuller.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.7
+    sectors: [logistics-trade]
+    at: infra:port-of-los-angeles
+    mentions: [region:us-ca.long-beach, region:us-il.chicago, region:us-wa.seattle, region:us-or.portland, commodity:soybeans]
+    age_hours: 22
+    sources: 9
+    actions: [Book intermodal capacity for peak season, Offer transload services near the ports]
+  - id: story:rains-lift-gatun-lake
+    headline: Heavy rains lift Gatun Lake for the first time in weeks
+    so_what: Shippers hope for an earlier end to draft limits, though levels remain below normal.
+    event_type: extreme-weather
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.8
+    sectors: [logistics-trade]
+    at: region:pa-3
+    mentions: [infra:panama-canal, org:panama-canal-authority, region:pa]
+    age_hours: 15
+    sources: 10
+    actions: [Keep Panama bookings flexible for now]
+  - id: story:savannah-gains-gulf-boxes
+    headline: Savannah picks up Gulf Coast export boxes as lines cut calls
+    so_what: Georgia warehouses and rail links gain volume, while Texas shippers pay extra inland haulage.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.65
+    sectors: [logistics-trade]
+    at: infra:port-of-savannah
+    mentions: [region:us-ga.atlanta, infra:port-of-houston, region:us-tx]
+    age_hours: 0.7
+    sources: 4
+    actions: [Quote drayage and warehousing to Gulf exporters, Check rail options to Savannah]
+  - id: story:panama-transits-normalise
+    kind: projected
+    headline: Freight costs on Panama routes could ease as transits normalise
+    so_what: Full loads and more daily slots would cut surcharges for Asia–US Gulf and East Coast cargo.
+    event_type: projected-impact
+    impact: opportunity
+    direction: down
+    magnitude: 3
+    horizon: months
+    confidence: 0.5
+    sectors: [logistics-trade]
+    at: infra:panama-canal
+    mentions: [region:pa, region:us]
+  - id: story:us-gulf-exporters-costs-persist
+    kind: projected
+    headline: US Gulf exporters would keep paying more to reach Asia
+    so_what: Grain and LNG sellers would stay at a freight disadvantage against Brazilian and Australian rivals.
+    event_type: projected-impact
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.5
+    sectors: [agri-food, energy, logistics-trade]
+    at: region:us-la
+    mentions: [region:us-tx, org:panama-canal-drought-pelican-reach-grain, commodity:soybeans, commodity:natural-gas]
+links:
+  - {from: story:gatun-lake-below-average, to: story:panama-canal-cuts-draft-and-slots, type: reported, mechanism: limits lock water, direction: down, confidence: 0.9, lag_days: 9, evidence: "Sample evidence: the canal authority cited Gatun Lake levels when announcing the lower draft limits."}
+  - {from: story:panama-canal-cuts-draft-and-slots, to: story:brazil-soybeans-win-china-orders, type: inferred, mechanism: widens freight gap, direction: up, confidence: 0.6, lag_days: 10}
+  - {from: story:panama-canal-cuts-draft-and-slots, to: story:asian-buyers-wait-us-lng, type: reported, mechanism: prices out canal transits, direction: up, confidence: 0.75, lag_days: 14}
+  - {from: story:red-sea-attacks-reroute, to: story:asian-buyers-wait-us-lng, type: inferred, mechanism: blocks the shorter route, direction: up, confidence: 0.6, lag_days: 1}
+  - {from: story:panama-canal-cuts-draft-and-slots, to: story:west-coast-ports-rail-gain, type: inferred, mechanism: diverts cargo westward, direction: up, confidence: 0.6, lag_days: 15}
+  - {from: story:panama-canal-cuts-draft-and-slots, to: story:savannah-gains-gulf-boxes, type: inferred, mechanism: concentrates port calls, direction: up, confidence: 0.5, lag_days: 16}
+  - {from: story:asian-buyers-wait-us-lng, to: story:eu-gas-prices-ease-winter, type: projected, mechanism: redirects gas cargoes, direction: down, confidence: 0.35, lag_days: 45}
+  - {from: story:rains-lift-gatun-lake, to: story:panama-transits-normalise, type: conditional, forecast: forecast:panama-draft-limits-lifted, outcome: "YES", mechanism: restores full transits, direction: down, confidence: 0.55, lag_days: 30}
+  - {from: story:rains-lift-gatun-lake, to: story:us-gulf-exporters-costs-persist, type: conditional, forecast: forecast:panama-draft-limits-lifted, outcome: "NO", mechanism: keeps transits scarce, direction: up, confidence: 0.55, lag_days: 30}
