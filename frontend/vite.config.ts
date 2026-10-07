@@ -31,7 +31,8 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 4000,
       sourcemap: false,
     },
-    server: { port: 5173, host: "127.0.0.1" },
+    // `..` lets the app import the shared prompts in ../prompts.
+    server: { port: 5173, host: "127.0.0.1", fs: { allow: [".."] } },
     test: {
       environment: "jsdom",
       include: ["src/**/*.test.{ts,tsx}"],
