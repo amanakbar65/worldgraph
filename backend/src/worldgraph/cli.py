@@ -17,6 +17,15 @@ app.add_typer(seed_app, name="seed")
 app.add_typer(geo_app, name="geo")
 
 
+def _pipeline_app() -> typer.Typer:
+    from worldgraph.pipeline.cli import app as pipeline_app
+
+    return pipeline_app
+
+
+app.add_typer(_pipeline_app(), name="pipeline")
+
+
 @db_app.command("migrate")
 def db_migrate() -> None:
     """Apply any database migrations that haven't run yet."""
@@ -94,6 +103,17 @@ def geo_gazetteer() -> None:
 
     summary = build_gazetteer()
     typer.secho("Gazetteer rebuilt.", fg=typer.colors.GREEN)
+    for label, value in summary.items():
+        typer.echo(f"  {label}: {value}")
+
+
+@geo_app.command("fips")
+def geo_fips() -> None:
+    """Rebuild pipeline/data/fips.json (GDELT place codes → our regions)."""
+    from worldgraph.geo.fips import build_fips
+
+    summary = build_fips()
+    typer.secho("FIPS lookup rebuilt.", fg=typer.colors.GREEN)
     for label, value in summary.items():
         typer.echo(f"  {label}: {value}")
 

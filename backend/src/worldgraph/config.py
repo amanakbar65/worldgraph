@@ -24,8 +24,11 @@ class Settings(BaseSettings):
     database_url: str | None = None
     wg_env: str = "development"
     wg_dev_viewer_country: str | None = None
+    # Website AI (Claude API). Unset: the pipeline skips AI analysis.
+    anthropic_api_key: str | None = None
+    wg_ai_daily_budget_usd: float = 2.0
 
-    @field_validator("database_url", "wg_dev_viewer_country", mode="before")
+    @field_validator("database_url", "wg_dev_viewer_country", "anthropic_api_key", mode="before")
     @classmethod
     def _blank_is_none(cls, value: object) -> object:
         if isinstance(value, str) and not value.strip():
