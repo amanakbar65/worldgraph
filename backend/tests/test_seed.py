@@ -42,3 +42,18 @@ def test_sample_clock_keeps_newest_story_fresh(sdb):
            join node n on n.id = s.node_id where n.is_sample"""
     ).fetchone()
     assert row["age"].total_seconds() < 3600
+
+
+def test_sample_clock_dates_newest_indicator_point_today(sdb):
+    row = sdb.execute(
+        """select max(ip.date) = current_date as today from indicator_point ip
+           join node n on n.id = ip.series_id where n.is_sample"""
+    ).fetchone()
+    assert row["today"]
+
+
+def test_sample_clock_can_run_repeatedly(sdb):
+    sdb.execute("select api.refresh_sample_clock(interval '3 hours')")
+    sdb.execute("select api.refresh_sample_clock()")
+    row = sdb.execute("select count(*) as n from forecast_snapshot").fetchone()
+    assert row["n"] > 0
