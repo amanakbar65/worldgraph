@@ -1001,9 +1001,9 @@ def test_search_scores_exact_prefix_and_trigram(sdb):
     assert find(results(sdb, "Ahmeda"), "region:in-gj.ahmedabad")["score"] == pytest.approx(0.8)
     typo = find(results(sdb, "Gujrat"), "region:in-gj")
     similarity = scalar(sdb, "select similarity('Gujarat', 'Gujrat')")
-    assert similarity >= 0.25
+    assert similarity >= 0.3  # pg_trgm's default threshold
     assert typo["score"] == pytest.approx(round(similarity * 0.7 + 0.05, 3), abs=0.002)
-    assert all(r["score"] >= 0.175 for r in results(sdb, "Gujrat"))
+    assert all(r["score"] >= 0.21 for r in results(sdb, "Gujrat"))
 
 
 def test_search_matches_aliases_and_codes(sdb):

@@ -1074,14 +1074,14 @@ $$;
 -- ---------------------------------------------------------------------------
 -- api.search({q, types?, limit?}) → SearchResponse
 -- Exact name or alias (1) > prefix (0.8) > word prefix (0.5, three or more
--- characters) / trigram similarity ≥ 0.25 (similarity × 0.7). Boosts:
+-- characters) / trigram similarity ≥ 0.3, pg_trgm's default threshold, which
+-- Supabase doesn't let functions change (similarity × 0.7). Boosts:
 -- countries +0.15, states +0.05, events under 24 hours old +0.1,
 -- forecasts +0.05.
 -- ---------------------------------------------------------------------------
 create or replace function api.search(args jsonb) returns jsonb
 language plpgsql stable
 set search_path = public, extensions
-set pg_trgm.similarity_threshold = 0.25
 as $$
 declare
     v_q text := left(btrim(coalesce(args ->> 'q', '')), 80);
@@ -1129,7 +1129,7 @@ begin
                               and strpos(' ' || btrim(regexp_replace(lower(m.label), '[^[:alnum:]]+', ' ', 'g')),
                                          ' ' || v_wq) > 0
                          then 0.5 else 0 end,
-                    case when similarity(m.label, v_q) >= 0.25
+                    case when similarity(m.label, v_q) >= 0.3
                          then similarity(m.label, v_q)::numeric * 0.7 else 0 end)
             end) as base
         from matched m
