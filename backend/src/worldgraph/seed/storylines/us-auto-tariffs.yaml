@@ -1,0 +1,170 @@
+id: us-auto-tariffs
+title: US auto tariffs and North American supply chains
+entities:
+  - {id: org:us-auto-tariffs-lindbrunn-fahrzeugtechnik, type: organization, subtype: company, name: Lindbrunn Fahrzeugtechnik, located_in: region:de-by, sectors: [manufacturing], summary: "Invented Bavarian auto parts supplier used in sample stories.", sample: true}
+  - {id: org:us-auto-tariffs-hoshimura-motors, type: organization, subtype: company, name: Hoshimura Motors, located_in: region:jp-34.hiroshima, sectors: [manufacturing, consumer], summary: "Invented Japanese carmaker with a plant in Guanajuato, used in sample stories.", sample: true}
+  - {id: org:us-auto-tariffs-cerro-silla-autopartes, type: organization, subtype: company, name: Cerro Silla Autopartes, located_in: region:mx-nle.monterrey, sectors: [manufacturing], summary: "Invented Monterrey auto parts maker used in sample stories.", sample: true}
+  - {id: org:us-auto-tariffs-maumee-ridge-castings, type: organization, subtype: company, name: Maumee Ridge Castings, located_in: region:us-oh.cleveland, sectors: [manufacturing], summary: "Invented Ohio metal castings supplier used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:us-usmca-parts-tariff-relief
+    short_title: Will the US exempt USMCA-compliant car parts from tariffs?
+    question: Will the United States formally exempt auto parts that meet USMCA content rules from its latest auto-parts tariffs within three months?
+    category: trade
+    location: region:us-dc.washington-d-c
+    about: [region:us, policy:usmca, policy:us-section-232-tariffs, region:mx, region:ca]
+    end_in_days: 90
+    resolution_rule: Resolves YES if an official US notice exempts USMCA-qualifying auto parts from the latest auto-parts tariffs, in full or in part, before the end date.
+    history: {days: 60, start: 0.31, end: 0.49, moves: [{days_ago: 0.6, delta: 0.12}], volume: 97000, liquidity: 14000}
+  - id: forecast:usmca-extended-at-review
+    short_title: Will USMCA partners agree to extend the agreement?
+    question: Will the United States, Mexico and Canada each confirm that they want to extend the USMCA's term at the current joint review?
+    category: trade
+    location: region:mx-dif.mexico-city
+    about: [region:mx, policy:usmca, region:us, region:ca]
+    end_in_days: 240
+    resolution_rule: Resolves YES if all three governments confirm in writing that they wish to extend the agreement's term before the end date.
+    history: {days: 180, start: 0.57, end: 0.46, volume: 58000, liquidity: 8600}
+stories:
+  - id: story:us-widens-auto-parts-tariffs
+    headline: US widens tariffs to more imported car parts
+    so_what: Importers of engines, gearboxes and electronics face higher landed costs unless parts meet North American content rules.
+    event_type: policy-decision
+    impact: risk
+    direction: up
+    magnitude: 4
+    horizon: now
+    confidence: 0.9
+    sectors: [manufacturing, logistics-trade]
+    at: region:us-dc.washington-d-c
+    mentions: [region:us, policy:us-section-232-tariffs, policy:usmca, region:de, region:jp, region:mx]
+    age_hours: 610
+    sources: 44
+    actions: [List imported parts by tariff code, Check USMCA content certificates]
+  - id: story:bavarian-supplier-trims-us-shipments
+    headline: Bavarian parts supplier trims US-bound shipments after tariff rise
+    so_what: German suppliers lose their price edge in the US, and smaller firms in Bavaria and Baden-Württemberg feel it first.
+    event_type: business-sentiment
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.8
+    sectors: [manufacturing]
+    at: region:de-by
+    mentions: [org:us-auto-tariffs-lindbrunn-fahrzeugtechnik, region:de, region:de-bw.stuttgart, region:us]
+    age_hours: 470
+    sources: 13
+    actions: [Review which US orders still make money, Explore local assembly with US partners]
+  - id: story:japanese-carmaker-absorbs-tariffs
+    headline: Japanese carmaker absorbs tariff costs instead of raising US prices
+    so_what: Holding prices protects US sales but cuts profit, putting pressure on suppliers to lower their prices.
+    event_type: company-update
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.8
+    sectors: [manufacturing, consumer]
+    at: region:jp-34.hiroshima
+    mentions: [org:us-auto-tariffs-hoshimura-motors, region:jp, region:us]
+    age_hours: 260
+    sources: 16
+    actions: [Prepare for price-cut requests from carmakers]
+  - id: story:monterrey-parts-makers-certify-content
+    headline: Monterrey parts makers rush to certify USMCA content
+    so_what: Parts that meet regional content rules avoid the new tariffs, giving certified Mexican suppliers an edge.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.75
+    sectors: [manufacturing, logistics-trade]
+    at: region:mx-nle.monterrey
+    mentions: [org:us-auto-tariffs-cerro-silla-autopartes, policy:usmca, policy:mexico-immex, region:mx, region:us-tx]
+    age_hours: 180
+    sources: 11
+    actions: [Audit regional content in each part, Offer certification help to suppliers]
+  - id: story:guanajuato-plant-shifts-exports
+    headline: Guanajuato car plant shifts exports toward Latin American buyers
+    so_what: Fewer US-bound cars mean lighter loads for border rail and trucking but more traffic through Pacific ports.
+    event_type: trade-flow
+    impact: risk
+    direction: down
+    magnitude: 2
+    horizon: months
+    confidence: 0.7
+    sectors: [manufacturing, logistics-trade]
+    at: region:mx-gua
+    mentions: [org:us-auto-tariffs-hoshimura-motors, region:mx, region:br, region:us]
+    age_hours: 140
+    sources: 7
+    actions: [Rebalance freight contracts toward Pacific ports]
+  - id: story:ohio-castings-supplier-wins-orders
+    headline: Ohio castings supplier wins reshored brake and suspension orders
+    so_what: US parts makers gain as carmakers replace imported components, though labour and capacity limits slow ramp-ups.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.75
+    sectors: [manufacturing]
+    at: region:us-oh.cleveland
+    mentions: [org:us-auto-tariffs-maumee-ridge-castings, region:us, region:us-mi.detroit]
+    age_hours: 48
+    sources: 9
+    actions: [Pitch reshored parts to US carmakers, Secure skilled labour before ramp-up]
+  - id: story:usmca-review-turns-to-autos
+    headline: USMCA review talks turn to car content rules
+    so_what: Any change to content thresholds would reset sourcing plans for parts makers across all three countries.
+    event_type: policy
+    impact: neutral
+    direction: up
+    magnitude: 4
+    horizon: months
+    confidence: 0.8
+    sectors: [logistics-trade, manufacturing]
+    at: region:ca-on.ottawa
+    mentions: [policy:usmca, region:ca, region:us, region:mx]
+    age_hours: 15
+    sources: 28
+    actions: [Model costs under higher content thresholds]
+  - id: story:mexican-parts-orders-climb
+    kind: projected
+    headline: Mexican parts plants could win more US orders
+    so_what: Tariff relief for compliant parts would make Monterrey and Saltillo suppliers cheaper than Asian and European rivals.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.5
+    sectors: [manufacturing]
+    at: region:mx-nle
+    mentions: [region:mx, region:mx-coa, policy:usmca]
+    actions: [Line up USMCA-certified second sources]
+  - id: story:us-car-prices-climb
+    kind: projected
+    headline: US car buyers could face higher sticker prices
+    so_what: Without relief, carmakers would pass more parts costs to buyers, cooling sales at dealers.
+    event_type: projected-impact
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.5
+    sectors: [consumer, manufacturing]
+    at: region:us-mi.detroit
+    mentions: [region:us, policy:us-section-232-tariffs]
+links:
+  - {from: story:us-widens-auto-parts-tariffs, to: story:bavarian-supplier-trims-us-shipments, type: reported, mechanism: raises landed costs, direction: down, confidence: 0.85, lag_days: 6, evidence: "Sample evidence: the supplier said the new tariff made several US contracts unprofitable at current prices."}
+  - {from: story:us-widens-auto-parts-tariffs, to: story:japanese-carmaker-absorbs-tariffs, type: reported, mechanism: squeezes export margins, direction: down, confidence: 0.8, lag_days: 14, evidence: "Sample evidence: the carmaker said it would hold US prices and absorb the tariff on imported cars and parts."}
+  - {from: story:us-widens-auto-parts-tariffs, to: story:monterrey-parts-makers-certify-content, type: reported, mechanism: rewards compliant content, direction: up, confidence: 0.8, lag_days: 18, evidence: "Sample evidence: Monterrey suppliers said US customers asked for content certificates within days of the tariff notice."}
+  - {from: story:japanese-carmaker-absorbs-tariffs, to: story:guanajuato-plant-shifts-exports, type: inferred, mechanism: redirects plant output, direction: down, confidence: 0.5, lag_days: 5}
+  - {from: story:us-widens-auto-parts-tariffs, to: story:ohio-castings-supplier-wins-orders, type: inferred, mechanism: shifts orders onshore, direction: up, confidence: 0.6, lag_days: 23}
+  - {from: story:us-widens-auto-parts-tariffs, to: story:japanese-carmaker-warns-on-yen, type: inferred, mechanism: deepens margin pressure, direction: down, confidence: 0.45, lag_days: 25, evidence: "Sample evidence: the yen warning came while tariff costs were already cutting Japanese carmakers' US margins."}
+  - {from: story:usmca-review-turns-to-autos, to: story:mexican-parts-orders-climb, type: conditional, forecast: forecast:us-usmca-parts-tariff-relief, outcome: "YES", mechanism: lowers compliant costs, direction: up, confidence: 0.55, lag_days: 45, evidence: "Sample evidence: an exemption would leave certified Mexican parts tariff-free while rivals from outside the region still pay."}
+  - {from: story:usmca-review-turns-to-autos, to: story:us-car-prices-climb, type: conditional, forecast: forecast:us-usmca-parts-tariff-relief, outcome: "NO", mechanism: keeps parts costs high, direction: up, confidence: 0.55, lag_days: 45, evidence: "Sample evidence: without relief, tariffs on parts that cross borders several times would build up in the final car price."}
+  - {from: story:japanese-carmaker-absorbs-tariffs, to: story:us-car-prices-climb, type: projected, mechanism: passes costs on later, direction: up, confidence: 0.4, lag_days: 60}
+  - {from: story:monterrey-parts-makers-certify-content, to: story:mexican-parts-orders-climb, type: projected, mechanism: builds compliant capacity, direction: up, confidence: 0.45, lag_days: 60}

@@ -1,0 +1,160 @@
+id: rare-earth-controls
+title: China's rare-earth export licensing
+entities:
+  - {id: org:rare-earth-controls-tsukishiro-motor-systems, type: organization, subtype: company, name: Tsukishiro Motor Systems, located_in: region:jp-22, sectors: [manufacturing], summary: "Invented Japanese maker of electric-vehicle motors used in sample stories.", sample: true}
+  - {id: org:rare-earth-controls-nordhaff-windtechnik, type: organization, subtype: company, name: Nordhaff Windtechnik, located_in: region:de-hh.hamburg, sectors: [energy, manufacturing], summary: "Invented German wind-turbine maker used in sample stories.", sample: true}
+  - {id: org:rare-earth-controls-karrawong-rare-earths, type: organization, subtype: company, name: Karrawong Rare Earths, located_in: region:au-wa.perth, sectors: [manufacturing], summary: "Invented Western Australian rare-earth project developer used in sample stories.", sample: true}
+  - {id: org:rare-earth-controls-pecos-bend-magnetics, type: organization, subtype: company, name: Pecos Bend Magnetics, located_in: region:us-tx.san-antonio, sectors: [manufacturing, tech], summary: "Invented US maker of rare-earth magnets used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:china-adds-rare-earth-items
+    short_title: Will China add new rare-earth items to its export controls?
+    question: Will China add new rare-earth elements, magnet products or processing technologies to its export-control list within three months?
+    category: trade
+    location: region:cn-bj.beijing
+    about: [region:cn, policy:china-rare-earth-controls, commodity:rare-earths, sector:manufacturing]
+    end_in_days: 90
+    resolution_rule: Resolves YES if China's commerce ministry publishes a notice adding rare-earth elements, magnet products or related technologies to its export-control list before the end date.
+    history: {days: 120, start: 0.36, end: 0.63, moves: [{days_ago: 0.4, delta: 0.14}], volume: 152000, liquidity: 21000}
+stories:
+  - id: story:china-tightens-rare-earth-licensing
+    headline: China tightens export licensing for rare earths and magnets
+    so_what: Each magnet shipment now needs an approved licence, slowing deliveries to motor and turbine makers abroad.
+    event_type: policy
+    impact: risk
+    direction: up
+    magnitude: 5
+    horizon: weeks
+    confidence: 0.9
+    sectors: [manufacturing, tech]
+    at: region:cn-bj.beijing
+    mentions: [region:cn, policy:china-rare-earth-controls, commodity:rare-earths, region:cn-jx.ganzhou, region:cn-nm.baotou]
+    age_hours: 520
+    sources: 47
+    actions: [Map which parts contain rare-earth magnets, Ask suppliers for export licence status]
+  - id: story:shizuoka-motor-maker-draws-magnet-stocks
+    headline: Shizuoka motor maker draws down magnet stocks as licences lag
+    so_what: With only weeks of magnet cover left, EV motor output and carmakers' build plans are at risk.
+    event_type: supply-chain
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.8
+    sectors: [manufacturing]
+    at: region:jp-22
+    mentions: [org:rare-earth-controls-tsukishiro-motor-systems, region:jp, region:jp-23, commodity:rare-earths]
+    age_hours: 400
+    sources: 12
+    actions: [Ask motor suppliers for magnet cover, Qualify magnets from non-Chinese sources]
+  - id: story:hamburg-turbine-maker-warns-delays
+    headline: Hamburg turbine maker warns licence delays could slow deliveries
+    so_what: Wind farm developers in Germany and the North Sea may face later turbine handovers and penalty talks.
+    event_type: business-sentiment
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: months
+    confidence: 0.75
+    sectors: [energy, manufacturing]
+    at: region:de-hh.hamburg
+    mentions: [org:rare-earth-controls-nordhaff-windtechnik, region:de, region:eu, commodity:rare-earths]
+    age_hours: 260
+    sources: 10
+    actions: [Review delivery clauses in turbine contracts]
+  - id: story:india-widens-magnet-incentives
+    headline: India widens incentives for rare-earth magnet plants
+    so_what: Magnet makers and mineral processors gain support to build supply from India's coastal mineral sands.
+    event_type: policy
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.8
+    sectors: [manufacturing, tech]
+    at: region:in-dl.new-delhi
+    mentions: [region:in, region:in-or, region:in-ap, region:in-kl, commodity:rare-earths]
+    age_hours: 190
+    sources: 15
+    actions: [Explore Indian magnet supply partnerships]
+  - id: story:wa-rare-earth-project-japan-offtake
+    headline: Western Australian rare-earth project signs offtake with Japanese buyers
+    so_what: Long-term contracts help fund processing outside China and give Japanese motor makers a second source.
+    event_type: investment
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.75
+    sectors: [manufacturing]
+    at: region:au-wa
+    mentions: [org:rare-earth-controls-karrawong-rare-earths, region:au, region:au-wa.perth, region:jp, commodity:rare-earths]
+    age_hours: 150
+    sources: 9
+    actions: [Bid for project engineering and services work]
+  - id: story:texas-magnet-plant-signs-deals
+    headline: Texas magnet plant signs supply deals with motor makers
+    so_what: US-made magnets give carmakers and appliance firms a licence-free option, though at higher cost.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.7
+    sectors: [manufacturing, tech]
+    at: region:us-tx.san-antonio
+    mentions: [org:rare-earth-controls-pecos-bend-magnetics, region:us, commodity:rare-earths]
+    age_hours: 66
+    sources: 8
+    actions: [Request quotes from US magnet makers]
+  - id: story:china-signals-wider-rare-earth-controls
+    headline: China's commerce ministry signals rare-earth licensing could widen
+    so_what: Buyers fear more magnet types and processing know-how could need licences, tightening supply further.
+    event_type: policy-signal
+    impact: risk
+    direction: up
+    magnitude: 4
+    horizon: weeks
+    confidence: 0.8
+    sectors: [manufacturing, tech]
+    at: region:cn-bj.beijing
+    mentions: [region:cn, policy:china-rare-earth-controls, commodity:rare-earths]
+    age_hours: 9
+    sources: 26
+    actions: [Build extra magnet stock where possible, Brief customers on possible delays]
+  - id: story:magnet-shortage-spreads
+    kind: projected
+    headline: Magnet shortages could spread to more motor and turbine lines
+    so_what: Wider controls would lengthen licence queues, delaying EVs, wind turbines and industrial motors outside China.
+    event_type: projected-impact
+    impact: risk
+    direction: up
+    magnitude: 4
+    horizon: months
+    confidence: 0.5
+    sectors: [manufacturing, energy]
+    at: region:de-bw.stuttgart
+    mentions: [region:de, region:jp, region:de-hh.hamburg, commodity:rare-earths]
+    actions: [Design in magnet-free motors where possible]
+  - id: story:magnet-buyers-rebuild-stocks
+    kind: projected
+    headline: Magnet buyers could rebuild stocks under current licence rules
+    so_what: Steady rules would let licence approvals settle into a routine, easing delivery risk for motor makers.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.45
+    sectors: [manufacturing]
+    at: region:jp-22
+    mentions: [region:jp, region:de, commodity:rare-earths]
+links:
+  - {from: story:china-tightens-rare-earth-licensing, to: story:shizuoka-motor-maker-draws-magnet-stocks, type: reported, mechanism: delays magnet deliveries, direction: down, confidence: 0.85, lag_days: 5, evidence: "Sample evidence: the motor maker said magnet shipments were waiting on export licences and it was using stock to keep lines running."}
+  - {from: story:china-tightens-rare-earth-licensing, to: story:hamburg-turbine-maker-warns-delays, type: reported, mechanism: slows magnet supply, direction: down, confidence: 0.8, lag_days: 11, evidence: "Sample evidence: the turbine maker named slower magnet licensing as the main risk to its delivery schedule."}
+  - {from: story:china-tightens-rare-earth-licensing, to: story:india-widens-magnet-incentives, type: inferred, mechanism: spurs supply diversification, direction: up, confidence: 0.5, lag_days: 14}
+  - {from: story:shizuoka-motor-maker-draws-magnet-stocks, to: story:wa-rare-earth-project-japan-offtake, type: inferred, mechanism: seeks alternative supply, direction: up, confidence: 0.6, lag_days: 10, evidence: "Sample evidence: Japanese buyers short of magnets have the strongest reason to sign long-term deals outside China."}
+  - {from: story:china-tightens-rare-earth-licensing, to: story:texas-magnet-plant-signs-deals, type: inferred, mechanism: pulls demand onshore, direction: up, confidence: 0.55, lag_days: 19}
+  - {from: story:china-signals-wider-rare-earth-controls, to: story:magnet-shortage-spreads, type: conditional, forecast: forecast:china-adds-rare-earth-items, outcome: "YES", mechanism: extends licence queues, direction: up, confidence: 0.55, lag_days: 30, evidence: "Sample evidence: new items on the control list would need their own licences, adding to queues that are already long."}
+  - {from: story:china-signals-wider-rare-earth-controls, to: story:magnet-buyers-rebuild-stocks, type: conditional, forecast: forecast:china-adds-rare-earth-items, outcome: "NO", mechanism: keeps rules predictable, direction: up, confidence: 0.5, lag_days: 30, evidence: "Sample evidence: if the list stays unchanged, buyers can plan around known licence times and rebuild stock."}
+  - {from: story:shizuoka-motor-maker-draws-magnet-stocks, to: story:magnet-shortage-spreads, type: projected, mechanism: drains magnet stocks, direction: up, confidence: 0.45, lag_days: 30}
+  - {from: story:wa-rare-earth-project-japan-offtake, to: story:magnet-buyers-rebuild-stocks, type: projected, mechanism: adds alternative supply, direction: up, confidence: 0.4, lag_days: 120}

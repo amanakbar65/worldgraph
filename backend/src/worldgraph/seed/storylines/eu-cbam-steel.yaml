@@ -1,0 +1,178 @@
+id: eu-cbam-steel
+title: EU carbon border tax and the steel trade
+entities:
+  - {id: org:eu-cbam-steel-chilika-aluminium, type: organization, subtype: company, name: Chilika Aluminium, located_in: region:in-or, sectors: [manufacturing], summary: "Invented Odisha aluminium smelter used in sample stories.", sample: true}
+  - {id: org:eu-cbam-steel-kharkai-steel, type: organization, subtype: company, name: Kharkai Steel, located_in: region:in-jh.jamshedpur, sectors: [manufacturing], summary: "Invented Jharkhand steelmaker used in sample stories.", sample: true}
+  - {id: org:eu-cbam-steel-denizkent-steel, type: organization, subtype: company, name: Denizkent Steel, located_in: region:tr-35.izmir, sectors: [manufacturing], summary: "Invented Turkish electric-arc steelmaker used in sample stories.", sample: true}
+  - {id: org:eu-cbam-steel-lulefors-green-steel, type: organization, subtype: company, name: Lulefors Green Steel, located_in: region:se-bd, sectors: [manufacturing, energy], summary: "Invented Swedish hydrogen-based steel project used in sample stories.", sample: true}
+  - {id: org:eu-cbam-steel-ria-azul-steel, type: organization, subtype: company, name: Ría Azul Steel, located_in: region:es-o, sectors: [manufacturing, energy], summary: "Invented Spanish green iron and steel project used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:eu-cbam-next-phase-eased
+    short_title: Will the EU delay or simplify the next CBAM phase?
+    question: Will the European Commission formally propose delaying or simplifying the next phase of the Carbon Border Adjustment Mechanism within four months?
+    category: policy
+    location: region:be-bru.brussels
+    about: [region:eu, policy:eu-cbam, org:european-commission, commodity:steel, commodity:aluminium]
+    end_in_days: 120
+    resolution_rule: Resolves YES if the European Commission publishes a legislative proposal or implementing act that postpones or simplifies obligations in the next CBAM phase before the end date.
+    history: {days: 150, start: 0.42, end: 0.57, moves: [{days_ago: 4, delta: 0.07}], volume: 46000, liquidity: 7400}
+stories:
+  - id: story:cbam-charges-hit-steel-imports
+    headline: EU carbon border charges start biting on steel and aluminium imports
+    so_what: Importers now pay for embedded emissions, so high-carbon steel loses its price edge in Europe.
+    event_type: policy
+    impact: risk
+    direction: up
+    magnitude: 4
+    horizon: months
+    confidence: 0.9
+    sectors: [manufacturing, logistics-trade]
+    at: region:be-bru.brussels
+    mentions: [policy:eu-cbam, org:european-commission, region:eu, commodity:steel, commodity:aluminium, region:in, region:tr, region:ua]
+    age_hours: 700
+    sources: 39
+    actions: [Ask suppliers for verified emissions data, Price carbon costs into EU quotes]
+  - id: story:odisha-aluminium-faces-carbon-bills
+    headline: Odisha aluminium exporters face steep EU carbon bills
+    so_what: Smelters running on coal power carry high embedded emissions, making European sales far less profitable.
+    event_type: business-sentiment
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: months
+    confidence: 0.8
+    sectors: [manufacturing, energy]
+    at: region:in-or
+    mentions: [org:eu-cbam-steel-chilika-aluminium, commodity:aluminium, commodity:coal, policy:eu-cbam, infra:paradip-port]
+    age_hours: 560
+    sources: 11
+    actions: [Redirect aluminium sales to non-EU buyers, Measure plant emissions to EU standards]
+  - id: story:chhattisgarh-steel-loses-eu-orders
+    headline: Chhattisgarh steel exporters lose European orders over carbon costs
+    so_what: Mills using coal-based sponge iron face the highest charges, pushing them toward Asian and Gulf buyers.
+    event_type: trade-flow
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: months
+    confidence: 0.75
+    sectors: [manufacturing]
+    at: region:in-ct.bhilai
+    mentions: [region:in-ct, region:in, commodity:steel, commodity:coal, policy:eu-cbam]
+    age_hours: 420
+    sources: 8
+    actions: [Diversify steel exports beyond Europe]
+  - id: story:ukraine-steel-seeks-cbam-support
+    headline: Ukrainian steel exporters ask the EU for help with carbon reporting
+    so_what: Verification costs could squeeze Ukrainian mills, which rely heavily on European buyers.
+    event_type: business-sentiment
+    impact: risk
+    direction: down
+    magnitude: 2
+    horizon: months
+    confidence: 0.75
+    sectors: [manufacturing]
+    at: region:ua-12.dnipro
+    mentions: [region:ua, region:eu, commodity:steel, policy:eu-cbam]
+    age_hours: 330
+    sources: 7
+    actions: [Check Ukrainian suppliers' emissions reports]
+  - id: story:norrbotten-green-steel-contracts
+    headline: Norrbotten green steel plant signs supply deals with European carmakers
+    so_what: Buyers pay a premium for low-carbon steel as carbon costs rise for conventional mills.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.75
+    sectors: [manufacturing, energy]
+    at: region:se-bd
+    mentions: [org:eu-cbam-steel-lulefors-green-steel, region:se, region:eu, commodity:steel]
+    age_hours: 270
+    sources: 12
+    actions: [Ask for low-carbon steel quotes]
+  - id: story:jamshedpur-mill-low-carbon-line
+    headline: Jamshedpur mill plans a lower-carbon steel line for EU buyers
+    so_what: Scrap and gas-based routes could cut charges, creating work for equipment suppliers and scrap traders.
+    event_type: investment
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.7
+    sectors: [manufacturing, energy]
+    at: region:in-jh.jamshedpur
+    mentions: [org:eu-cbam-steel-kharkai-steel, region:in, commodity:steel, policy:eu-cbam]
+    age_hours: 240
+    sources: 8
+    actions: [Offer scrap supply to Indian mills]
+  - id: story:izmir-mill-markets-low-carbon-rebar
+    headline: Izmir steelmaker markets lower-carbon rebar to EU buyers
+    so_what: Scrap-based electric furnaces carry lower charges, giving Turkish mills an edge over coal-based rivals.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.75
+    sectors: [manufacturing, real-estate]
+    at: region:tr-35.izmir
+    mentions: [org:eu-cbam-steel-denizkent-steel, region:tr, region:eu, commodity:steel]
+    age_hours: 120
+    sources: 6
+    actions: [Compare Turkish rebar on carbon-inclusive cost]
+  - id: story:asturias-green-steel-funding
+    headline: Asturias green steel project secures funding for a hydrogen plant
+    so_what: Spain adds low-carbon iron capacity, opening work for electrolyser, construction and renewable power suppliers.
+    event_type: investment
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.75
+    sectors: [manufacturing, energy]
+    at: region:es-o
+    mentions: [org:eu-cbam-steel-ria-azul-steel, region:es, region:eu, commodity:steel]
+    age_hours: 34
+    sources: 9
+    actions: [Bid for green steel construction packages]
+  - id: story:exporters-gain-time-to-adapt
+    kind: projected
+    headline: Exporters in India and Turkey could gain time to adapt
+    so_what: A delay or simpler rules would cut reporting costs while mills finish lower-carbon upgrades.
+    event_type: projected-impact
+    impact: opportunity
+    direction: down
+    magnitude: 3
+    horizon: months
+    confidence: 0.45
+    sectors: [manufacturing]
+    at: region:in-or
+    mentions: [region:in, region:tr, region:ua, policy:eu-cbam]
+    actions: [Keep emissions data work on schedule]
+  - id: story:low-carbon-mills-win-eu-share
+    kind: projected
+    headline: Low-carbon mills in Sweden and Spain could win more EU orders
+    so_what: Full charges would widen the cost gap with coal-based imports, filling green steel order books.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.45
+    sectors: [manufacturing, energy]
+    at: region:es-o
+    mentions: [region:se-bd, region:eu, commodity:steel]
+links:
+  - {from: story:cbam-charges-hit-steel-imports, to: story:odisha-aluminium-faces-carbon-bills, type: reported, mechanism: adds carbon charges, direction: up, confidence: 0.85, lag_days: 6, evidence: "Sample evidence: the smelter said European buyers now deduct expected carbon charges from the prices they offer."}
+  - {from: story:cbam-charges-hit-steel-imports, to: story:chhattisgarh-steel-loses-eu-orders, type: reported, mechanism: raises import costs, direction: down, confidence: 0.8, lag_days: 11, evidence: "Sample evidence: exporters said European buyers cited carbon charges when cancelling repeat orders."}
+  - {from: story:cbam-charges-hit-steel-imports, to: story:ukraine-steel-seeks-cbam-support, type: reported, mechanism: adds reporting burden, direction: up, confidence: 0.8, lag_days: 15, evidence: "Sample evidence: the industry group said verifying plant emissions to EU standards was costly for its member mills."}
+  - {from: story:cbam-charges-hit-steel-imports, to: story:norrbotten-green-steel-contracts, type: inferred, mechanism: rewards low-carbon steel, direction: up, confidence: 0.6, lag_days: 18}
+  - {from: story:chhattisgarh-steel-loses-eu-orders, to: story:jamshedpur-mill-low-carbon-line, type: inferred, mechanism: pushes cleaner production, direction: up, confidence: 0.5, lag_days: 7}
+  - {from: story:cbam-charges-hit-steel-imports, to: story:izmir-mill-markets-low-carbon-rebar, type: inferred, mechanism: favours scrap-based mills, direction: up, confidence: 0.55, lag_days: 24, evidence: "Sample evidence: electric furnaces running on scrap emit far less per tonne than coal-based blast furnaces, so they pay lower charges."}
+  - {from: story:norrbotten-green-steel-contracts, to: story:asturias-green-steel-funding, type: inferred, mechanism: draws green investment, direction: up, confidence: 0.45, lag_days: 10}
+  - {from: story:cbam-charges-hit-steel-imports, to: story:indian-exporters-margin-squeeze, type: inferred, mechanism: adds carbon costs, direction: down, confidence: 0.45, lag_days: 28, evidence: "Sample evidence: steel fasteners and other engineering goods fall under the carbon border charge, adding to higher freight costs."}
+  - {from: story:cbam-charges-hit-steel-imports, to: story:exporters-gain-time-to-adapt, type: conditional, forecast: forecast:eu-cbam-next-phase-eased, outcome: "YES", mechanism: eases compliance costs, direction: down, confidence: 0.5, lag_days: 60, evidence: "Sample evidence: a delay or simpler reporting would lower costs for exporters still building emissions data systems."}
+  - {from: story:cbam-charges-hit-steel-imports, to: story:low-carbon-mills-win-eu-share, type: conditional, forecast: forecast:eu-cbam-next-phase-eased, outcome: "NO", mechanism: widens carbon cost gap, direction: up, confidence: 0.5, lag_days: 60, evidence: "Sample evidence: keeping the schedule would raise costs for coal-based imports relative to low-carbon European steel."}
+  - {from: story:asturias-green-steel-funding, to: story:low-carbon-mills-win-eu-share, type: projected, mechanism: adds green capacity, direction: up, confidence: 0.45, lag_days: 180}

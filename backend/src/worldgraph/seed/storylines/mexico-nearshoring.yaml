@@ -1,0 +1,144 @@
+id: mexico-nearshoring
+title: Nearshoring into northern Mexico
+entities:
+  - {id: org:mexico-nearshoring-huajuco-industrial-parks, type: organization, subtype: company, name: Huajuco Industrial Parks, located_in: region:mx-nle.monterrey, sectors: [real-estate], summary: "Invented Monterrey industrial park developer used in sample stories.", sample: true}
+  - {id: org:mexico-nearshoring-cardoncillo-freight, type: organization, subtype: company, name: Cardoncillo Freight, located_in: region:mx-nle.monterrey, sectors: [logistics-trade], summary: "Invented cross-border trucking and warehousing firm serving Texas, used in sample stories.", sample: true}
+  - {id: org:mexico-nearshoring-silverkite-appliances, type: organization, subtype: company, name: Silverkite Appliances, located_in: region:cn-zj, sectors: [manufacturing, consumer], summary: "Invented Chinese home-appliance maker used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:nuevo-leon-transmission-approved
+    short_title: Nuevo León grid upgrade approved within six months?
+    question: Will Mexico's federal energy authorities approve a new high-voltage transmission project for Nuevo León's industrial corridor within six months?
+    category: energy
+    location: region:mx-nle
+    about: [region:mx-nle, commodity:electricity, sector:real-estate, sector:manufacturing]
+    end_in_days: 180
+    resolution_rule: Resolves YES if the national energy ministry or grid operator publishes approval of a new high-voltage line or substation serving Nuevo León's industrial parks before the end date.
+    history: {days: 45, start: 0.41, end: 0.35, volume: 3100, liquidity: 640}
+stories:
+  - id: story:monterrey-saltillo-record-leasing
+    headline: Monterrey and Saltillo parks lease record space to manufacturers
+    so_what: Builders, equipment dealers and staffing firms gain as tenants fill buildings faster than developers can add them.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.85
+    sectors: [real-estate, manufacturing]
+    at: region:mx-nle.monterrey
+    mentions: [org:mexico-nearshoring-huajuco-industrial-parks, region:mx-coa, region:mx, region:us, region:cn, region:kr, region:de]
+    age_hours: 690
+    sources: 14
+    actions: [Secure industrial space before rents rise, Offer fit-out services to new tenants]
+  - id: story:nuevo-leon-grid-limits-hookups
+    headline: Nuevo León grid limits delay power hookups for new plants
+    so_what: New tenants may wait months for full power, pushing some toward on-site generation or other states.
+    event_type: disruption
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.8
+    sectors: [energy, real-estate, manufacturing]
+    at: region:mx-nle
+    mentions: [commodity:electricity, region:mx-nle.monterrey, org:mexico-nearshoring-huajuco-industrial-parks]
+    age_hours: 400
+    sources: 12
+    actions: [Confirm power capacity before signing leases, Budget for on-site backup generation]
+  - id: story:monterrey-water-allocations-tighten
+    headline: Monterrey industries face tighter water allocations in a dry spell
+    so_what: Water-heavy plants may need recycling systems before expansions are approved, adding cost and time.
+    event_type: disruption
+    impact: risk
+    direction: down
+    magnitude: 2
+    horizon: months
+    confidence: 0.75
+    sectors: [manufacturing, real-estate]
+    at: region:mx-nle.monterrey
+    mentions: [region:mx-nle, region:mx]
+    age_hours: 230
+    sources: 9
+    actions: [Audit plant water use and recycling options]
+  - id: story:appliance-maker-opens-monterrey-plant
+    headline: Chinese appliance maker opens a Monterrey plant for US buyers
+    so_what: IMMEX lets the plant import parts duty-free for export, creating orders for local packaging and logistics firms.
+    event_type: investment
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.8
+    sectors: [manufacturing, consumer]
+    at: region:mx-nle.monterrey
+    mentions: [org:mexico-nearshoring-silverkite-appliances, policy:mexico-immex, region:cn, region:us]
+    age_hours: 110
+    sources: 10
+    actions: [Register as a supplier to new plants]
+  - id: story:texas-border-truck-crossings-high
+    headline: Truck crossings from Nuevo León into Texas hit new highs
+    so_what: Truckers, customs brokers and Texas warehouses gain steady volume as Mexican factory exports grow.
+    event_type: trade-flow
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.85
+    sectors: [logistics-trade]
+    at: region:us-tx
+    mentions: [org:mexico-nearshoring-cardoncillo-freight, region:mx-nle, region:us-tx.san-antonio, region:us-tx.dallas]
+    age_hours: 85
+    sources: 13
+    actions: [Book cross-border trucking capacity early, Add bonded warehouse space in Texas]
+  - id: story:monterrey-parks-order-private-substations
+    headline: Monterrey park developers order private substations to skip grid queues
+    so_what: Electrical contractors and transformer makers gain orders, while tenants pay more for faster power.
+    event_type: investment
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.75
+    sectors: [energy, real-estate]
+    at: region:mx-nle.monterrey
+    mentions: [org:mexico-nearshoring-huajuco-industrial-parks, commodity:electricity]
+    age_hours: 26
+    sources: 7
+    actions: [Bid for substation and wiring contracts]
+  - id: story:nuevo-leon-plants-get-full-power
+    kind: projected
+    headline: New Nuevo León plants could get full power sooner
+    so_what: An approved line would shorten hookup waits, letting delayed tenants start production and hiring.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.45
+    sectors: [energy, manufacturing]
+    at: region:mx-nle
+    mentions: [commodity:electricity, region:mx-nle.monterrey]
+    actions: [Plan hiring around power hookup dates]
+  - id: story:nuevo-leon-power-waits-stretch
+    kind: projected
+    headline: Power waits in Nuevo León could stretch for many more months
+    so_what: Without new lines, some investors would pick Coahuila or Guanajuato sites with faster hookups.
+    event_type: projected-impact
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.45
+    sectors: [energy, real-estate]
+    at: region:mx-nle
+    mentions: [region:mx-coa, region:mx-gua, commodity:electricity]
+links:
+  - {from: story:monterrey-saltillo-record-leasing, to: story:nuevo-leon-grid-limits-hookups, type: inferred, mechanism: outpaces grid capacity, direction: up, confidence: 0.6, lag_days: 12, evidence: "Sample evidence: new plants have arrived faster than substations and lines serving the industrial corridor have been upgraded."}
+  - {from: story:monterrey-saltillo-record-leasing, to: story:monterrey-water-allocations-tighten, type: inferred, mechanism: raises water demand, direction: down, confidence: 0.45, lag_days: 19}
+  - {from: story:nuevo-leon-grid-limits-hookups, to: story:monterrey-parks-order-private-substations, type: reported, mechanism: prompts on-site power, direction: up, confidence: 0.8, lag_days: 15, evidence: "Sample evidence: the developer said it ordered its own substations because grid connections for new tenants were running months late."}
+  - {from: story:monterrey-parks-order-private-substations, to: story:transformer-lead-times-stretch, type: inferred, mechanism: adds transformer orders, direction: up, confidence: 0.45, lag_days: 0, evidence: "Sample evidence: private substations need large power transformers, adding to order books already stretched by data centres."}
+  - {from: story:appliance-maker-opens-monterrey-plant, to: story:texas-border-truck-crossings-high, type: inferred, mechanism: adds export loads, direction: up, confidence: 0.45, lag_days: 1}
+  - {from: story:monterrey-parts-makers-certify-content, to: story:texas-border-truck-crossings-high, type: inferred, mechanism: lifts northbound shipments, direction: up, confidence: 0.4, lag_days: 4}
+  - {from: story:nuevo-leon-grid-limits-hookups, to: story:nuevo-leon-plants-get-full-power, type: conditional, forecast: forecast:nuevo-leon-transmission-approved, outcome: "YES", mechanism: adds grid capacity, direction: up, confidence: 0.5, lag_days: 120, evidence: "Sample evidence: a new high-voltage line would free capacity at substations that now ration new hookups."}
+  - {from: story:nuevo-leon-grid-limits-hookups, to: story:nuevo-leon-power-waits-stretch, type: conditional, forecast: forecast:nuevo-leon-transmission-approved, outcome: "NO", mechanism: keeps hookups queued, direction: up, confidence: 0.5, lag_days: 120, evidence: "Sample evidence: without new lines, each new tenant would join a queue for limited substation capacity."}
+  - {from: story:monterrey-parks-order-private-substations, to: story:nuevo-leon-plants-get-full-power, type: projected, mechanism: speeds partial hookups, direction: up, confidence: 0.4, lag_days: 60}

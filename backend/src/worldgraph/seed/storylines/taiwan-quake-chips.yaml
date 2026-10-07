@@ -1,0 +1,180 @@
+id: taiwan-quake-chips
+title: Taiwan earthquake and the chip supply chain
+entities:
+  - {id: org:taiwan-quake-chips-jadepeak-semiconductor, type: organization, subtype: company, name: Jadepeak Semiconductor, located_in: region:tw-hsz, depends_on: [infra:hsinchu-science-park], sectors: [tech], summary: "Invented Taiwanese contract chipmaker in Hsinchu used in sample stories.", sample: true}
+  - {id: org:taiwan-quake-chips-ferngrove-memory, type: organization, subtype: company, name: Ferngrove Memory, located_in: region:tw-tao, sectors: [tech], summary: "Invented Taiwanese memory chip maker used in sample stories.", sample: true}
+  - {id: org:taiwan-quake-chips-brandtal-automobil, type: organization, subtype: company, name: Brandtal Automobil, located_in: region:de-ni, sectors: [manufacturing, consumer], summary: "Invented German carmaker used in sample stories.", sample: true}
+  - {id: org:taiwan-quake-chips-kirigaya-motors, type: organization, subtype: company, name: Kirigaya Motors, located_in: region:jp-23, sectors: [manufacturing, consumer], summary: "Invented Japanese carmaker with a plant in Guanajuato, used in sample stories.", sample: true}
+  - {id: org:taiwan-quake-chips-asoyama-silicon-works, type: organization, subtype: company, name: Asoyama Silicon Works, located_in: region:jp-43, sectors: [tech], summary: "Invented Kumamoto contract chipmaker used in sample stories.", sample: true}
+  - {id: org:taiwan-quake-chips-sonoran-wafer-works, type: organization, subtype: company, name: Sonoran Wafer Works, located_in: region:us-az.phoenix, sectors: [tech], summary: "Invented Arizona contract chipmaker used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:hsinchu-fabs-full-output
+    short_title: Hsinchu chip fabs back to full output within four weeks?
+    question: Will chip fabs in the Hsinchu Science Park report a return to full pre-earthquake output within four weeks?
+    category: tech
+    location: infra:hsinchu-science-park
+    about: [region:tw, infra:hsinchu-science-park, commodity:semiconductors, sector:tech]
+    end_in_days: 28
+    resolution_rule: Resolves YES if the science park administration or the operators of its main fabs report that wafer output is back at pre-earthquake levels before the end date.
+    history: {days: 9, start: 0.68, end: 0.44, moves: [{days_ago: 3, delta: -0.08}], volume: 72000, liquidity: 11000}
+stories:
+  - id: story:hsinchu-earthquake-strikes
+    headline: Strong earthquake strikes near Hsinchu, shaking Taiwan's chip cluster
+    so_what: Hsinchu makes a large share of the world's advanced chips, so even short stoppages ripple through electronics and cars.
+    event_type: hazard
+    impact: risk
+    direction: up
+    magnitude: 4
+    horizon: now
+    confidence: 0.95
+    sectors: [tech, manufacturing]
+    at: region:tw-hsq
+    mentions: [region:tw, region:tw-hsz, infra:hsinchu-science-park, commodity:semiconductors]
+    age_hours: 236
+    sources: 52
+    actions: [Ask chip suppliers for damage reports, Check safety stock of critical chips]
+  - id: story:hsinchu-fabs-safety-inspections
+    headline: Hsinchu Science Park fabs halt lines for safety inspections
+    so_what: Each day offline removes scarce wafer output, and restarts depend on checking every sensitive tool.
+    event_type: disruption
+    impact: risk
+    direction: down
+    magnitude: 4
+    horizon: now
+    confidence: 0.9
+    sectors: [tech]
+    at: infra:hsinchu-science-park
+    mentions: [region:tw-hsz, commodity:semiconductors, org:taiwan-quake-chips-ferngrove-memory]
+    age_hours: 234
+    sources: 37
+    actions: [Request restart timelines from foundry partners]
+  - id: story:jadepeak-pauses-advanced-output
+    headline: Jadepeak pauses advanced-chip output while it recalibrates tools
+    so_what: Customers of leading-edge processors and AI chips face shipment gaps of several weeks while wafers are rerun.
+    event_type: company-update
+    impact: risk
+    direction: down
+    magnitude: 4
+    horizon: weeks
+    confidence: 0.85
+    sectors: [tech]
+    at: region:tw-hsz
+    mentions: [org:taiwan-quake-chips-jadepeak-semiconductor, infra:hsinchu-science-park, commodity:semiconductors]
+    age_hours: 210
+    sources: 29
+    actions: [Prioritise chips for highest-margin products, Ask customers to accept staged deliveries]
+  - id: story:memory-chip-prices-jump
+    headline: Memory chip spot prices jump as buyers rush to secure stock
+    so_what: Memory lines near Hsinchu also paused, so PC, phone and server makers face higher component bills.
+    event_type: price-move
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: now
+    confidence: 0.85
+    sectors: [tech, consumer]
+    at: region:tw-tao
+    mentions: [org:taiwan-quake-chips-ferngrove-memory, commodity:semiconductors, commodity:smartphones, region:kr]
+    age_hours: 180
+    sources: 21
+    actions: [Lock memory prices for the next build, Recheck costs of memory-heavy products]
+  - id: story:kumamoto-foundry-adds-shifts
+    headline: Kumamoto foundry adds shifts to take rerouted chip orders
+    so_what: Japanese fabs win customers seeking a second source outside Taiwan, lifting demand for local suppliers.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.75
+    sectors: [tech, manufacturing]
+    at: region:jp-43
+    mentions: [org:taiwan-quake-chips-asoyama-silicon-works, region:jp, commodity:semiconductors]
+    age_hours: 120
+    sources: 11
+    actions: [Qualify a second foundry outside Taiwan, Offer services to Kumamoto chip plants]
+  - id: story:phoenix-foundry-second-source-deals
+    headline: Phoenix foundry signs second-source deals with industrial chip buyers
+    so_what: US-made chips cost more but cut exposure to one region, a trade-off more buyers now accept.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.7
+    sectors: [tech, manufacturing]
+    at: region:us-az.phoenix
+    mentions: [org:taiwan-quake-chips-sonoran-wafer-works, region:us, policy:us-chips-act, commodity:semiconductors]
+    age_hours: 75
+    sources: 9
+    actions: [Price a US second source for key chips]
+  - id: story:lower-saxony-carmaker-cuts-shifts
+    headline: Lower Saxony carmaker cuts shifts as chip deliveries slip
+    so_what: Missing microcontrollers leave cars unfinished, and lower output hits seat, wiring and trim suppliers.
+    event_type: supply-chain
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.8
+    sectors: [manufacturing]
+    at: region:de-ni
+    mentions: [org:taiwan-quake-chips-brandtal-automobil, region:de, region:eu, commodity:semiconductors]
+    age_hours: 60
+    sources: 14
+    actions: [Confirm call-off schedules with carmaker customers, Plan cash flow for lower call-offs]
+  - id: story:guanajuato-line-idles-on-chips
+    headline: Japanese carmaker idles a Guanajuato line as chips run short
+    so_what: Lost output at the plant pauses orders for local parts suppliers and slows US-bound car shipments.
+    event_type: disruption
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: now
+    confidence: 0.75
+    sectors: [manufacturing, logistics-trade]
+    at: region:mx-gua
+    mentions: [org:taiwan-quake-chips-kirigaya-motors, region:jp-23, region:mx, region:us, commodity:semiconductors]
+    age_hours: 0.7
+    sources: 6
+    actions: [Check Guanajuato order schedules daily, Shift idle capacity to other customers]
+  - id: story:chip-lead-times-normalise
+    kind: projected
+    headline: Chip lead times could normalise as Hsinchu output recovers
+    so_what: Restored output would ease allocation limits and let carmakers and electronics firms rebuild normal stock.
+    event_type: projected-impact
+    impact: opportunity
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.5
+    sectors: [tech, manufacturing]
+    at: region:tw-hsz
+    mentions: [commodity:semiconductors, region:de, region:jp, region:mx]
+    actions: [Avoid double-ordering chips at peak prices]
+  - id: story:car-plant-stoppages-extend
+    kind: projected
+    headline: Car plants in Germany, Japan and Mexico could extend stoppages
+    so_what: A slow fab recovery would keep chip allocations tight, cutting vehicle output for several more weeks.
+    event_type: projected-impact
+    impact: risk
+    direction: down
+    magnitude: 4
+    horizon: weeks
+    confidence: 0.5
+    sectors: [manufacturing]
+    at: region:jp-23
+    mentions: [region:jp, region:de-ni, region:mx-gua, commodity:semiconductors]
+    actions: [Build buffer stock of scarce chips]
+links:
+  - {from: story:hsinchu-earthquake-strikes, to: story:hsinchu-fabs-safety-inspections, type: reported, mechanism: halts fab operations, direction: down, confidence: 0.95, lag_days: 0, evidence: "Sample evidence: park operators said fabs stopped production lines and moved staff out while tools were checked."}
+  - {from: story:hsinchu-fabs-safety-inspections, to: story:jadepeak-pauses-advanced-output, type: reported, mechanism: forces tool recalibration, direction: down, confidence: 0.85, lag_days: 1, evidence: "Sample evidence: the foundry said lithography tools needed recalibrating after the shaking before advanced lines could restart."}
+  - {from: story:hsinchu-fabs-safety-inspections, to: story:memory-chip-prices-jump, type: reported, mechanism: triggers precautionary buying, direction: up, confidence: 0.8, lag_days: 2, evidence: "Sample evidence: memory traders said buyers placed extra orders as soon as the fab stoppages were announced."}
+  - {from: story:hsinchu-fabs-safety-inspections, to: story:lower-saxony-carmaker-cuts-shifts, type: reported, mechanism: delays chip deliveries, direction: down, confidence: 0.8, lag_days: 7, evidence: "Sample evidence: the carmaker said microcontroller shipments from Taiwanese foundries had slipped by several weeks."}
+  - {from: story:hsinchu-fabs-safety-inspections, to: story:guanajuato-line-idles-on-chips, type: inferred, mechanism: cuts chip allocations, direction: down, confidence: 0.6, lag_days: 10, evidence: "Sample evidence: carmakers often ration scarce chips to their home plants first, leaving overseas lines short."}
+  - {from: story:jadepeak-pauses-advanced-output, to: story:kumamoto-foundry-adds-shifts, type: inferred, mechanism: diverts chip orders, direction: up, confidence: 0.55, lag_days: 4}
+  - {from: story:jadepeak-pauses-advanced-output, to: story:phoenix-foundry-second-source-deals, type: inferred, mechanism: spurs second sourcing, direction: up, confidence: 0.5, lag_days: 6}
+  - {from: story:hsinchu-fabs-safety-inspections, to: story:chip-lead-times-normalise, type: conditional, forecast: forecast:hsinchu-fabs-full-output, outcome: "YES", mechanism: restores chip supply, direction: down, confidence: 0.55, lag_days: 21, evidence: "Sample evidence: full output would let foundries clear rerun wafers and lift allocation limits on customers."}
+  - {from: story:hsinchu-fabs-safety-inspections, to: story:car-plant-stoppages-extend, type: conditional, forecast: forecast:hsinchu-fabs-full-output, outcome: "NO", mechanism: prolongs chip shortages, direction: down, confidence: 0.55, lag_days: 21, evidence: "Sample evidence: a slow restart would keep microcontrollers scarce, and car plants have little stock to fall back on."}
+  - {from: story:lower-saxony-carmaker-cuts-shifts, to: story:car-plant-stoppages-extend, type: projected, mechanism: deepens output losses, direction: down, confidence: 0.4, lag_days: 30}
+  - {from: story:kumamoto-foundry-adds-shifts, to: story:chip-lead-times-normalise, type: projected, mechanism: adds alternative capacity, direction: down, confidence: 0.4, lag_days: 45}
