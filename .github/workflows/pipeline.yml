@@ -1,0 +1,71 @@
+name: Live data
+
+# Every 15 minutes: news, hazards and crowd forecasts into the database.
+# Needs the repository secret DATABASE_URL (Supabase "Session pooler" URI).
+# ANTHROPIC_API_KEY is optional and only for the deployed website: without it
+# the job skips AI analysis (the test link analyses stories on the owner's own
+# Claude account instead).
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-data
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      WG_ENV: production
+      FASTEMBED_CACHE_PATH: ${{ github.workspace }}/.fastembed
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Check configuration
+        id: config
+        working-directory: .
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::notice::Add the DATABASE_URL repository secret to turn on live data. Skipping."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v5
+        if: steps.config.outputs.ready == 'true'
+
+      - uses: astral-sh/setup-uv@v6
+        if: steps.config.outputs.ready == 'true'
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Embedding model cache
+        if: steps.config.outputs.ready == 'true'
+        uses: actions/cache@v4
+        with:
+          path: .fastembed
+          key: fastembed-paraphrase-multilingual-mpnet-base-v2-v1
+
+      - name: Install
+        if: steps.config.outputs.ready == 'true'
+        run: uv sync --locked --no-dev --group pipeline
+
+      - name: Database migrations
+        if: steps.config.outputs.ready == 'true'
+        run: uv run wg db migrate
+
+      - name: Pipeline
+        if: steps.config.outputs.ready == 'true'
+        run: uv run wg pipeline run

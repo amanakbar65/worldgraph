@@ -180,9 +180,18 @@ class Places:
             if r["subtype"] == "state":
                 self.states_by_country.setdefault(r["parent"], []).append(r)
         self._points = [r for r in gazetteer if r["subtype"] in ("state", "city")]
+        self._cities_by_country: dict[str, list[dict[str, Any]]] = {}
+        for r in gazetteer:
+            if r["subtype"] == "city":
+                self._cities_by_country.setdefault(self.country_of_row(r), []).append(r)
         self._matcher, self._names = self._build_matcher(gazetteer)
 
     # -- lookups -----------------------------------------------------------
+
+    def country_of_row(self, row: dict[str, Any]) -> str:
+        while row["subtype"] != "country":
+            row = self.rows[row["parent"]]
+        return row["id"]
 
     def country_of(self, region_id: str) -> str | None:
         row = self.rows.get(region_id)
@@ -211,6 +220,17 @@ class Places:
         )
 
     def nearest_state(self, country_id: str, lon: float, lat: float, max_km: float = 800) -> str | None:
+        """The state a point is in, approximately: a big city within 60 km decides,
+        else the nearest state centre (centres can mislead near borders)."""
+        city, city_km = None, 60.0
+        for row in self._cities_by_country.get(country_id, []):
+            km = _km(lon, lat, row["lon"], row["lat"])
+            if km < city_km:
+                city, city_km = row, km
+        if city is not None:
+            state = self.admin1_of(city["id"])
+            if state:
+                return state
         best, best_km = None, max_km
         for row in self.states_by_country.get(country_id, []):
             km = _km(lon, lat, row["lon"], row["lat"])

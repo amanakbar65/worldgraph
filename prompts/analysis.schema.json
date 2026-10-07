@@ -1,0 +1,88 @@
+{
+  "$comment": "Output of prompts/analysis.md. Word limits and ranges are checked after the call (Python, TypeScript and SQL); this schema keeps to the subset structured outputs accept.",
+  "type": "object",
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "headline": { "type": "string" },
+          "so_what": { "type": "string" },
+          "event_type": { "type": "string" },
+          "impact": { "type": "string", "enum": ["risk", "opportunity", "neutral"] },
+          "direction": { "type": "string", "enum": ["up", "down"] },
+          "magnitude": { "type": "integer" },
+          "horizon": { "type": "string", "enum": ["now", "weeks", "months"] },
+          "confidence": { "type": "number" },
+          "sectors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "energy",
+                "agri-food",
+                "manufacturing",
+                "logistics-trade",
+                "finance",
+                "tech",
+                "health",
+                "real-estate",
+                "consumer"
+              ]
+            }
+          },
+          "actions": { "type": "array", "items": { "type": "string" } },
+          "entities": { "type": "array", "items": { "type": "string" } },
+          "links": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "from": { "type": "string" },
+                "link_type": { "type": "string", "enum": ["reported", "inferred"] },
+                "mechanism": { "type": "string" },
+                "direction": { "type": "string", "enum": ["up", "down"] },
+                "confidence": { "type": "number" },
+                "evidence": { "type": "string" }
+              },
+              "required": ["from", "link_type", "mechanism", "direction", "confidence", "evidence"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "headline",
+          "so_what",
+          "event_type",
+          "impact",
+          "direction",
+          "magnitude",
+          "horizon",
+          "confidence",
+          "sectors",
+          "actions",
+          "entities",
+          "links"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "skipped": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "reason": { "type": "string" }
+        },
+        "required": ["id", "reason"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["items", "skipped"],
+  "additionalProperties": false
+}

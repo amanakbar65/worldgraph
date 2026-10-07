@@ -120,7 +120,7 @@ Also: Ctrl/Cmd+K search, a keyboard-friendly list view of everything on the glob
 - **Cascades:** for a new story, candidate stories from the last 30 days that share entities, regions or sectors are proposed. The model judges plausibility and wording; links are stored with type, mechanism, confidence and evidence.
 - **Ask:** retrieval from stored stories, forecasts and the graph, then an answer of 3 bullets plus a mini cascade with citations. It says "Not enough evidence" when that's true.
 - **Test link:** analysis runs when the app opens, on the newest important stories (in batches, with a visible "Analysing 12 new stories…" status), and results are saved.
-- **Website:** a pipeline job does the same with Haiku 4.5 (analysis) and Sonnet 5.5 (cascades and Ask). Spend is logged per call and stops at the daily cap.
+- **Website:** a pipeline job does the same with the Claude API (Claude Opus 5.5 at low effort; the model is a setting, `WG_AI_MODEL`). Every call is logged with its cost; analysis stops at 75% of the daily cap (US$2), leaving the rest for Ask. Stories the AI judges not to be business news are marked "skipped" and hidden.
 
 ## Data sources
 

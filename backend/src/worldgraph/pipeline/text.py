@@ -36,7 +36,7 @@ def clean_title(title: str | None, source_name: str | None = None) -> str:
 
 def first_sentence(text: str | None, limit: int = 300) -> str | None:
     """At most one sentence and `limit` characters (we never keep more)."""
-    body = re.sub(r"https?://\S+", " ", clean(text)).strip()
+    body = _SPACE.sub(" ", re.sub(r"https?://\S+", " ", clean(text))).strip()
     if not body:
         return None
     sentence = _SENTENCE_END.split(body, maxsplit=1)[0]

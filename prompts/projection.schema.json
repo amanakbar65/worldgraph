@@ -1,0 +1,53 @@
+{
+  "$comment": "Output of prompts/projection.md. Limits are checked after the call.",
+  "type": "object",
+  "properties": {
+    "effects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "headline": { "type": "string" },
+          "so_what": { "type": "string" },
+          "impact": { "type": "string", "enum": ["risk", "opportunity", "neutral"] },
+          "direction": { "type": "string", "enum": ["up", "down"] },
+          "sectors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "energy",
+                "agri-food",
+                "manufacturing",
+                "logistics-trade",
+                "finance",
+                "tech",
+                "health",
+                "real-estate",
+                "consumer"
+              ]
+            }
+          },
+          "region_id": { "type": ["string", "null"] },
+          "mechanism": { "type": "string" },
+          "lag_days": { "type": "integer" },
+          "confidence": { "type": "number" }
+        },
+        "required": [
+          "headline",
+          "so_what",
+          "impact",
+          "direction",
+          "sectors",
+          "region_id",
+          "mechanism",
+          "lag_days",
+          "confidence"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["effects"],
+  "additionalProperties": false
+}

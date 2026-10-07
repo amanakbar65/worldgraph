@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     # Website AI (Claude API). Unset: the pipeline skips AI analysis.
     anthropic_api_key: str | None = None
     wg_ai_daily_budget_usd: float = 2.0
+    wg_ai_model: str = "claude-opus-5-5"
 
     @field_validator("database_url", "wg_dev_viewer_country", "anthropic_api_key", mode="before")
     @classmethod

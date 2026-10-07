@@ -1,0 +1,36 @@
+{
+  "$comment": "Output of prompts/ask.md. Limits (3 bullets, 30 words, 4 steps…) are checked after the call.",
+  "type": "object",
+  "properties": {
+    "status": { "type": "string", "enum": ["answered", "not_enough_evidence"] },
+    "bullets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string" },
+          "cite": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["text", "cite"],
+        "additionalProperties": false
+      }
+    },
+    "cascade": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "mechanism": { "type": "string" }
+        },
+        "required": ["from", "to", "mechanism"],
+        "additionalProperties": false
+      }
+    },
+    "forecasts": { "type": "array", "items": { "type": "string" } },
+    "follow_up": { "type": "array", "items": { "type": "string" } }
+  },
+  "required": ["status", "bullets", "cascade", "forecasts", "follow_up"],
+  "additionalProperties": false
+}
