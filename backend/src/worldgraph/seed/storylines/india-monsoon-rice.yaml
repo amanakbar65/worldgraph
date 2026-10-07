@@ -1,0 +1,168 @@
+id: india-monsoon-rice
+title: Weak monsoon, rice supply and India's rate path
+entities:
+  - {id: org:india-monsoon-rice-baobab-coast-traders, type: organization, subtype: company, name: Baobab Coast Rice Traders, located_in: region:sn-dk.dakar, sectors: [agri-food, logistics-trade], summary: "Invented Senegalese rice importer used in sample stories.", sample: true}
+  - {id: org:india-monsoon-rice-hau-river-exports, type: organization, subtype: company, name: Hau River Rice Exports, located_in: region:vn-73.can-tho, sectors: [agri-food, logistics-trade], summary: "Invented Vietnamese rice miller and exporter used in sample stories.", sample: true}
+  - {id: org:india-monsoon-rice-suphan-grain, type: organization, subtype: company, name: Suphan Grain Exports, located_in: region:th-72, sectors: [agri-food, logistics-trade], summary: "Invented Thai rice exporter used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:rbi-repo-cut-next-review
+    short_title: Will the RBI cut the repo rate at its next review?
+    question: Will the Reserve Bank of India lower its policy repo rate at its next scheduled monetary policy review?
+    category: finance
+    location: region:in-mh.mumbai
+    about: [region:in, org:rbi, sector:finance]
+    end_in_days: 34
+    resolution_rule: Resolves YES if the Reserve Bank of India announces a lower policy repo rate at the end of its next scheduled monetary policy meeting.
+    history: {days: 75, start: 0.52, end: 0.29, moves: [{days_ago: 0.7, delta: -0.13}], volume: 88000, liquidity: 13500}
+  - id: forecast:india-rice-export-curbs
+    short_title: Will India restrict non-basmati rice exports within three months?
+    question: Will India impose a ban, a minimum export price or a new duty on non-basmati rice exports within three months?
+    category: trade
+    location: region:in-dl.new-delhi
+    about: [region:in, commodity:rice, region:sn, region:ph]
+    end_in_days: 90
+    resolution_rule: Resolves YES if an official Indian government notification bans, sets a minimum export price for, or raises duties on non-basmati rice exports before the end date.
+    history: {days: 45, start: 0.18, end: 0.37, moves: [{days_ago: 2.4, delta: 0.09}], volume: 27000, liquidity: 4100}
+stories:
+  - id: story:monsoon-shortfall-delays-kharif
+    headline: Weak monsoon rains delay kharif sowing in Maharashtra, Karnataka and Andhra
+    so_what: Late, patchy rain points to smaller rice and pulse harvests and weaker rural demand.
+    event_type: extreme-weather
+    impact: risk
+    direction: down
+    magnitude: 4
+    horizon: months
+    confidence: 0.85
+    sectors: [agri-food, consumer]
+    at: region:in-mh
+    mentions: [region:in-ka, region:in-ap, region:in-mh.aurangabad, commodity:rice]
+    age_hours: 700
+    sources: 32
+    actions: [Track rainfall and reservoir data weekly, Review credit exposure to farm regions]
+  - id: story:nashik-drip-irrigation-orders
+    headline: Drip irrigation dealers in Nashik and Pune report a jump in orders
+    so_what: Farmers protecting orchards and cane from dry spells buy pipes, pumps and water storage.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.7
+    sectors: [agri-food, manufacturing]
+    at: region:in-mh.nasik
+    mentions: [region:in-mh.pune, region:in-mh, region:in-ka]
+    age_hours: 430
+    sources: 6
+    actions: [Stock pumps and drip kits before peak demand, Offer instalment plans to farmers]
+  - id: story:india-signals-rice-export-curbs
+    headline: India signals possible curbs on non-basmati rice exports
+    so_what: Importers in Africa and Asia rush to secure cargoes before any restriction takes effect.
+    event_type: policy-signal
+    impact: risk
+    direction: up
+    magnitude: 4
+    horizon: weeks
+    confidence: 0.75
+    sectors: [agri-food, logistics-trade]
+    at: region:in-dl.new-delhi
+    mentions: [region:in, region:in-ap, region:sn, region:ph, commodity:rice]
+    age_hours: 58
+    sources: 24
+    actions: [Ship contracted rice cargoes without delay, Add escalation clauses to new rice orders]
+  - id: story:mekong-exporters-win-manila-orders
+    headline: Mekong Delta rice exporters win more orders from Manila buyers
+    so_what: Vietnamese mills in Can Tho and An Giang run longer shifts as Philippine importers diversify.
+    event_type: trade-flow
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.7
+    sectors: [agri-food, logistics-trade]
+    at: region:vn-73.can-tho
+    mentions: [org:india-monsoon-rice-hau-river-exports, region:vn-44, region:ph-mnl.manila, region:ph, commodity:rice]
+    age_hours: 40
+    sources: 9
+    actions: [Lock in paddy supply from delta farmers, Offer Philippine buyers fixed-price contracts]
+  - id: story:dakar-rice-importers-stock-up
+    headline: Dakar rice importers build stocks ahead of possible Indian curbs
+    so_what: Front-loaded buying lifts broken-rice prices for Senegalese retailers and street-food sellers.
+    event_type: business-sentiment
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.7
+    sectors: [agri-food, consumer]
+    at: region:sn-dk.dakar
+    mentions: [org:india-monsoon-rice-baobab-coast-traders, region:sn, region:in, commodity:rice]
+    age_hours: 30
+    sources: 7
+    actions: [Lock in rice supply for coming months, Check warehouse space for extra stock]
+  - id: story:thai-exporters-raise-rice-offers
+    headline: Thai exporters raise rice offers as buyers look beyond India
+    so_what: Millers in Suphan Buri and Ayutthaya earn better margins as African and Asian demand shifts.
+    event_type: price-move
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.7
+    sectors: [agri-food, logistics-trade]
+    at: region:th-72
+    mentions: [org:india-monsoon-rice-suphan-grain, region:th-14, region:th-10.bangkok, region:sn, commodity:rice]
+    age_hours: 22
+    sources: 8
+    actions: [Quote forward rice cargoes to new buyers, Secure paddy before prices climb further]
+  - id: story:india-retail-inflation-rises
+    headline: India's retail inflation rises as vegetable and cereal prices climb
+    so_what: Faster food inflation lowers the odds of an early rate cut and squeezes household budgets.
+    event_type: economic-data
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.85
+    sectors: [finance, consumer, agri-food]
+    at: region:in-dl.new-delhi
+    mentions: [region:in, org:rbi, commodity:rice, commodity:wheat]
+    age_hours: 17
+    sources: 26
+    actions: [Review price lists for food products, Plan for loan rates staying higher]
+  - id: story:rbi-cut-eases-msme-credit
+    kind: projected
+    headline: A repo cut would ease loan costs for small Indian manufacturers
+    so_what: Cheaper working capital would help MSMEs in Pune and Bengaluru fund stock and hiring.
+    event_type: projected-impact
+    impact: opportunity
+    direction: down
+    magnitude: 3
+    horizon: months
+    confidence: 0.5
+    sectors: [finance, manufacturing]
+    at: region:in-mh.pune
+    mentions: [region:in-ka.bengaluru, region:in, org:rbi]
+  - id: story:rbi-hold-keeps-loans-costly
+    kind: projected
+    headline: A hold would keep borrowing costs high for Indian small businesses
+    so_what: Traders and small factories would keep paying steep rates while food prices squeeze demand.
+    event_type: projected-impact
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.5
+    sectors: [finance, consumer]
+    at: region:in-mh.mumbai
+    mentions: [region:in, region:in-ka, org:rbi]
+links:
+  - {from: story:monsoon-shortfall-delays-kharif, to: story:nashik-drip-irrigation-orders, type: reported, mechanism: drives irrigation demand, direction: up, confidence: 0.8, lag_days: 11, evidence: "Sample evidence: dealers said farmers were buying drip kits to protect crops through long dry spells."}
+  - {from: story:monsoon-shortfall-delays-kharif, to: story:india-signals-rice-export-curbs, type: inferred, mechanism: shrinks kharif rice output, direction: up, confidence: 0.6, lag_days: 27}
+  - {from: story:monsoon-shortfall-delays-kharif, to: story:india-retail-inflation-rises, type: inferred, mechanism: lifts food prices, direction: up, confidence: 0.55, lag_days: 28}
+  - {from: story:heatwave-north-india-pakistan, to: story:india-retail-inflation-rises, type: inferred, mechanism: damages vegetable crops, direction: up, confidence: 0.5, lag_days: 8, evidence: "Sample evidence: heat damage to vegetables in the north usually shows up in retail food prices within weeks."}
+  - {from: story:india-signals-rice-export-curbs, to: story:dakar-rice-importers-stock-up, type: reported, mechanism: prompts precautionary buying, direction: up, confidence: 0.8, lag_days: 1, evidence: "Sample evidence: Dakar traders said they were bringing forward purchases in case Indian supply is restricted."}
+  - {from: story:india-signals-rice-export-curbs, to: story:mekong-exporters-win-manila-orders, type: inferred, mechanism: redirects import demand, direction: up, confidence: 0.6, lag_days: 1}
+  - {from: story:india-signals-rice-export-curbs, to: story:thai-exporters-raise-rice-offers, type: inferred, mechanism: lifts competing export prices, direction: up, confidence: 0.6, lag_days: 2}
+  - {from: story:monsoon-shortfall-delays-kharif, to: story:rbi-hold-keeps-loans-costly, type: projected, mechanism: keeps inflation elevated, direction: up, confidence: 0.4, lag_days: 60}
+  - {from: story:india-retail-inflation-rises, to: story:rbi-cut-eases-msme-credit, type: conditional, forecast: forecast:rbi-repo-cut-next-review, outcome: "YES", mechanism: lowers borrowing costs, direction: down, confidence: 0.5, lag_days: 45, evidence: "Sample evidence: a repo cut would pass through to bank lending rates for small firms over the following months."}
+  - {from: story:india-retail-inflation-rises, to: story:rbi-hold-keeps-loans-costly, type: conditional, forecast: forecast:rbi-repo-cut-next-review, outcome: "NO", mechanism: keeps loan rates high, direction: up, confidence: 0.55, lag_days: 45, evidence: "Sample evidence: with food inflation rising, a hold would leave lending rates where they are."}

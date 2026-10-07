@@ -1,0 +1,154 @@
+id: west-africa-cocoa
+title: West African cocoa squeeze and the deforestation rule
+entities:
+  - {id: org:west-africa-cocoa-aurelle-chocolatiers, type: organization, subtype: company, name: Aurelle Chocolatiers, located_in: region:be-bru.brussels, sectors: [consumer, agri-food], summary: "Invented Belgian chocolate maker used in sample stories.", sample: true}
+  - {id: org:west-africa-cocoa-rheinfeld-confectionery, type: organization, subtype: company, name: Rheinfeld Confectionery, located_in: region:de-nw.cologne, sectors: [consumer, agri-food], summary: "Invented German confectioner used in sample stories.", sample: true}
+  - {id: org:west-africa-cocoa-pacifica-cacao, type: organization, subtype: company, name: Pacífica Cacao Exports, located_in: region:ec-g.guayaquil, sectors: [agri-food, logistics-trade], summary: "Invented Ecuadorian cocoa exporter used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:eudr-large-firms-on-schedule
+    short_title: Will the EU deforestation rule apply to large firms on schedule?
+    question: Will the EU Deforestation Regulation's obligations for large companies take effect on their currently scheduled date without a further delay?
+    category: policy
+    location: region:be-bru.brussels
+    about: [region:eu, policy:eu-deforestation-regulation, commodity:cocoa, region:ci, region:gh]
+    end_in_days: 85
+    resolution_rule: Resolves YES if the obligations for large operators take effect on the currently scheduled date, with no further postponement published in the EU Official Journal before then.
+    history: {days: 120, start: 0.62, end: 0.51, moves: [{days_ago: 13.7, delta: -0.07}], volume: 38000, liquidity: 5600}
+stories:
+  - id: story:ivorian-cocoa-arrivals-fall
+    headline: Dry weather and crop disease cut cocoa arrivals at Ivorian ports
+    so_what: Fewer beans reaching Abidjan and San-Pédro signal tighter supply for grinders in Europe and Asia.
+    event_type: economic-data
+    impact: risk
+    direction: down
+    magnitude: 4
+    horizon: weeks
+    confidence: 0.85
+    sectors: [agri-food, logistics-trade]
+    at: infra:abidjan-port
+    mentions: [region:ci, region:ci-09, region:ci-02, commodity:cocoa]
+    age_hours: 650
+    sources: 21
+    actions: [Check grinders' delivery schedules for cocoa products, Extend cocoa cover where prices allow]
+  - id: story:ghana-rolls-cocoa-deliveries
+    headline: Ghana rolls some cocoa deliveries from Tema into next season
+    so_what: Buyers waiting on contracted beans must seek spot cargoes, often at higher prices.
+    event_type: trade-flow
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.8
+    sectors: [agri-food, logistics-trade]
+    at: infra:tema-port
+    mentions: [region:gh, region:gh-wp, region:gh-ah, commodity:cocoa]
+    age_hours: 470
+    sources: 13
+    actions: [Confirm delivery windows with cocoa traders]
+  - id: story:chocolate-makers-traceability-costs
+    headline: European chocolate makers step up spending on deforestation checks
+    so_what: Mapping farms and auditing suppliers adds costs, hitting smaller confectioners hardest.
+    event_type: policy
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.75
+    sectors: [consumer, agri-food]
+    at: region:be-bru.brussels
+    mentions: [policy:eu-deforestation-regulation, org:west-africa-cocoa-aurelle-chocolatiers, region:eu, region:ci, region:gh]
+    age_hours: 330
+    sources: 10
+    actions: [Ask suppliers for plot-level origin data, Budget for traceability audits]
+  - id: story:ghana-shea-processors-win-orders
+    headline: Northern Ghana shea processors win orders as cocoa butter costs climb
+    so_what: Confectioners blend shea into cocoa-butter substitutes, lifting income for processors and nut collectors.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.65
+    sectors: [agri-food, manufacturing]
+    at: region:gh-np
+    mentions: [region:gh-ue, region:bf, region:eu, commodity:cocoa]
+    age_hours: 150
+    sources: 5
+    actions: [Source shea butter from northern Ghana, Test shea blends in coatings]
+  - id: story:ecuador-cocoa-exports-climb
+    headline: Ecuador's cocoa exports climb as buyers look beyond West Africa
+    so_what: Growers in Los Ríos and Manabí win new European contracts at strong prices.
+    event_type: trade-flow
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.75
+    sectors: [agri-food, logistics-trade]
+    at: region:ec-g.guayaquil
+    mentions: [org:west-africa-cocoa-pacifica-cacao, region:ec-r, region:ec-m, region:eu, commodity:cocoa]
+    age_hours: 110
+    sources: 9
+    actions: [Line up Ecuadorian cocoa supply, Highlight traceable origins to buyers]
+  - id: story:cologne-confectioner-trims-bars
+    headline: Cologne confectioner Rheinfeld trims chocolate bar sizes
+    so_what: Shoppers get smaller packs at similar prices, and some may trade down to store brands.
+    event_type: company-update
+    impact: risk
+    direction: down
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.7
+    sectors: [consumer, agri-food]
+    at: region:de-nw.cologne
+    mentions: [org:west-africa-cocoa-rheinfeld-confectionery, region:de, commodity:cocoa, commodity:sugar]
+    age_hours: 40
+    sources: 6
+    actions: [Review store-brand chocolate ranges, Plan promotions around new pack sizes]
+  - id: story:untraced-cocoa-loses-eu-buyers
+    kind: projected
+    headline: Cocoa without farm-level traceability could lose access to EU buyers
+    so_what: Untraced beans would sell at a discount to other markets, cutting income for smallholders.
+    event_type: projected-impact
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: months
+    confidence: 0.45
+    sectors: [agri-food, logistics-trade]
+    at: region:ci-02
+    mentions: [region:ci, region:gh, region:eu, policy:eu-deforestation-regulation]
+  - id: story:chocolate-makers-compliance-relief
+    kind: projected
+    headline: A delay would ease compliance costs for European chocolate makers
+    so_what: Extra time would let smaller confectioners spread traceability spending and avoid supply gaps.
+    event_type: projected-impact
+    impact: opportunity
+    direction: down
+    magnitude: 2
+    horizon: months
+    confidence: 0.5
+    sectors: [consumer, agri-food]
+    at: region:be-bru.brussels
+    mentions: [region:eu, region:de, policy:eu-deforestation-regulation, org:west-africa-cocoa-aurelle-chocolatiers]
+  - id: story:ecuador-traceable-cocoa-premium
+    kind: projected
+    headline: Traceable Ecuadorian cocoa could earn a lasting price premium
+    so_what: Exporters with farm maps ready would become preferred suppliers for European chocolate makers.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.45
+    sectors: [agri-food]
+    at: region:ec-r
+    mentions: [region:ec-g.guayaquil, region:eu, policy:eu-deforestation-regulation, commodity:cocoa]
+links:
+  - {from: story:ivorian-cocoa-arrivals-fall, to: story:cologne-confectioner-trims-bars, type: reported, mechanism: raises bean costs, direction: down, confidence: 0.75, lag_days: 25, evidence: "Sample evidence: the confectioner cited record cocoa costs and thin West African supply when it announced smaller bars."}
+  - {from: story:ivorian-cocoa-arrivals-fall, to: story:ghana-shea-processors-win-orders, type: inferred, mechanism: lifts cocoa butter costs, direction: up, confidence: 0.5, lag_days: 21}
+  - {from: story:ghana-rolls-cocoa-deliveries, to: story:ecuador-cocoa-exports-climb, type: inferred, mechanism: pushes buyers to rivals, direction: up, confidence: 0.55, lag_days: 15}
+  - {from: story:chocolate-makers-traceability-costs, to: story:cologne-confectioner-trims-bars, type: inferred, mechanism: adds sourcing costs, direction: down, confidence: 0.45, lag_days: 12}
+  - {from: story:ecuador-cocoa-exports-climb, to: story:ecuador-traceable-cocoa-premium, type: projected, mechanism: rewards traceable supply, direction: up, confidence: 0.45, lag_days: 120}
+  - {from: story:chocolate-makers-traceability-costs, to: story:untraced-cocoa-loses-eu-buyers, type: conditional, forecast: forecast:eudr-large-firms-on-schedule, outcome: "YES", mechanism: excludes untraced beans, direction: down, confidence: 0.5, lag_days: 90, evidence: "Sample evidence: once the rule applies, EU buyers can only accept beans with plot-level origin records."}
+  - {from: story:chocolate-makers-traceability-costs, to: story:chocolate-makers-compliance-relief, type: conditional, forecast: forecast:eudr-large-firms-on-schedule, outcome: "NO", mechanism: defers compliance spending, direction: down, confidence: 0.5, lag_days: 30, evidence: "Sample evidence: a further postponement would give confectioners more time to finish farm mapping."}

@@ -1,0 +1,161 @@
+id: palm-oil-levy
+title: Indonesia's palm oil levy, biodiesel and edible-oil costs
+entities:
+  - {id: org:palm-oil-levy-sungai-linggi-oils, type: organization, subtype: company, name: Sungai Linggi Oils, located_in: region:my-10, sectors: [agri-food, logistics-trade], summary: "Invented Malaysian palm oil refiner and exporter used in sample stories.", sample: true}
+  - {id: org:palm-oil-levy-rannbay-foods, type: organization, subtype: company, name: Rannbay Foods, located_in: region:in-gj, sectors: [agri-food, consumer], summary: "Invented Indian edible-oil importer and packer used in sample stories.", sample: true}
+  - {id: org:palm-oil-levy-kemari-ghee-works, type: organization, subtype: company, name: Kemari Ghee Works, located_in: region:pk-sd.karachi, sectors: [agri-food, consumer], summary: "Invented Pakistani ghee and cooking-oil maker used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:indonesia-palm-levy-raised
+    short_title: Will Indonesia raise its palm oil export levy within three months?
+    question: Will Indonesia raise the export levy rate on crude palm oil within three months?
+    category: trade
+    location: region:id-jk.jakarta
+    about: [region:id, policy:indonesia-palm-oil-levy, commodity:palm-oil, region:my]
+    end_in_days: 90
+    resolution_rule: Resolves YES if Indonesia publishes a regulation raising the export levy rate on crude palm oil above the current rate before the end date.
+    history: {days: 40, start: 0.3, end: 0.42, volume: 3400, liquidity: 780, noise: 0.025}
+stories:
+  - id: story:indonesia-widens-biodiesel-blend
+    headline: Indonesia moves ahead with a higher biodiesel blend for diesel fuel
+    so_what: More palm oil goes into domestic fuel, leaving less for export and supporting world prices.
+    event_type: policy-decision
+    impact: risk
+    direction: up
+    magnitude: 4
+    horizon: months
+    confidence: 0.85
+    sectors: [agri-food, energy]
+    at: region:id-jk.jakarta
+    mentions: [region:id, policy:indonesia-palm-oil-levy, commodity:palm-oil, commodity:refined-fuels]
+    age_hours: 600
+    sources: 25
+    actions: [Review edible-oil contracts for next quarter, Compare palm with soybean oil costs]
+  - id: story:riau-biodiesel-plants-expand
+    headline: Riau biodiesel plants add capacity for the higher blend
+    so_what: Builders, tank makers and local palm mills gain steady orders around Dumai and Pekanbaru.
+    event_type: investment
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.7
+    sectors: [energy, agri-food, manufacturing]
+    at: region:id-ri
+    mentions: [region:id-ki, commodity:palm-oil, commodity:refined-fuels]
+    age_hours: 380
+    sources: 7
+    actions: [Bid for plant construction work in Riau, Offer storage tanks to biodiesel producers]
+  - id: story:kl-palm-futures-climb
+    headline: Palm oil futures climb in Kuala Lumpur on tighter export supply
+    so_what: Food makers and fryers face higher cooking-oil costs within weeks.
+    event_type: price-move
+    impact: risk
+    direction: up
+    magnitude: 4
+    horizon: now
+    confidence: 0.85
+    sectors: [agri-food, consumer]
+    at: region:my-14.kuala-lumpur
+    mentions: [region:my, region:id, commodity:palm-oil, commodity:crude-oil]
+    age_hours: 80
+    sources: 19
+    actions: [Hedge part of edible-oil needs, Compare soybean and sunflower oil offers]
+  - id: story:malaysian-palm-exporters-gain-share
+    headline: Malaysian palm exporters gain share as Indonesian supply tightens
+    so_what: Refiners near Port Klang win more cargoes to India and Pakistan at firm premiums.
+    event_type: trade-flow
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.75
+    sectors: [agri-food, logistics-trade]
+    at: infra:port-klang
+    mentions: [org:palm-oil-levy-sungai-linggi-oils, region:my-10, region:my-01, region:in, region:pk]
+    age_hours: 54
+    sources: 10
+    actions: [Offer longer contracts to South Asian buyers, Book refinery capacity for peak demand]
+  - id: story:gujarat-refiners-buy-argentine-soy-oil
+    headline: Gujarat refiners turn to Argentine soybean oil as palm costs climb
+    so_what: Crushers in Rosario gain Indian orders, while Indian packers limit their cost increases.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.7
+    sectors: [agri-food, logistics-trade]
+    at: infra:mundra-port
+    mentions: [org:palm-oil-levy-rannbay-foods, region:in-gj, region:ar-s.rosario, commodity:soybeans, commodity:palm-oil]
+    age_hours: 36
+    sources: 8
+    actions: [Quote soybean oil cargoes to Indian buyers, Blend oils to manage input costs]
+  - id: story:karachi-cooking-oil-prices-rise
+    headline: Karachi ghee and cooking-oil makers raise prices again
+    so_what: Bakeries, snack makers and households pay more, squeezing margins on low-priced food.
+    event_type: price-move
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: now
+    confidence: 0.75
+    sectors: [agri-food, consumer]
+    at: region:pk-sd.karachi
+    mentions: [org:palm-oil-levy-kemari-ghee-works, region:pk, region:pk-pb.lahore, commodity:palm-oil]
+    age_hours: 20
+    sources: 9
+    actions: [Lock in cooking-oil supply for next month, Review menu and pack prices]
+  - id: story:egypt-edible-oil-importers-costs
+    headline: Egyptian edible-oil importers face higher palm and freight costs
+    so_what: A softer pound and dearer palm oil raise costs for food processors around Alexandria and Cairo.
+    event_type: business-sentiment
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.7
+    sectors: [agri-food, consumer, logistics-trade]
+    at: region:eg-alx.alexandria
+    mentions: [region:eg, region:eg-c.cairo, infra:suez-canal, commodity:palm-oil]
+    age_hours: 6
+    sources: 6
+    actions: [Lengthen edible-oil purchase cover, Compare sunflower oil from Black Sea suppliers]
+  - id: story:palm-levy-hike-squeezes-food-margins
+    kind: projected
+    headline: A higher levy would squeeze margins at packaged-food makers
+    so_what: Snack, biscuit and soap makers in India and Pakistan would face dearer palm oil.
+    event_type: projected-impact
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: months
+    confidence: 0.5
+    sectors: [consumer, agri-food, manufacturing]
+    at: region:in-mh.mumbai
+    mentions: [region:in, region:pk, policy:indonesia-palm-oil-levy, commodity:palm-oil]
+  - id: story:steady-levy-keeps-palm-competitive
+    kind: projected
+    headline: A steady levy would keep Indonesian palm competitive for importers
+    so_what: Buyers in South Asia and Egypt would keep cheaper Sumatran supply, capping cooking-oil prices.
+    event_type: projected-impact
+    impact: opportunity
+    direction: down
+    magnitude: 3
+    horizon: months
+    confidence: 0.45
+    sectors: [agri-food, consumer]
+    at: region:id-su.medan
+    mentions: [region:id-ri, region:in, region:eg, commodity:palm-oil]
+links:
+  - {from: story:indonesia-widens-biodiesel-blend, to: story:kl-palm-futures-climb, type: reported, mechanism: diverts palm to fuel, direction: up, confidence: 0.85, lag_days: 22, evidence: "Sample evidence: traders said the wider blend would absorb more crude palm oil at home and trim export volumes."}
+  - {from: story:indonesia-widens-biodiesel-blend, to: story:riau-biodiesel-plants-expand, type: reported, mechanism: raises biodiesel demand, direction: up, confidence: 0.8, lag_days: 9}
+  - {from: story:brent-multi-month-high, to: story:kl-palm-futures-climb, type: inferred, mechanism: improves biodiesel economics, direction: up, confidence: 0.5, lag_days: 1, evidence: "Sample evidence: dearer crude narrows the gap between diesel and palm-based biodiesel, which tends to support palm prices."}
+  - {from: story:kl-palm-futures-climb, to: story:malaysian-palm-exporters-gain-share, type: inferred, mechanism: favours rival exporters, direction: up, confidence: 0.6, lag_days: 1}
+  - {from: story:kl-palm-futures-climb, to: story:gujarat-refiners-buy-argentine-soy-oil, type: inferred, mechanism: shifts buying to soy, direction: up, confidence: 0.6, lag_days: 2}
+  - {from: story:kl-palm-futures-climb, to: story:karachi-cooking-oil-prices-rise, type: reported, mechanism: raises cooking-oil costs, direction: up, confidence: 0.8, lag_days: 3, evidence: "Sample evidence: Karachi producers said higher palm import prices forced new price lists for ghee and oil."}
+  - {from: story:kl-palm-futures-climb, to: story:egypt-edible-oil-importers-costs, type: inferred, mechanism: raises import costs, direction: up, confidence: 0.6, lag_days: 3}
+  - {from: story:egyptian-pound-eases, to: story:egypt-edible-oil-importers-costs, type: inferred, mechanism: lifts dollar-priced costs, direction: up, confidence: 0.65, lag_days: 0}
+  - {from: story:red-sea-attacks-reroute, to: story:egypt-edible-oil-importers-costs, type: inferred, mechanism: raises shipping insurance costs, direction: up, confidence: 0.45, lag_days: 2, evidence: "Sample evidence: palm cargoes from Malaysia to Alexandria pass Bab-el-Mandeb, where insurers charge higher premiums."}
+  - {from: story:karachi-cooking-oil-prices-rise, to: story:palm-levy-hike-squeezes-food-margins, type: projected, mechanism: squeezes food margins, direction: down, confidence: 0.4, lag_days: 45}
+  - {from: story:indonesia-widens-biodiesel-blend, to: story:palm-levy-hike-squeezes-food-margins, type: conditional, forecast: forecast:indonesia-palm-levy-raised, outcome: "YES", mechanism: raises export costs, direction: down, confidence: 0.5, lag_days: 45, evidence: "Sample evidence: a higher levy to fund the blend would add to the price importers pay for Indonesian palm."}
+  - {from: story:indonesia-widens-biodiesel-blend, to: story:steady-levy-keeps-palm-competitive, type: conditional, forecast: forecast:indonesia-palm-levy-raised, outcome: "NO", mechanism: keeps export costs steady, direction: down, confidence: 0.45, lag_days: 45, evidence: "Sample evidence: an unchanged levy would keep Sumatran palm priced below many rival oils."}
