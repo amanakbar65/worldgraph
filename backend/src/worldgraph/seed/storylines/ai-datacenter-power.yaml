@@ -1,0 +1,154 @@
+id: ai-datacenter-power
+title: AI data centres and the race for power
+entities:
+  - {id: org:ai-datacenter-power-ferrovolt-transformers, type: organization, subtype: company, name: Ferrovolt Transformer Works, located_in: region:in-gj.vadodara, sectors: [manufacturing, energy], summary: "Invented maker of power transformers in Gujarat used in sample stories.", sample: true}
+  - {id: org:ai-datacenter-power-kelvinmere-cooling, type: organization, subtype: company, name: Kelvinmere Cooling, located_in: region:sg-01.singapore, sectors: [tech, manufacturing], summary: "Invented supplier of liquid-cooling systems for data centres used in sample stories.", sample: true}
+  - {id: org:ai-datacenter-power-tidewell-data-parks, type: organization, subtype: company, name: Tidewell Data Parks, located_in: region:in-mh.mumbai, sectors: [tech, real-estate], summary: "Invented data-centre park developer used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:dublin-datacentre-connections
+    short_title: Dublin grid accepts new data centres within a year?
+    question: Will the Irish grid operator offer new connections to large data centres in the Dublin region within twelve months?
+    category: energy
+    location: region:ie-d.dublin
+    about: [region:ie, region:ie-d, commodity:electricity, sector:tech]
+    end_in_days: 365
+    resolution_rule: Resolves YES if the grid operator publishes connection offers, or a new policy, letting data centres of 10 MW or more connect in the Dublin region before the end date.
+    history: {days: 90, start: 0.26, end: 0.19, volume: 3400, liquidity: 620}
+stories:
+  - id: story:dublin-grid-limits-datacentres
+    headline: Dublin grid limits keep new data-centre connections on hold
+    so_what: Developers must look outside Dublin or bring their own power, raising costs and delaying projects.
+    event_type: policy
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: months
+    confidence: 0.85
+    sectors: [tech, energy, real-estate]
+    at: region:ie-d.dublin
+    mentions: [region:ie, commodity:electricity]
+    age_hours: 700
+    sources: 12
+    actions: [Check grid capacity before buying sites]
+  - id: story:virginia-grid-connection-waits
+    headline: Northern Virginia data centres face longer grid connection waits
+    so_what: Power, not land, now sets the pace of new capacity in the world's largest data-centre market.
+    event_type: disruption
+    impact: risk
+    direction: up
+    magnitude: 4
+    horizon: months
+    confidence: 0.85
+    sectors: [tech, energy]
+    at: region:us-va
+    mentions: [region:us, commodity:electricity]
+    age_hours: 540
+    sources: 18
+    actions: [Secure power capacity before signing leases, Plan on-site backup generation]
+  - id: story:texas-campuses-order-gas-turbines
+    headline: Texas data-centre campuses order gas turbines for on-site power
+    so_what: Turbine makers, gas pipelines and engineering firms gain as developers sidestep long grid queues.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.75
+    sectors: [energy, manufacturing, tech]
+    at: region:us-tx.dallas
+    mentions: [region:us-tx, commodity:natural-gas, commodity:electricity]
+    age_hours: 400
+    sources: 13
+    actions: [Quote gas hookups to data-centre developers]
+  - id: story:mumbai-chennai-datacentre-parks
+    headline: Mumbai and Chennai data-centre parks add capacity for AI
+    so_what: Subsea cable landings draw AI workloads, lifting demand for power, cooling and construction services.
+    event_type: investment
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.8
+    sectors: [tech, real-estate]
+    at: region:in-mh.mumbai
+    mentions: [region:in-tn.chennai, org:ai-datacenter-power-tidewell-data-parks, commodity:electricity, region:in]
+    age_hours: 270
+    sources: 11
+    actions: [Pitch fit-out services to park developers]
+  - id: story:johor-datacentre-buildout
+    headline: Johor's data-centre build-out lifts demand for land and cooling
+    so_what: Spillover from Singapore creates work for industrial landowners, builders and liquid-cooling suppliers.
+    event_type: investment
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.8
+    sectors: [tech, real-estate, manufacturing]
+    at: region:my-01
+    mentions: [region:sg, region:my, org:ai-datacenter-power-kelvinmere-cooling, commodity:electricity]
+    age_hours: 210
+    sources: 14
+    actions: [Scout Johor plots near substations, Offer cooling maintenance contracts]
+  - id: story:transformer-lead-times-stretch
+    headline: Power transformer lead times stretch as data-centre orders pile up
+    so_what: Transformer makers fill order books well ahead, while late buyers face long delays on new sites.
+    event_type: supply-chain
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.75
+    sectors: [manufacturing, energy]
+    at: region:in-gj.vadodara
+    mentions: [org:ai-datacenter-power-ferrovolt-transformers, commodity:copper, commodity:steel, region:us]
+    age_hours: 14
+    sources: 9
+    actions: [Order transformers early for planned sites, Qualify a second transformer supplier]
+  - id: story:virginia-power-tariffs-rise
+    kind: projected
+    headline: Virginia businesses could face higher electricity tariffs
+    so_what: Grid upgrades for data centres may be recovered partly through commercial and household power bills.
+    event_type: projected-impact
+    impact: risk
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.45
+    sectors: [energy, consumer]
+    at: region:us-va
+    mentions: [commodity:electricity, region:us]
+  - id: story:dublin-datacentre-pipeline-restarts
+    kind: projected
+    headline: Dublin data-centre construction could restart with new grid capacity
+    so_what: Contractors, landowners and electrical suppliers around Dublin would gain a fresh pipeline of projects.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.4
+    sectors: [real-estate, tech]
+    at: region:ie-d.dublin
+    mentions: [region:ie, commodity:electricity]
+  - id: story:irish-datacentres-onsite-gas
+    kind: projected
+    headline: Irish data-centre projects may turn to on-site gas generation
+    so_what: Gas turbine and engine suppliers would gain, though projects would carry higher running costs.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.4
+    sectors: [energy, tech]
+    at: region:ie
+    mentions: [commodity:natural-gas, region:ie-d]
+links:
+  - {from: story:virginia-grid-connection-waits, to: story:texas-campuses-order-gas-turbines, type: inferred, mechanism: pushes on-site generation, direction: up, confidence: 0.55, lag_days: 6}
+  - {from: story:mumbai-chennai-datacentre-parks, to: story:transformer-lead-times-stretch, type: reported, mechanism: lifts transformer orders, direction: up, confidence: 0.75, lag_days: 10, evidence: "Sample evidence: the transformer maker cited new data-centre park substations among its largest recent orders."}
+  - {from: story:johor-datacentre-buildout, to: story:transformer-lead-times-stretch, type: inferred, mechanism: lifts transformer orders, direction: up, confidence: 0.55, lag_days: 8}
+  - {from: story:virginia-grid-connection-waits, to: story:virginia-power-tariffs-rise, type: projected, mechanism: raises grid upgrade costs, direction: up, confidence: 0.45, lag_days: 120}
+  - {from: story:texas-campuses-order-gas-turbines, to: story:irish-datacentres-onsite-gas, type: projected, mechanism: spreads on-site power model, direction: up, confidence: 0.35, lag_days: 90}
+  - {from: story:dublin-grid-limits-datacentres, to: story:dublin-datacentre-pipeline-restarts, type: conditional, forecast: forecast:dublin-datacentre-connections, outcome: "YES", mechanism: opens new grid capacity, direction: up, confidence: 0.5, lag_days: 90}
+  - {from: story:dublin-grid-limits-datacentres, to: story:irish-datacentres-onsite-gas, type: conditional, forecast: forecast:dublin-datacentre-connections, outcome: "NO", mechanism: pushes on-site generation, direction: up, confidence: 0.5, lag_days: 60}

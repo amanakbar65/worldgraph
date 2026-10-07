@@ -1,0 +1,172 @@
+id: opec-output
+title: OPEC+ output decision and fuel costs
+entities:
+  - {id: org:opec-output-heronshore-refining, type: organization, subtype: company, name: Heronshore Refining, located_in: region:in-gj, sectors: [energy, manufacturing], summary: "Invented coastal refiner in Gujarat used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:opec-plus-extends-cuts
+    short_title: OPEC+ extends its output cuts at the next meeting?
+    question: Will OPEC+ extend its current output cuts at its next ministerial meeting?
+    category: energy
+    location: region:sa-01.riyadh
+    about: [region:sa, org:opec, policy:opec-plus-quotas, commodity:crude-oil]
+    end_in_days: 24
+    resolution_rule: Resolves YES if the official statement after the next OPEC+ ministerial meeting keeps the current output cuts in place for at least another quarter.
+    history: {days: 60, start: 0.48, end: 0.72, moves: [{days_ago: 0.4, delta: 0.14}], volume: 412000, liquidity: 58000}
+stories:
+  - id: story:opec-plus-signals-longer-cuts
+    headline: OPEC+ delegates signal output cuts will be extended
+    so_what: Crude buyers face firmer prices for longer; fuel-heavy businesses should expect costs to stay elevated.
+    event_type: policy-signal
+    impact: risk
+    direction: up
+    magnitude: 4
+    horizon: weeks
+    confidence: 0.8
+    sectors: [energy]
+    at: region:at-9.vienna
+    mentions: [org:opec, policy:opec-plus-quotas, commodity:crude-oil, region:sa, region:ru]
+    age_hours: 10
+    sources: 29
+    actions: [Review fuel hedges for the next quarter, Build fuel clauses into new quotes]
+  - id: story:brent-multi-month-high
+    headline: Brent crude climbs to a multi-month high on tighter supply
+    so_what: Higher crude feeds through to diesel, jet fuel and shipping bunker costs within weeks.
+    event_type: price-move
+    impact: risk
+    direction: up
+    magnitude: 4
+    horizon: now
+    confidence: 0.9
+    sectors: [energy, logistics-trade]
+    at: region:gb-wsm.london
+    mentions: [commodity:crude-oil, org:opec]
+    age_hours: 96
+    sources: 33
+    actions: [Check fuel surcharge terms with carriers]
+  - id: story:saudi-osp-asia-raised
+    headline: Saudi Arabia raises official crude prices for Asian buyers
+    so_what: Asian refiners pay more for Gulf barrels, prompting some to seek cargoes from the Americas.
+    event_type: price-move
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.85
+    sectors: [energy]
+    at: infra:ras-tanura
+    mentions: [region:sa, commodity:crude-oil, region:in, region:cn, region:jp]
+    age_hours: 410
+    sources: 14
+    actions: [Compare term and spot crude offers]
+  - id: story:heronshore-refining-margin-squeeze
+    headline: Gujarat refiner Heronshore trims runs as crude costs climb
+    so_what: Thinner refining margins in western India could tighten local supply of diesel and petrochemical feedstock.
+    event_type: company-update
+    impact: risk
+    direction: down
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.75
+    sectors: [energy, manufacturing]
+    at: region:in-gj
+    mentions: [org:opec-output-heronshore-refining, commodity:refined-fuels, infra:mundra-port, region:in]
+    age_hours: 300
+    sources: 6
+    actions: [Confirm fuel supply volumes with distributors]
+  - id: story:us-gulf-crude-exports-asia
+    headline: US Gulf Coast crude exports to Asia climb
+    so_what: Shale producers and Texas export terminals gain as Asian refiners diversify away from Middle East grades.
+    event_type: trade-flow
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.75
+    sectors: [energy, logistics-trade]
+    at: infra:port-of-houston
+    mentions: [region:us-tx, region:us-nm, commodity:crude-oil, region:in, region:kr]
+    age_hours: 190
+    sources: 11
+    actions: [Offer tanker space on US–Asia routes]
+  - id: story:brazil-offshore-crude-asia-demand
+    headline: Brazil's offshore crude finds more buyers in Asia
+    so_what: Pre-salt barrels from Rio de Janeiro gain share as refiners seek alternatives to pricier Middle East crude.
+    event_type: trade-flow
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.7
+    sectors: [energy, logistics-trade]
+    at: region:br-rj.rio-de-janeiro
+    mentions: [region:br, commodity:crude-oil, region:cn, region:in]
+    age_hours: 140
+    sources: 8
+    actions: [Explore supply deals with Brazilian exporters]
+  - id: story:singapore-jet-fuel-climbs
+    headline: Asian jet fuel prices climb, raising airline operating costs
+    so_what: Fuel is roughly a quarter of airline costs, so fares and cargo rates may follow.
+    event_type: price-move
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.85
+    sectors: [consumer, logistics-trade, energy]
+    at: region:sg-01.singapore
+    mentions: [commodity:refined-fuels, infra:port-of-singapore, region:in, region:ae]
+    age_hours: 60
+    sources: 15
+    actions: [Book business travel earlier, Review air freight budgets]
+  - id: story:us-truck-diesel-surcharges
+    headline: US truck fleets raise diesel surcharges as fuel costs rise
+    so_what: Shippers moving goods by road face higher freight bills within weeks of the crude rally.
+    event_type: price-move
+    impact: risk
+    direction: up
+    magnitude: 2
+    horizon: now
+    confidence: 0.8
+    sectors: [logistics-trade, consumer]
+    at: region:us-oh.columbus
+    mentions: [commodity:refined-fuels, region:us]
+    age_hours: 30
+    sources: 9
+    actions: [Consolidate loads to cut fuel costs, Ask carriers for fuel surcharge tables]
+  - id: story:indian-airlines-fuel-surcharges
+    kind: projected
+    headline: Indian airlines could raise fuel surcharges on fares
+    so_what: If cuts are extended, travel and air cargo budgets would need more headroom.
+    event_type: projected-impact
+    impact: risk
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.5
+    sectors: [consumer, logistics-trade]
+    at: region:in-mh.mumbai
+    mentions: [commodity:refined-fuels, region:in-dl.new-delhi]
+  - id: story:asian-refiners-crude-costs-ease
+    kind: projected
+    headline: Asian refiners could see crude import costs ease
+    so_what: More OPEC+ barrels would widen refining margins and soften diesel prices across Asia.
+    event_type: projected-impact
+    impact: opportunity
+    direction: down
+    magnitude: 3
+    horizon: months
+    confidence: 0.45
+    sectors: [energy, manufacturing]
+    at: region:in-gj
+    mentions: [org:opec-output-heronshore-refining, commodity:crude-oil, region:kr, region:jp]
+links:
+  - {from: story:saudi-osp-asia-raised, to: story:heronshore-refining-margin-squeeze, type: reported, mechanism: raises crude import costs, direction: down, confidence: 0.8, lag_days: 4, evidence: "Sample evidence: the refiner said higher official prices for Gulf crude made some units uneconomic to run."}
+  - {from: story:saudi-osp-asia-raised, to: story:us-gulf-crude-exports-asia, type: inferred, mechanism: favours rival crude grades, direction: up, confidence: 0.55, lag_days: 9}
+  - {from: story:saudi-osp-asia-raised, to: story:brazil-offshore-crude-asia-demand, type: inferred, mechanism: favours rival crude grades, direction: up, confidence: 0.5, lag_days: 11}
+  - {from: story:brent-multi-month-high, to: story:singapore-jet-fuel-climbs, type: reported, mechanism: lifts jet fuel prices, direction: up, confidence: 0.85, lag_days: 1}
+  - {from: story:brent-multi-month-high, to: story:us-truck-diesel-surcharges, type: inferred, mechanism: raises diesel prices, direction: up, confidence: 0.65, lag_days: 3}
+  - {from: story:brent-multi-month-high, to: story:asia-europe-rates-jump, type: inferred, mechanism: adds bunker fuel costs, direction: up, confidence: 0.45, lag_days: 2}
+  - {from: story:brent-multi-month-high, to: story:surcharges-persist, type: projected, mechanism: raises bunker fuel costs, direction: up, confidence: 0.4, lag_days: 30}
+  - {from: story:singapore-jet-fuel-climbs, to: story:indian-airlines-fuel-surcharges, type: projected, mechanism: passes on fuel costs, direction: up, confidence: 0.45, lag_days: 21}
+  - {from: story:opec-plus-signals-longer-cuts, to: story:indian-airlines-fuel-surcharges, type: conditional, forecast: forecast:opec-plus-extends-cuts, outcome: "YES", mechanism: keeps crude supply tight, direction: up, confidence: 0.55, lag_days: 30}
+  - {from: story:opec-plus-signals-longer-cuts, to: story:asian-refiners-crude-costs-ease, type: conditional, forecast: forecast:opec-plus-extends-cuts, outcome: "NO", mechanism: adds crude supply, direction: down, confidence: 0.5, lag_days: 45}

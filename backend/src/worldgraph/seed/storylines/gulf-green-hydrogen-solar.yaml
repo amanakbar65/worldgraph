@@ -1,0 +1,151 @@
+id: gulf-green-hydrogen-solar
+title: Gulf green hydrogen, solar tenders and India's module push
+entities:
+  - {id: org:gulf-green-hydrogen-solar-kutchlight-modules, type: organization, subtype: company, name: Kutchlight Modules, located_in: region:in-gj.ahmedabad, sectors: [energy, manufacturing], summary: "Invented Indian solar cell and module maker used in sample stories.", sample: true}
+  - {id: org:gulf-green-hydrogen-solar-sablestone-hydrogen, type: organization, subtype: company, name: Sablestone Hydrogen, located_in: region:om-wu, sectors: [energy], summary: "Invented green hydrogen developer used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:saudi-solar-round-awarded
+    short_title: Saudi solar tender round awarded within three months?
+    question: Will Saudi Arabia name the winning bidders for its current large solar tender round within three months?
+    category: energy
+    location: region:sa-01.riyadh
+    about: [region:sa, commodity:solar-modules, sector:energy]
+    end_in_days: 90
+    resolution_rule: Resolves YES if the national renewable energy procurement office announces preferred or winning bidders for the round before the end date.
+    history: {days: 120, start: 0.52, end: 0.67, volume: 41000, liquidity: 7200}
+  - id: forecast:india-module-duty-cut
+    short_title: India lowers import duty on solar modules within six months?
+    question: Will India lower its basic customs duty on imported solar modules within six months?
+    category: trade
+    location: region:in-dl.new-delhi
+    about: [region:in, commodity:solar-modules, policy:india-pli]
+    end_in_days: 180
+    resolution_rule: Resolves YES if an official notification cuts the basic customs duty rate on imported solar modules below the current rate before the end date.
+    history: {days: 90, start: 0.31, end: 0.18, volume: 23000, liquidity: 3800}
+stories:
+  - id: story:solar-module-prices-slide
+    headline: Solar module prices slide to new lows on Chinese oversupply
+    so_what: Cheaper panels cut project costs for developers but squeeze margins for manufacturers outside China.
+    event_type: price-move
+    impact: opportunity
+    direction: down
+    magnitude: 4
+    horizon: weeks
+    confidence: 0.85
+    sectors: [energy, manufacturing]
+    at: region:cn-js.wuxi
+    mentions: [commodity:solar-modules, region:cn, region:in, region:sa]
+    age_hours: 640
+    sources: 23
+    actions: [Re-price solar projects at current module costs, Lock module supply for next projects]
+  - id: story:oman-hydrogen-land-blocks
+    headline: Oman awards new desert land blocks for green hydrogen
+    so_what: Developers, engineering firms and port operators gain a long pipeline of export-scale projects.
+    event_type: policy
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.8
+    sectors: [energy, manufacturing]
+    at: region:om-wu
+    mentions: [org:gulf-green-hydrogen-solar-sablestone-hydrogen, region:om, commodity:fertilisers, region:eu]
+    age_hours: 520
+    sources: 11
+    actions: [Register as a supplier to hydrogen developers]
+  - id: story:saudi-solar-tender-low-bids
+    headline: Saudi solar tender draws record-low bids for new plants
+    so_what: Very low power prices favour bidders with cheap finance and strong module supply deals.
+    event_type: tender
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.8
+    sectors: [energy, finance]
+    at: region:sa-01
+    mentions: [region:sa, commodity:solar-modules, commodity:electricity]
+    age_hours: 420
+    sources: 16
+    actions: [Bid for subcontracts on shortlisted projects]
+  - id: story:abu-dhabi-hydrogen-industrial-plots
+    headline: Abu Dhabi offers industrial plots for green hydrogen and ammonia
+    so_what: Cheap solar power and port access make the emirate a base for low-carbon fuel exports.
+    event_type: investment
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.7
+    sectors: [energy, real-estate]
+    at: region:ae-az.abu-dhabi
+    mentions: [region:ae, commodity:fertilisers, policy:eu-cbam, region:eu]
+    age_hours: 300
+    sources: 8
+    actions: [Explore offtake deals for green ammonia]
+  - id: story:india-solar-domestic-content-rules
+    headline: India widens domestic-content rules for solar cells in public projects
+    so_what: Indian cell and module makers gain protected demand, while developers face higher equipment costs.
+    event_type: policy
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.8
+    sectors: [energy, manufacturing]
+    at: region:in-dl.new-delhi
+    mentions: [policy:india-pli, commodity:solar-modules, region:in-gj, region:in-rj]
+    age_hours: 160
+    sources: 14
+    actions: [Check domestic-content rules before bidding, Line up Indian-made cell supply]
+  - id: story:kutchlight-adds-cell-line
+    headline: Gujarat's Kutchlight Modules adds a new solar cell line
+    so_what: More local cells shorten lead times for Indian developers that must meet domestic-content rules.
+    event_type: investment
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.75
+    sectors: [manufacturing, energy]
+    at: region:in-gj.ahmedabad
+    mentions: [org:gulf-green-hydrogen-solar-kutchlight-modules, commodity:solar-modules, policy:india-pli]
+    age_hours: 64
+    sources: 6
+    actions: [Request cell supply quotes from Gujarat makers]
+  - id: story:indian-module-makers-import-pressure
+    kind: projected
+    headline: Indian module makers could face sharper import competition
+    so_what: A lower duty would cut developer costs but pressure prices for plants in Gujarat and Rajasthan.
+    event_type: projected-impact
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: months
+    confidence: 0.45
+    sectors: [manufacturing, energy]
+    at: region:in-gj
+    mentions: [org:gulf-green-hydrogen-solar-kutchlight-modules, commodity:solar-modules, region:in-rj, region:cn]
+  - id: story:rajasthan-gujarat-module-order-books
+    kind: projected
+    headline: Rajasthan and Gujarat module plants could fill larger order books
+    so_what: Steady duties plus domestic-content rules would keep local factories busy and support new hiring.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.5
+    sectors: [manufacturing, energy]
+    at: region:in-rj
+    mentions: [region:in-gj, commodity:solar-modules, policy:india-pli]
+links:
+  - {from: story:solar-module-prices-slide, to: story:saudi-solar-tender-low-bids, type: reported, mechanism: lowers project costs, direction: down, confidence: 0.8, lag_days: 9, evidence: "Sample evidence: bidders pointed to cheaper modules as the main reason for lower tariff offers."}
+  - {from: story:solar-module-prices-slide, to: story:oman-hydrogen-land-blocks, type: inferred, mechanism: cuts electrolysis power costs, direction: up, confidence: 0.5, lag_days: 5}
+  - {from: story:solar-module-prices-slide, to: story:abu-dhabi-hydrogen-industrial-plots, type: inferred, mechanism: cuts green power costs, direction: up, confidence: 0.5, lag_days: 14}
+  - {from: story:solar-module-prices-slide, to: story:india-solar-domestic-content-rules, type: inferred, mechanism: prompts local-content push, direction: up, confidence: 0.55, lag_days: 20}
+  - {from: story:india-solar-domestic-content-rules, to: story:kutchlight-adds-cell-line, type: reported, mechanism: secures domestic demand, direction: up, confidence: 0.75, lag_days: 4}
+  - {from: story:solar-module-prices-slide, to: story:rooftop-solar-inquiries-jump, type: inferred, mechanism: cuts rooftop system costs, direction: up, confidence: 0.45, lag_days: 25}
+  - {from: story:kutchlight-adds-cell-line, to: story:rajasthan-gujarat-module-order-books, type: projected, mechanism: adds local cell capacity, direction: up, confidence: 0.45, lag_days: 90}
+  - {from: story:solar-module-prices-slide, to: story:indian-module-makers-import-pressure, type: conditional, forecast: forecast:india-module-duty-cut, outcome: "YES", mechanism: cheapens imported modules, direction: up, confidence: 0.5, lag_days: 30}
+  - {from: story:solar-module-prices-slide, to: story:rajasthan-gujarat-module-order-books, type: conditional, forecast: forecast:india-module-duty-cut, outcome: "NO", mechanism: keeps imports costly, direction: up, confidence: 0.55, lag_days: 60}
