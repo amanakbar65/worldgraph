@@ -1,0 +1,143 @@
+id: pharma-api-supply
+title: Drug ingredient supply and generic shortages
+entities:
+  - {id: org:pharma-api-supply-vannamar-life-sciences, type: organization, subtype: company, name: Vannamar Life Sciences, located_in: region:in-tg.hyderabad, sectors: [health, manufacturing], summary: "Invented Telangana maker of drug ingredients and sterile injectables used in sample stories.", sample: true}
+  - {id: org:pharma-api-supply-sabarline-chemicals, type: organization, subtype: company, name: Sabarline Fine Chemicals, located_in: region:in-gj.vadodara, sectors: [health, manufacturing], summary: "Invented Gujarat maker of active pharmaceutical ingredients used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:vannamar-import-alert-lifted
+    short_title: FDA lifts the import alert on Vannamar's plant within six months?
+    question: Will the US FDA remove Vannamar Life Sciences' Telangana plant from its import alert within six months?
+    category: policy
+    location: region:in-tg.hyderabad
+    about: [region:in-tg, org:pharma-api-supply-vannamar-life-sciences, region:us, commodity:pharma-api]
+    end_in_days: 180
+    resolution_rule: Resolves YES if the FDA's published import alert list no longer includes the plant before the end date.
+    history: {days: 60, start: 0.31, end: 0.22, volume: 2600, liquidity: 480}
+stories:
+  - id: story:china-api-prices-swing
+    headline: Chinese prices for key antibiotic ingredients swing sharply
+    so_what: Generic makers in India and Europe struggle to price contracts when input costs move this fast.
+    event_type: price-move
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.8
+    sectors: [health, manufacturing]
+    at: region:cn-zj
+    mentions: [region:cn-sd, commodity:pharma-api, region:in, region:eu]
+    age_hours: 700
+    sources: 9
+    actions: [Index ingredient contracts to published prices, Hold extra stock of critical inputs]
+  - id: story:fda-import-alert-telangana-plant
+    headline: US FDA places a Telangana drug plant on import alert
+    so_what: Shipments from the plant are held at the US border until it passes a fresh inspection.
+    event_type: policy-decision
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.9
+    sectors: [health]
+    at: region:in-tg.hyderabad
+    mentions: [org:pharma-api-supply-vannamar-life-sciences, region:in-tg, region:us, commodity:pharma-api]
+    age_hours: 420
+    sources: 14
+    actions: [Confirm your suppliers' FDA inspection status, Qualify a second source for affected products]
+  - id: story:us-generic-injectable-shortages
+    headline: US hospitals report wider shortages of older generic injectables
+    so_what: Low-margin sterile drugs have few makers, so one plant going offline can empty shelves for months.
+    event_type: disruption
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.8
+    sectors: [health]
+    at: region:us
+    mentions: [commodity:pharma-api, region:in, region:cn]
+    age_hours: 250
+    sources: 21
+    actions: [Review formulary substitutes for short drugs, Agree allocation terms with distributors]
+  - id: story:europe-generic-antibiotic-gaps
+    headline: European pharmacies report gaps in common generic antibiotics
+    so_what: Wholesalers ration stock and buyers pay more for alternatives, as low prices deter new suppliers.
+    event_type: disruption
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.75
+    sectors: [health, consumer]
+    at: region:de
+    mentions: [region:fr, region:it, region:nl, region:eu, commodity:pharma-api]
+    age_hours: 160
+    sources: 15
+    actions: [Secure allocations before the winter season, Approve alternative pack sizes]
+  - id: story:gujarat-api-makers-add-capacity
+    headline: Gujarat API makers add capacity with production incentive support
+    so_what: New plants for key starting materials cut reliance on China and court Western generic buyers.
+    event_type: investment
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.8
+    sectors: [health, manufacturing]
+    at: region:in-gj.vadodara
+    mentions: [org:pharma-api-supply-sabarline-chemicals, region:in-gj.ahmedabad, policy:india-pli, commodity:pharma-api, region:us, region:eu]
+    age_hours: 85
+    sources: 10
+    actions: [Request quotes from newly approved Indian plants, Apply for production incentive support]
+  - id: story:hyderabad-contract-makers-win-orders
+    headline: Hyderabad contract drugmakers win orders moved from the alerted plant
+    so_what: Clients needing FDA-cleared capacity pay premiums, filling sterile lines across Telangana for several quarters.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.7
+    sectors: [health, manufacturing]
+    at: region:in-tg.hyderabad
+    mentions: [region:in-tg, region:us, commodity:pharma-api]
+    age_hours: 34
+    sources: 6
+    actions: [Offer validated capacity to affected clients, Speed up technology transfer paperwork]
+  - id: story:vannamar-us-shipments-resume
+    kind: projected
+    headline: Vannamar's US shipments could resume after a clean reinspection
+    so_what: Restored supply would ease injectable shortages and return orders to the Telangana plant.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.45
+    sectors: [health]
+    at: region:in-tg
+    mentions: [org:pharma-api-supply-vannamar-life-sciences, region:us]
+  - id: story:us-injectable-shortages-persist
+    kind: projected
+    headline: Some US generic injectable shortages could drag on for months
+    so_what: Hospitals would keep paying more for substitutes while other makers slowly add sterile capacity.
+    event_type: projected-impact
+    impact: risk
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.5
+    sectors: [health]
+    at: region:us
+    mentions: [region:in-tg, commodity:pharma-api]
+links:
+  - {from: story:china-api-prices-swing, to: story:us-generic-injectable-shortages, type: inferred, mechanism: thins generic margins, direction: up, confidence: 0.45, lag_days: 20}
+  - {from: story:china-api-prices-swing, to: story:europe-generic-antibiotic-gaps, type: inferred, mechanism: squeezes supplier margins, direction: up, confidence: 0.45, lag_days: 25}
+  - {from: story:china-api-prices-swing, to: story:gujarat-api-makers-add-capacity, type: inferred, mechanism: spurs local sourcing, direction: up, confidence: 0.5, lag_days: 25}
+  - {from: story:fda-import-alert-telangana-plant, to: story:us-generic-injectable-shortages, type: reported, mechanism: removes key supply, direction: up, confidence: 0.8, lag_days: 7, evidence: "Sample evidence: hospital pharmacists named the alerted plant as a main source for several short injectables."}
+  - {from: story:fda-import-alert-telangana-plant, to: story:hyderabad-contract-makers-win-orders, type: reported, mechanism: shifts orders to rivals, direction: up, confidence: 0.75, lag_days: 16}
+  - {from: story:us-generic-injectable-shortages, to: story:gujarat-api-makers-add-capacity, type: inferred, mechanism: lifts ingredient demand, direction: up, confidence: 0.55, lag_days: 7}
+  - {from: story:europe-generic-antibiotic-gaps, to: story:air-freight-pharma-shift, type: inferred, mechanism: raises urgent shipments, direction: up, confidence: 0.5, lag_days: 6}
+  - {from: story:gujarat-api-makers-add-capacity, to: story:indian-generics-win-eu-tenders, type: projected, mechanism: adds export capacity, direction: up, confidence: 0.4, lag_days: 120}
+  - {from: story:fda-import-alert-telangana-plant, to: story:vannamar-us-shipments-resume, type: conditional, forecast: forecast:vannamar-import-alert-lifted, outcome: "YES", mechanism: restores market access, direction: up, confidence: 0.5, lag_days: 90}
+  - {from: story:fda-import-alert-telangana-plant, to: story:us-injectable-shortages-persist, type: conditional, forecast: forecast:vannamar-import-alert-lifted, outcome: "NO", mechanism: keeps supply offline, direction: up, confidence: 0.5, lag_days: 60}

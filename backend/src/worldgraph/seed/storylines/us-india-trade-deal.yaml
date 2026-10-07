@@ -1,0 +1,154 @@
+id: us-india-trade-deal
+title: US–India trade talks and tariff exposure
+entities:
+  - {id: org:us-india-trade-deal-palmyra-loom, type: organization, subtype: company, name: Palmyra Loom Exports, located_in: region:in-tn, sectors: [manufacturing, consumer], summary: "Invented knitwear exporter in Tiruppur used in sample stories.", sample: true}
+  - {id: org:us-india-trade-deal-tapiline-gems, type: organization, subtype: company, name: Tapiline Gems, located_in: region:in-gj.surat, sectors: [manufacturing, consumer], summary: "Invented diamond cutting and polishing firm in Surat used in sample stories.", sample: true}
+forecasts:
+  - id: forecast:us-india-trade-deal-three-months
+    short_title: US and India announce a trade deal within three months?
+    question: Will the United States and India announce a trade agreement, or an agreed first stage of one, within three months?
+    category: trade
+    location: region:in-dl.new-delhi
+    about: [region:in, region:us, sector:logistics-trade, commodity:apparel]
+    end_in_days: 90
+    resolution_rule: Resolves YES if both governments publicly announce a concluded trade agreement, or an agreed first stage that lowers tariffs, before the end date.
+    history: {days: 120, start: 0.36, end: 0.58, moves: [{days_ago: 0.5, delta: 0.13}], volume: 264000, liquidity: 34000}
+stories:
+  - id: story:us-tariffs-weigh-indian-exports
+    headline: Higher US tariffs weigh on India's labour-intensive exports
+    so_what: Garment, gem and leather exporters lose their price edge against Asian rivals in their biggest market.
+    event_type: policy
+    impact: risk
+    direction: down
+    magnitude: 4
+    horizon: months
+    confidence: 0.85
+    sectors: [manufacturing, logistics-trade, consumer]
+    at: region:us-dc.washington-d-c
+    mentions: [region:us, region:in, commodity:apparel, commodity:gold]
+    age_hours: 680
+    sources: 38
+    actions: [Map US revenue exposure by product line, Price US quotes with tariff scenarios]
+  - id: story:tiruppur-surat-us-orders-slow
+    headline: Tiruppur and Surat textile exporters report fewer US orders
+    so_what: Buyers delay next-season programmes, leaving knitting and processing units with idle capacity and tighter cash flow.
+    event_type: business-sentiment
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.8
+    sectors: [manufacturing, consumer]
+    at: region:in-tn
+    mentions: [region:in-tn.coimbatore, region:in-gj.surat, org:us-india-trade-deal-palmyra-loom, commodity:apparel, commodity:cotton, region:us]
+    age_hours: 520
+    sources: 16
+    actions: [Review working-capital limits with your bank, Pitch EU and UK buyers]
+  - id: story:surat-diamond-units-cut-shifts
+    headline: Surat diamond polishing units cut shifts as US demand cools
+    so_what: Cutters and jewellery exporters face lower orders, and small workshops feel the squeeze first.
+    event_type: business-sentiment
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: weeks
+    confidence: 0.75
+    sectors: [manufacturing, consumer]
+    at: region:in-gj.surat
+    mentions: [org:us-india-trade-deal-tapiline-gems, region:in-mh.mumbai, commodity:gold, region:us]
+    age_hours: 430
+    sources: 11
+    actions: [Shift inventory toward Gulf and European buyers, Tighten credit terms with small workshops]
+  - id: story:us-buyers-shift-apparel-bangladesh-vietnam
+    headline: US apparel buyers shift orders to Bangladesh and Vietnam
+    so_what: Factories in Dhaka, Chattogram and Ho Chi Minh City fill extra capacity at India's expense.
+    event_type: market-shift
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.7
+    sectors: [manufacturing, logistics-trade]
+    at: region:bd-c.dhaka
+    mentions: [region:bd-b.chattogram, region:vn-sg.ho-chi-minh-city, region:vn, commodity:apparel, region:us]
+    age_hours: 300
+    sources: 13
+    actions: [Book Chattogram freight space early, Line up fabric supply for new orders]
+  - id: story:chennai-electronics-front-load-us
+    headline: Chennai electronics exporters rush US shipments ahead of tariff changes
+    so_what: Front-loaded orders lift near-term air and sea bookings but could leave a lull later.
+    event_type: trade-flow
+    impact: neutral
+    direction: up
+    magnitude: 2
+    horizon: weeks
+    confidence: 0.7
+    sectors: [tech, logistics-trade]
+    at: region:in-tn.chennai
+    mentions: [infra:chennai-port, region:in-ka.bengaluru, commodity:smartphones, policy:india-pli, region:us]
+    age_hours: 190
+    sources: 9
+    actions: [Book air capacity for peak weeks, Plan staffing for a possible lull]
+  - id: story:us-india-first-stage-deal-close
+    headline: Officials signal a first-stage US–India trade deal is close
+    so_what: Lower tariffs would restore Indian exporters' price edge, especially in garments, gems and leather goods.
+    event_type: policy-signal
+    impact: opportunity
+    direction: up
+    magnitude: 4
+    horizon: months
+    confidence: 0.8
+    sectors: [logistics-trade, manufacturing]
+    at: region:in-dl.new-delhi
+    mentions: [region:us-dc.washington-d-c, region:us, region:in, commodity:apparel]
+    age_hours: 13
+    sources: 31
+    actions: [Prepare US price lists for lower tariffs, Keep US buyer conversations warm]
+  - id: story:indian-apparel-regains-us-orders
+    kind: projected
+    headline: Indian apparel exporters could quickly win back US orders
+    so_what: A narrower tariff gap would bring buyers back to Tiruppur and Surat for next-season programmes.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 3
+    horizon: months
+    confidence: 0.5
+    sectors: [manufacturing, consumer]
+    at: region:in-tn.coimbatore
+    mentions: [region:in-tn, region:in-gj.surat, commodity:apparel, region:us]
+  - id: story:indian-apparel-keeps-losing-us-share
+    kind: projected
+    headline: Indian garment makers would keep losing US share to rivals
+    so_what: Without a deal, more buyers would lock in Bangladeshi and Vietnamese suppliers for the long term.
+    event_type: projected-impact
+    impact: risk
+    direction: down
+    magnitude: 3
+    horizon: months
+    confidence: 0.45
+    sectors: [manufacturing, consumer]
+    at: region:in-tn
+    mentions: [region:in-gj.surat, region:bd, region:vn, commodity:apparel]
+  - id: story:surat-gems-turn-to-gulf-europe
+    kind: projected
+    headline: Surat gem exporters could push harder into Gulf and European markets
+    so_what: Diversifying away from the US would support volumes, though at thinner margins at first.
+    event_type: projected-impact
+    impact: opportunity
+    direction: up
+    magnitude: 2
+    horizon: months
+    confidence: 0.4
+    sectors: [consumer, logistics-trade]
+    at: region:ae-du.dubai
+    mentions: [region:in-gj.surat, region:eu, commodity:gold]
+links:
+  - {from: story:us-tariffs-weigh-indian-exports, to: story:tiruppur-surat-us-orders-slow, type: reported, mechanism: raises landed prices, direction: down, confidence: 0.85, lag_days: 21, evidence: "Sample evidence: exporter associations in Tiruppur linked the order slowdown to the higher US tariff rates."}
+  - {from: story:us-tariffs-weigh-indian-exports, to: story:surat-diamond-units-cut-shifts, type: reported, mechanism: cuts export demand, direction: down, confidence: 0.8, lag_days: 30}
+  - {from: story:us-tariffs-weigh-indian-exports, to: story:chennai-electronics-front-load-us, type: inferred, mechanism: prompts shipment front-loading, direction: up, confidence: 0.5, lag_days: 20}
+  - {from: story:tiruppur-surat-us-orders-slow, to: story:us-buyers-shift-apparel-bangladesh-vietnam, type: inferred, mechanism: shifts buyer sourcing, direction: up, confidence: 0.6, lag_days: 9}
+  - {from: story:surat-diamond-units-cut-shifts, to: story:surat-gems-turn-to-gulf-europe, type: projected, mechanism: pushes market diversification, direction: up, confidence: 0.4, lag_days: 90}
+  - {from: story:rupee-firms-on-softer-dollar, to: story:indian-apparel-keeps-losing-us-share, type: projected, mechanism: trims rupee earnings, direction: down, confidence: 0.35, lag_days: 30}
+  - {from: story:us-india-first-stage-deal-close, to: story:indian-apparel-regains-us-orders, type: conditional, forecast: forecast:us-india-trade-deal-three-months, outcome: "YES", mechanism: narrows tariff gap, direction: up, confidence: 0.55, lag_days: 60}
+  - {from: story:us-india-first-stage-deal-close, to: story:indian-apparel-keeps-losing-us-share, type: conditional, forecast: forecast:us-india-trade-deal-three-months, outcome: "NO", mechanism: keeps tariff gap, direction: down, confidence: 0.5, lag_days: 45}
