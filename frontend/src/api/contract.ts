@@ -573,6 +573,7 @@ export type PendingAnalysisResponse = z.infer<typeof PendingAnalysisResponse>;
 /** api.save_analysis({engine, model, items}) — writes AI results; returns what was saved */
 export const SaveAnalysisResponse = z.object({
   saved: z.number().int(),
+  skipped: z.number().int(), // stories marked as not business news
   rejected: z.array(z.object({ id: z.string(), reason: z.string() })),
   links_saved: z.number().int(),
 });
@@ -660,7 +661,13 @@ export interface RpcArgs {
   brief: { profile?: Profile; sample?: boolean };
   ask_context: { q: string; limit?: number; sample?: boolean };
   pending_analysis: { limit?: number };
-  save_analysis: { engine: "artifact" | "api"; model: string; items: AnalysisItem[] };
+  save_analysis: {
+    engine: "artifact" | "api";
+    model: string;
+    items: AnalysisItem[];
+    /** Pending stories the AI judged not to be business news (hidden from the app). */
+    skipped?: { id: string; reason: string }[];
+  };
 }
 
 // ---------------------------------------------------------------------------
