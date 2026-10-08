@@ -243,7 +243,9 @@ export function startHashSync(win: Window = window): () => void {
 
   const writeState = (mode: "push" | "replace", hash: string) => {
     try {
-      const url = `${win.location.pathname}${win.location.search}${hash}`;
+      // Absolute, from the document's own URL: a bare "#x" would resolve against
+      // the base URL, which in some frames (srcdoc) is the parent's.
+      const url = `${win.location.href.split("#")[0]}${hash}`;
       const data = { ...(isObject(history.state) ? history.state : {}), wgDepth: depth };
       if (mode === "push") history.pushState(data, "", url);
       else history.replaceState(data, "", url);
