@@ -16,6 +16,9 @@ import type { ProjectedEffect } from "@/ai/schemas";
 
 export type CascadeStory = CascadeResponse["nodes"][number];
 
+/** Steps each way the flow opens with. The story card asks for the same, so the flow opens from cache. */
+export const DEFAULT_CASCADE_DEPTH = 2;
+
 /** What the viewer is looking at in the flow. */
 export type NodeRole = "focus" | "cause" | "effect" | "projection";
 

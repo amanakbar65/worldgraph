@@ -6,9 +6,10 @@
  */
 import type { CascadeLink, LinkType } from "@/api/contract";
 import { formatProbability } from "@/lib/format";
-import { LINK_TYPES } from "@/lib/meaning";
+import { DIRECTION_WORDS, IMPACT_TONES, LINK_TYPES } from "@/lib/meaning";
+import { relativeTime } from "@/lib/time";
 
-import { branchLabel, type BranchInfo } from "./cascade-data";
+import { branchLabel, type BranchInfo, type CascadeNode } from "./cascade-data";
 
 export interface EdgeLook {
   /** Line pattern for this link type. */
@@ -100,6 +101,39 @@ export function linkSummary(link: Pick<CascadeLink, "mechanism" | "link_type" | 
   const parts = [`${capitalise(link.mechanism)}: ${type.toLowerCase()}, ${confidenceWords(link.confidence).toLowerCase()}`];
   if (branch) parts.push(`${branchLabel(branch.outcome, branch.probability)} crowd forecast`);
   return `${parts.join(". ")}.`;
+}
+
+/**
+ * The accessible name of a card in the flow: its place in the cascade, the
+ * headline, then impact, place and time. "Effect, 1 step on: … Risk, rising.
+ * Shanghai. 3 h ago."
+ */
+export function nodeLabel(node: Pick<CascadeNode, "role" | "depth" | "story" | "ai">, now = Date.now()): string {
+  const { story } = node;
+  const steps = Math.abs(node.depth);
+  const place =
+    node.role === "focus"
+      ? "This story"
+      : node.ai
+        ? "AI projection, not news"
+        : node.role === "cause"
+          ? `Cause, ${steps} ${steps === 1 ? "step" : "steps"} back`
+          : `Effect, ${steps} ${steps === 1 ? "step" : "steps"} on`;
+  const parts = [`${place}: ${story.headline}.`];
+  if (!story.analysed) parts.push("Draft, awaiting analysis.");
+  else {
+    const tone = IMPACT_TONES[story.impact] ?? IMPACT_TONES.neutral;
+    parts.push(`${tone.label}${story.direction ? `, ${DIRECTION_WORDS[story.direction]}` : ""}.`);
+  }
+  if (story.region) parts.push(`${story.region.name}.`);
+  if (story.kind === "projected" && !node.ai) parts.push("Projected.");
+  else if (story.first_seen) {
+    const when = relativeTime(story.first_seen, now);
+    if (when) parts.push(`${capitalise(when)}.`);
+  }
+  if (node.ai && story.confidence !== null) parts.push(`Confidence ${formatProbability(story.confidence)}.`);
+  if (story.is_sample) parts.push("Sample data.");
+  return parts.join(" ");
 }
 
 export function capitalise(text: string): string {

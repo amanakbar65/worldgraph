@@ -68,8 +68,8 @@ export const SIZES = {
   ranksep: 56,
   group: {
     padding: 12,
-    /** The forecast's title row at the top of a branch box. */
-    title: 40,
+    /** The forecast's title (and source, volume, update) at the top of a branch box. */
+    title: 66,
     /** "If YES · 62%" with its ring. */
     header: 56,
     gap: 10,
@@ -227,8 +227,81 @@ export function layoutCascade(model: CascadeModel, direction: FlowDirection = "L
     });
   }
 
+  untangleLaneLinks(model, layoutId, routed, nodes, edges, direction);
+
   const info = graph.graph() as { width?: number; height?: number };
   return { direction, nodes, groups, edges, width: info.width ?? 0, height: info.height ?? 0 };
+}
+
+/**
+ * dagre sees a lane box as one card, so links from one story into the same
+ * box (If YES and If NO) can cross on the way in. Hand out their routes in
+ * the order of the cards they reach: the top route goes to the top card.
+ */
+function untangleLaneLinks(
+  model: CascadeModel,
+  layoutId: ReadonlyMap<string, string>,
+  routed: ReadonlySet<string>,
+  nodes: ReadonlyMap<string, LaidOutNode>,
+  edges: Map<string, LaidOutEdge>,
+  direction: FlowDirection,
+) {
+  const across = (p: Point) => (direction === "LR" ? p.y : p.x);
+  const bundles = new Map<string, string[]>();
+  for (const edge of model.edges) {
+    if (!routed.has(edge.id)) continue;
+    const w = layoutId.get(edge.link.dst);
+    if (!w || w === edge.link.dst) continue; // only links into lane boxes
+    const key = `${layoutId.get(edge.link.src)}→${w}`;
+    bundles.set(key, [...(bundles.get(key) ?? []), edge.id]);
+  }
+  for (const ids of bundles.values()) {
+    if (ids.length < 2) continue;
+    const routes = ids.map((id) => edges.get(id)!);
+    if (new Set(routes.map((r) => r.points.length)).size !== 1) continue;
+    const routeKey = (r: LaidOutEdge) => (r.label ? across(r.label) : r.points.length ? across(r.points[0]) : 0);
+    const sortedRoutes = [...routes].sort((a, b) => routeKey(a) - routeKey(b));
+    const target = (id: string) => {
+      const dst = model.edges.find((e) => e.id === id)!.link.dst;
+      const box = nodes.get(dst);
+      return box ? across({ x: box.x + box.width / 2, y: box.y + box.height / 2 }) : 0;
+    };
+    const sortedIds = [...ids].sort((a, b) => target(a) - target(b));
+    sortedIds.forEach((id, i) => {
+      edges.set(id, { id, points: sortedRoutes[i].points, label: sortedRoutes[i].label });
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Framing
+// ---------------------------------------------------------------------------
+
+/** Below this zoom the cards' text gets too small to read comfortably. */
+export const READABLE_ZOOM = 0.7;
+
+/**
+ * What to frame when a layout appears: everything if it fits at a readable
+ * size; otherwise the story and its direct causes and effects; right after
+ * AI projections arrive, the story and the projections.
+ * `ids: null` means all of it.
+ */
+export function fitPlan(
+  model: CascadeModel,
+  layout: CascadeLayout,
+  box: { width: number; height: number },
+  newProjections: boolean,
+): { ids: string[] | null; minZoom?: number } {
+  if (newProjections) {
+    const ai = model.groups.find((g) => g.kind === "ai");
+    if (ai) return { ids: [model.focus, ai.id], minZoom: 0.5 };
+  }
+  if (box.width <= 0 || box.height <= 0 || layout.width <= 0 || layout.height <= 0) return { ids: null };
+  const zoom = Math.min(box.width / (layout.width * 1.12), box.height / (layout.height * 1.12));
+  if (zoom >= READABLE_ZOOM) return { ids: null };
+  const ids = new Set<string>([model.focus]);
+  for (const node of model.nodes) if (Math.abs(node.depth) <= 1) ids.add(node.groupId ?? node.id);
+  return { ids: [...ids], minZoom: READABLE_ZOOM };
 }
 
 // ---------------------------------------------------------------------------
@@ -236,25 +309,43 @@ export function layoutCascade(model: CascadeModel, direction: FlowDirection = "L
 // ---------------------------------------------------------------------------
 
 /**
- * A smooth path from one card to another through dagre's bend points: each
- * stretch is an S-curve that leaves and arrives along the flow direction.
+ * A smooth path from one card to another through dagre's bend points. It
+ * leaves and arrives along the flow direction and passes through the bends
+ * as one spline (Catmull-Rom), so links fan out gently instead of kinking.
+ * Links that point back (or stay in a column) swing out and back in.
  */
 export function flowPath(source: Point, target: Point, bends: readonly Point[], direction: FlowDirection): string {
+  const lr = direction === "LR";
+  const along = (p: Point) => (lr ? p.x : p.y);
   const pts = [source, ...bends, target];
-  let d = `M${fmt(source.x)},${fmt(source.y)}`;
-  for (let i = 1; i < pts.length; i++) {
+  const start = `M${fmt(source.x)},${fmt(source.y)}`;
+
+  // Backwards or sideways: one wide loop from the exit side to the entry side.
+  if (along(target) - along(source) <= 8 && bends.length === 0) {
+    const cross = lr ? Math.abs(target.y - source.y) : Math.abs(target.x - source.x);
+    const reach = Math.max(48, cross / 2);
+    return lr
+      ? `${start} C${fmt(source.x + reach)},${fmt(source.y)} ${fmt(target.x - reach)},${fmt(target.y)} ${fmt(target.x)},${fmt(target.y)}`
+      : `${start} C${fmt(source.x)},${fmt(source.y + reach)} ${fmt(target.x)},${fmt(target.y - reach)} ${fmt(target.x)},${fmt(target.y)}`;
+  }
+
+  // Tangents: along the flow at both ends, Catmull-Rom at the bends.
+  const n = pts.length;
+  const tangents = pts.map((p, i) => {
+    if (i === 0 || i === n - 1) {
+      const other = i === 0 ? pts[1] : pts[n - 2];
+      const span = Math.abs(along(i === 0 ? other : p) - along(i === 0 ? p : other)) * 1.5;
+      return lr ? { x: span, y: 0 } : { x: 0, y: span };
+    }
+    return { x: (pts[i + 1].x - pts[i - 1].x) / 2, y: (pts[i + 1].y - pts[i - 1].y) / 2 };
+  });
+  let d = start;
+  for (let i = 1; i < n; i++) {
     const p = pts[i - 1];
     const q = pts[i];
-    if (direction === "LR") {
-      const dx = q.x - p.x;
-      // Going backwards (or straight down a column): swing out and back in.
-      const reach = dx > 8 ? dx / 2 : Math.max(48, Math.abs(q.y - p.y) / 2);
-      d += ` C${fmt(p.x + reach)},${fmt(p.y)} ${fmt(q.x - reach)},${fmt(q.y)} ${fmt(q.x)},${fmt(q.y)}`;
-    } else {
-      const dy = q.y - p.y;
-      const reach = dy > 8 ? dy / 2 : Math.max(48, Math.abs(q.x - p.x) / 2);
-      d += ` C${fmt(p.x)},${fmt(p.y + reach)} ${fmt(q.x)},${fmt(q.y - reach)} ${fmt(q.x)},${fmt(q.y)}`;
-    }
+    const c1 = { x: p.x + tangents[i - 1].x / 3, y: p.y + tangents[i - 1].y / 3 };
+    const c2 = { x: q.x - tangents[i].x / 3, y: q.y - tangents[i].y / 3 };
+    d += ` C${fmt(c1.x)},${fmt(c1.y)} ${fmt(c2.x)},${fmt(c2.y)} ${fmt(q.x)},${fmt(q.y)}`;
   }
   return d;
 }

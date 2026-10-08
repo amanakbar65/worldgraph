@@ -1,0 +1,29 @@
+/*
+ * React Flow's own stylesheet is not in a cascade layer, so it beats
+ * Tailwind's utilities; these overrides use the design tokens instead of
+ * its built-in colours.
+ */
+.wg-cascade .react-flow {
+  --xy-background-color: transparent;
+  --xy-edge-stroke: var(--fg-muted);
+  --xy-attribution-background-color: transparent;
+}
+
+.wg-cascade .react-flow__attribution {
+  background: transparent;
+  padding: 2px 8px;
+}
+
+.wg-cascade .react-flow__attribution a {
+  color: var(--fg-subtle);
+  font-size: 0.75rem;
+}
+
+/* Cards are buttons inside nodes; the node wrapper itself is never focused. */
+.wg-cascade .react-flow__node {
+  cursor: default;
+}
+
+.wg-cascade .react-flow__edge {
+  cursor: pointer;
+}

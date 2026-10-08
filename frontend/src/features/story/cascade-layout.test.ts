@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import { projectionElements, shapeCascade } from "./cascade-data";
-import { flowPath, groupGeometry, layoutCascade, midpoint, neighbour, SIZES } from "./cascade-layout";
+import {
+  fitPlan,
+  flowPath,
+  groupGeometry,
+  layoutCascade,
+  midpoint,
+  neighbour,
+  READABLE_ZOOM,
+  SIZES,
+} from "./cascade-layout";
 import { CASCADE, FOCUS_ID } from "./fixtures";
 
 const model = shapeCascade(CASCADE);
@@ -77,6 +86,12 @@ describe("layoutCascade (left to right)", () => {
     // A link that skips a column bends around it.
     const skip = layout.edges.get("link-130")!;
     expect(skip.points.length).toBeGreaterThan(direct.points.length);
+  });
+
+  it("sends the top route into a lane box to the top card, so YES and NO links don't cross", () => {
+    const yes = layout.edges.get("link-201")!;
+    const no = layout.edges.get("link-202")!;
+    expect(yes.label!.y).toBeLessThan(no.label!.y);
   });
 
   it("is deterministic", () => {
@@ -155,6 +170,48 @@ describe("neighbour (arrow keys)", () => {
     const tb = layoutCascade(model, "TB");
     expect(tb.nodes.get(neighbour(tb, FOCUS_ID, "ArrowDown")!)?.depth).toBe(1);
     expect(tb.nodes.get(neighbour(tb, FOCUS_ID, "ArrowUp")!)?.depth).toBe(-1);
+  });
+});
+
+describe("fitPlan", () => {
+  const layout = layoutCascade(model, "LR");
+
+  it("frames everything when it fits at a readable size", () => {
+    expect(fitPlan(model, layout, { width: 4000, height: 3000 }, false)).toEqual({ ids: null });
+  });
+
+  it("frames the story and its direct links when the whole would be too small", () => {
+    const plan = fitPlan(model, layout, { width: 600, height: 400 }, false);
+    expect(plan.minZoom).toBe(READABLE_ZOOM);
+    expect(plan.ids).toContain(FOCUS_ID);
+    expect(plan.ids).toContain("story:red-sea-attacks-reroute");
+    expect(plan.ids).toContain(model.groups[0].id);
+    expect(plan.ids).not.toContain("story:europe-retail-restock-delays");
+  });
+
+  it("frames new AI projections with the story", () => {
+    const withAi = shapeCascade(
+      CASCADE,
+      projectionElements(
+        FOCUS_ID,
+        [
+          {
+            headline: "Air freight demand may rise",
+            so_what: "Manufacturers would pay more to fly parts.",
+            impact: "risk",
+            direction: "up",
+            sectors: ["logistics-trade"],
+            region_id: null,
+            mechanism: "shifts urgent cargo",
+            lag_days: 10,
+            confidence: 0.4,
+          },
+        ],
+        [],
+      ),
+    );
+    const plan = fitPlan(withAi, layoutCascade(withAi), { width: 4000, height: 3000 }, true);
+    expect(plan.ids).toEqual([FOCUS_ID, "ai:projections"]);
   });
 });
 
