@@ -57,7 +57,7 @@ export function KpiTile({ kpi, locale, onClick, className }: KpiTileProps) {
     <>
       <div aria-hidden className="flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-label text-fg-muted">{kpi.name}</span>
-        {kpi.is_sample && <SampleBadge compact />}
+        {kpi.is_sample && <SampleBadge iconOnly />}
       </div>
       <div aria-hidden className="flex items-baseline gap-1">
         <span className="text-figure font-semibold text-fg tabular-nums">

@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 
 const SIZES = {
   sm: { px: 44, stroke: 4, text: "text-body", icon: false },
-  md: { px: 80, stroke: 6, text: "text-figure", icon: true },
-  lg: { px: 112, stroke: 8, text: "text-figure", icon: true },
+  md: { px: 88, stroke: 6, text: "text-figure", icon: true },
+  lg: { px: 120, stroke: 8, text: "text-figure", icon: true },
 } as const;
 
 export interface ProbabilityRingProps {
@@ -19,7 +19,7 @@ export interface ProbabilityRingProps {
   glow?: boolean;
   /** Low-liquidity market: the ring fades and a "Thin market" tag appears. */
   thin?: boolean;
-  /** `sm` 44 px (lists), `md` 80 px (cards, default), `lg` 112 px (detail). */
+  /** `sm` 44 px (lists), `md` 88 px (cards, default), `lg` 120 px (detail). */
   size?: keyof typeof SIZES;
   /** What the forecast is about, prepended to the accessible name. */
   label?: string;

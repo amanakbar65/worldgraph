@@ -64,11 +64,11 @@ export function Segmented<T extends string>({
               "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md text-fg-muted tabular-nums transition-colors",
               "hover:text-fg data-[state=on]:bg-surface-2 data-[state=on]:text-fg data-[state=on]:shadow-[inset_0_0_0_1px_var(--line-strong)]",
               size === "md" ? "px-3 text-body" : "px-2.5 text-label",
-              fill && "flex-1",
+              fill && "min-w-0 flex-1",
             )}
           >
             {Icon && <Icon aria-hidden className="size-4 shrink-0" />}
-            {option.label}
+            <span className="truncate">{option.label}</span>
           </ToggleGroup.Item>
         );
       })}

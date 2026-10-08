@@ -58,7 +58,7 @@ function ChipButton({ className, tone, size = "md", selected, type = "button", .
         chipVariants({ tone, size }),
         "relative cursor-pointer transition-colors before:absolute before:inset-x-0 before:top-1/2 before:h-10 before:-translate-y-1/2 before:content-['']",
         "hover:border-line-strong hover:text-fg disabled:pointer-events-none disabled:opacity-50",
-        "aria-pressed:border-fg/45 aria-pressed:bg-fg/12 aria-pressed:text-fg",
+        "aria-pressed:border-fg/60 aria-pressed:bg-fg/15 aria-pressed:text-fg",
         className,
       )}
       {...props}

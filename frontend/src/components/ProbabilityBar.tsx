@@ -7,7 +7,7 @@ export interface ProbabilityBarProps {
   probability: number;
   /** 24-hour change in probability units (0.08 = ▲ 8 points). Null or omitted hides it. */
   change24h?: number | null;
-  /** Low-liquidity market: the bar fades and its track turns dashed. */
+  /** Low-liquidity market: the bar and its number fade. */
   thin?: boolean;
   /** What the forecast is about, prepended to the accessible name. */
   label?: string;
@@ -35,7 +35,7 @@ export function ProbabilityBar({ probability, change24h, thin = false, label, si
         className={cn(
           "relative min-w-12 flex-1 overflow-hidden rounded-full",
           size === "sm" ? "h-1.5" : "h-2",
-          thin ? "border border-dashed border-forecast/45 bg-transparent" : "bg-forecast/18",
+          thin ? "bg-forecast/10" : "bg-forecast/18",
         )}
       >
         <div

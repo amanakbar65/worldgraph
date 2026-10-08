@@ -27,7 +27,12 @@ function ScrollArea({
     <ScrollAreaPrimitive.Root data-slot="scroll-area" className={cn("relative overflow-hidden", className)} {...props}>
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
-        className={cn("size-full rounded-[inherit]", viewportClassName)}
+        className={cn(
+          "size-full rounded-[inherit]",
+          // Radix wraps content in a `display: table` box that defeats truncation; vertical lists don't need it.
+          orientation === "vertical" && "[&>div]:!block",
+          viewportClassName,
+        )}
         {...(label ? { tabIndex: 0, role: "region", "aria-label": label } : {})}
       >
         {children}
