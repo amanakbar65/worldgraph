@@ -384,14 +384,8 @@ Checks: \`cd frontend && npx tsc -b --noEmit && npx eslint . && npx vitest run &
 
 // Work from interrupted attempts, saved on wip/ branches (see CHECKPOINT.md).
 const RESUME = {
-  'sql:forecasts-business-ai': `
-RESUME FIRST: a previous attempt at this exact task was interrupted by a usage limit. Its unreviewed work (0006_api_forecasts_business.sql and tests/api/test_forecasts_business.py) is on branch wip/sql-forecasts-business-ai. Start with \`git fetch origin wip/sql-forecasts-business-ai && git merge --no-edit FETCH_HEAD\`, then review it critically against the spec below, finish whatever is missing, and make every check pass.
-Changes on main since then that affect you:
-- Migration 0009_skipped_and_hardening.sql adds a trigger: when a story's analysis_status becomes 'skipped', the story (node) and its live articles are DELETED and their URLs recorded in skipped_url. So save_analysis's "skipped" path should still set analysis_status = 'skipped' (the trigger then removes the story) and count it; tests must assert the story is gone (and its URLs are in skipped_url), not that it has status 'skipped'.
-- Supabase refuses function-level SET of extension settings (e.g. \`set pg_trgm.similarity_threshold\`): never use them; use the default % threshold (0.3) or similarity() comparisons.
-- 0005's search now uses pg_trgm's default threshold.`,
-  'map-assets': `
-RESUME FIRST: a previous attempt at this exact task was interrupted by a usage limit. Its unreviewed work (geo/assets.py, geo/assets_check.py, cli.py and pyproject changes, frontend/public/geo/*, frontend/src/lib/geo-continents.json; geo.ts and its test may be missing) is on branch wip/map-assets. Start with \`git fetch origin wip/map-assets && git merge --no-edit FETCH_HEAD\` (resolve any conflict in backend/pyproject.toml / uv.lock / cli.py by keeping BOTH main's additions, e.g. the "pipeline" dependency group and the "wg geo fips" and "wg pipeline" commands, and yours; regenerate uv.lock with \`uv lock\`), then review it critically against the spec below, finish whatever is missing, and make every check pass.`,
+  'ui-kit': `
+RESUME FIRST: a previous attempt at this exact task was interrupted by a usage limit after it had only started (frontend/src/styles/tokens.css edits and frontend/src/styles/palette.test.ts). That work is on branch wip/wf_828b324a-939-3. Start with \`git fetch origin wip/wf_828b324a-939-3 && git merge --no-edit FETCH_HEAD\`, review it critically against the spec below, then build the rest. Note: main now also has frontend/src/lib/geo.ts (map loader), src/ai/* (AI engine interface and schemas) and src/platform/storage.ts; don't edit those. Commit after each milestone (primitives, domain components, preview); a background saver also pushes your worktree every 10 minutes.`,
 }
 
 phase('Build')
