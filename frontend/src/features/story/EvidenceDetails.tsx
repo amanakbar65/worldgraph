@@ -150,15 +150,15 @@ function ProjectionDetails({
 }
 
 /**
- * The evidence drawer over the flow: a side sheet on wide screens, a bottom
- * sheet on phones. Focus moves into it; Escape or Close puts it back.
+ * The evidence drawer over the flow: a side sheet on wide screens, a cover
+ * over the flow on phones. Focus moves into it; Escape or Close puts it back.
  */
 export function EvidenceDrawer({
   target,
   placement,
   onClose,
   ...details
-}: DetailsProps & { placement: "side" | "bottom"; onClose: () => void }) {
+}: DetailsProps & { placement: "side" | "cover"; onClose: () => void }) {
   const titleId = useId();
   const heading = useRef<HTMLHeadingElement>(null);
   const opener = useRef<Element | null>(null);
@@ -197,7 +197,8 @@ export function EvidenceDrawer({
         "absolute z-20 flex flex-col overflow-hidden border-line bg-surface shadow-panel",
         placement === "side"
           ? "inset-y-3 right-3 w-[min(380px,calc(100%-24px))] rounded-xl border"
-          : "inset-x-0 bottom-0 max-h-[80%] rounded-t-2xl border-t",
+          : // Phones: over the whole flow, from the top, so it is in view even with the sheet half open.
+            "inset-0 border-t",
       )}
     >
       <div className="flex items-center gap-2 border-b border-line py-1.5 pr-1.5 pl-4">

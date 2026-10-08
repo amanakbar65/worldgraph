@@ -62,8 +62,7 @@ function CascadeView({ id }: { id: string }) {
   const direction = isDesktop ? "LR" : "TB";
 
   const query = useRpc("cascade", { id, depth }, { placeholderData: keepPreviousData });
-  const projection = useProjection();
-  const { status } = projection;
+  const { engine, status, run: runProjection, stop: stopProjection, clear: clearProjection } = useProjection();
 
   const model = useMemo<CascadeModel | null>(() => {
     if (!query.data) return null;
@@ -94,8 +93,8 @@ function CascadeView({ id }: { id: string }) {
   const project = useCallback(() => {
     if (!model) return;
     const regions = projectionRegions(model);
-    void projection.run(projectionInput(model, regions), regions);
-  }, [model, projection]);
+    void runProjection(projectionInput(model, regions), regions);
+  }, [model, runProjection]);
 
   const target = useMemo<EvidenceTarget | null>(() => {
     if (!model || !selection) return null;
@@ -178,13 +177,13 @@ function CascadeView({ id }: { id: string }) {
             ]}
           />
           <ProjectControl
-            engine={projection.engine}
+            engine={engine}
             status={status}
             canProject={canProject}
             onProject={project}
-            onStop={projection.stop}
+            onStop={stopProjection}
             onClear={() => {
-              projection.clear();
+              clearProjection();
               setSelection(null);
             }}
           />
@@ -205,7 +204,7 @@ function CascadeView({ id }: { id: string }) {
                   : "Links appear as related news is analysed."
               }
               action={
-                canProject && projection.engine?.kind !== "none" && status.phase !== "running"
+                canProject && engine?.kind !== "none" && status.phase !== "running"
                   ? { label: "Project next effects", onClick: project, icon: Sparkles }
                   : undefined
               }
@@ -235,7 +234,7 @@ function CascadeView({ id }: { id: string }) {
         {view === "flow" && target && (
           <EvidenceDrawer
             target={target}
-            placement={isDesktop ? "side" : "bottom"}
+            placement={isDesktop ? "side" : "cover"}
             stories={stories}
             onClose={() => setSelection(null)}
             onOpenStory={nav.replaceWithStory}

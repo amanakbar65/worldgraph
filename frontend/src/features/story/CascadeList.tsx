@@ -183,11 +183,11 @@ function LinkRow({
         </div>
         <Button
           variant="ghost"
-          size="sm"
           aria-expanded={open}
           aria-controls={panelId}
           onClick={() => setOpen((v) => !v)}
-          className="-my-1 shrink-0"
+          // A 40 px target that doesn't make the row taller.
+          className="-my-2 shrink-0 px-3"
         >
           Evidence
           <ChevronDown aria-hidden className={cn("transition-transform", open && "rotate-180")} />
