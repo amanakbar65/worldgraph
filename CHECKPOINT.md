@@ -41,7 +41,7 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 
 **Live data is on** (the owner added `DATABASE_URL` at about 15:00). Runs succeeded at 15:03 and 16:12: 411 live stories (all pending analysis), 859 articles and 73 Manifold forecasts. A news run takes about 7 minutes.
 
-**Problem:** GitHub's `*/15` schedule fired only about every 7 hours, and a run catches up at most 1 hour of GDELT. The proposed fix is `backend/supabase/ops_dispatch.sql` (pg_cron calls workflow_dispatch every 15 minutes, using a fine-grained token in Supabase Vault named `github_dispatch_token`). It is **waiting for the owner's OK and a token, and is not applied**.
+**Problem:** GitHub's `*/15` schedule fired only about every 7 hours, and a run catches up at most 1 hour of GDELT. The proposed fix is `backend/supabase/ops_dispatch.sql` (pg_cron calls workflow_dispatch every 15 minutes, using a fine-grained token in Supabase Vault named `github_dispatch_token`). The owner approved it; it is **applied (pg_cron job `wg-live-data`) and idle until the token is in Vault**.
 
 ## Next
 
@@ -58,7 +58,7 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 ## Waiting on the owner
 
 - Done: `DATABASE_URL` is set and live data works.
-- Decision: a reliable 15-minute trigger (`ops_dispatch.sql`, needs a GitHub token in Supabase Vault).
+- GitHub token in Supabase Vault named `github_dispatch_token` (the 15-minute trigger `wg-live-data` is applied and idle until then).
 - Optional cleanup: the old `worldgraph` branch in `amanakbar65/Others`.
 - Before a public launch:
   - feed terms for commercial use;
