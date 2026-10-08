@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 8 Oct 2026, 03:52 UTC.
+**Last updated:** 8 Oct 2026, 04:16 UTC (saved just before a usage-limit pause).
 
 ## How to resume (any new session)
 
@@ -28,26 +28,25 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 
 ## In flight
 
-| Item | State | Saved work | Resume with |
-| --- | --- | --- | --- |
-| 0006 SQL: forecasts, forecast, affects, opportunities, ask_context, pending_analysis, save_analysis (+ skipped), faster forecast_card | Interrupted by a usage limit (about 3,200 lines written, untested) | branch `wip/sql-forecasts-business-ai` | `orchestration/worldgraph-content-api.js` (see args below) |
-| Map assets: `wg geo assets`, TopoJSON in `frontend/public/geo/`, `frontend/src/lib/geo.ts` | Interrupted (builder and files written; loader may be missing) | branch `wip/map-assets` | same script |
-| UI kit: palette checks, icons, primitives, domain components, DesignPreview | Not started | — | same script |
+Run `wf_828b324a-939` of `orchestration/worldgraph-content-api.js`. Three tasks remain:
+- **map-assets:** DONE and merged into main (commit 1bb3b0d). It added `wg geo assets`, `frontend/public/geo/*` (8.4 MB, which must be included in the artifact's files) and `frontend/src/lib/geo.ts`.
+- **sql:forecasts-business-ai** (worktree `-1`): was still running. Latest snapshot is on branch **`wip/wf_828b324a-939-1`** (8 files, about 3,800 lines; 0006 SQL and tests, untested). The older snapshot is `wip/sql-forecasts-business-ai`.
+- **ui-kit** (worktree `-3`): had just started. Latest snapshot is on branch **`wip/wf_828b324a-939-3`**.
 
-Args for `orchestration/worldgraph-content-api.js` (pass as the Workflow `args`, a JSON object):
-`{"done": ["storylines:finance-macro", "storylines:energy-climate", "storylines:agri-food", "storylines:industry-tech", "storylines:trade-health-consumer", "indicators", "sql:map-region-brief", "sql:story-graph-search"]}`
+To resume after the pause:
+1. Check `.claude/worktrees/wf_828b324a-939-*`: if an agent committed a finished result on its `worktree-…` branch, merge it.
+2. Otherwise, in `orchestration/worldgraph-content-api.js`:
+   - point the `RESUME` notes at `wip/wf_828b324a-939-1` (SQL) and add one for ui-kit pointing at `wip/wf_828b324a-939-3`;
+   - relaunch with `{"done": [...the 8 labels below..., "map-assets"]}`.
+   - The 8 labels: storylines:finance-macro, storylines:energy-climate, storylines:agri-food, storylines:industry-tech, storylines:trade-health-consumer, indicators, sql:map-region-brief, sql:story-graph-search.
+3. Push main first, and restart the progress saver: `orchestration/checkpoint.sh 600 &`.
+4. Map-assets concern: `tsconfig.app.json` keeps tsbuildinfo inside the shared `node_modules`, so `tsc -b` can falsely say "up to date". Use `tsc -b --force` (or move tsBuildInfoFile).
 
-**Current run:** `wf_828b324a-939` (launched 03:51 UTC); progress saver running (`orchestration/checkpoint.sh 600`).
-- Worktree `-1` is the 0006 SQL agent; its progress is saved to branch `wip/wf_828b324a-939-1`.
-- Worktree `-2` is map assets; its progress is saved to `wip/wf_828b324a-939-2`.
-- The UI kit gets the next free worktree.
-- If this run dies, first fold the newest `wip/wf_828b324a-939-*` branch into `wip/sql-forecasts-business-ai` or `wip/map-assets`, then relaunch.
-
-After it finishes:
-- merge its three branches;
-- run all checks: backend `uv run --group pipeline pytest -q` with `TEST_DATABASE_URL`, ruff; frontend lint, typecheck, test, build;
-- apply 0006 to Supabase (ops.apply_migration with a commit-SHA URL and md5);
-- update this file.
+After all three are merged:
+- run all checks: backend pytest with `TEST_DATABASE_URL` plus ruff; frontend lint, typecheck, test, build;
+- fix the 0006 skipped tests if needed (0009 deletes skipped stories);
+- apply 0006 to Supabase with `ops.apply_migration` (commit-SHA URL + md5; no per-function SET of extension settings);
+- launch the screens build.
 
 ## Next
 
