@@ -61,30 +61,56 @@ const byDegreeThenName = (a: GraphNode, b: GraphNode) =>
   b.degree - a.degree || a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
 
 /**
- * Pick up to `max` neighbours: one of each kind in turn (best-connected
- * first), so a few busy stories can't crowd out the companies and goods.
+ * The two ends of the surest cause-and-effect link that doesn't involve the
+ * region itself (or none).
  */
-export function pickNodes(nodes: readonly GraphNode[], focusId: string, max: number): GraphNode[] {
+function strongestCausalPair(nodes: readonly GraphNode[], links: readonly GraphLink[], focusId: string): GraphNode[] {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const best = links
+    .filter((l) => l.causal && CAUSAL_TYPES.has(l.type) && l.source !== focusId && l.target !== focusId)
+    .filter((l) => byId.has(l.source) && byId.has(l.target) && l.source !== l.target)
+    .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0) || a.source.localeCompare(b.source))[0];
+  return best ? [byId.get(best.source)!, byId.get(best.target)!] : [];
+}
+
+/**
+ * Pick up to `max` neighbours. The surest cause-and-effect pair goes in
+ * first (cascades are the point), then one of each kind in turn,
+ * best-connected first, so a few busy stories can't crowd out the companies
+ * and goods.
+ */
+export function pickNodes(
+  nodes: readonly GraphNode[],
+  focusId: string,
+  max: number,
+  links: readonly GraphLink[] = [],
+): GraphNode[] {
+  const picked: GraphNode[] = max >= 2 ? strongestCausalPair(nodes, links, focusId) : [];
+  const taken = new Set(picked.map((n) => n.id));
   const groups = new Map<EntityType, GraphNode[]>();
   for (const n of nodes) {
-    if (n.id === focusId) continue;
+    if (n.id === focusId || taken.has(n.id)) continue;
     const list = groups.get(n.type) ?? [];
     list.push(n);
     groups.set(n.type, list);
   }
   const ordered = [...groups.entries()]
     .sort((a, b) => typeRank(a[0]) - typeRank(b[0]))
-    .map(([, list]) => [...list].sort(byDegreeThenName));
-  const picked: GraphNode[] = [];
-  for (let round = 0; picked.length < max; round++) {
+    .map(([type, list]) => ({
+      list: [...list].sort(byDegreeThenName),
+      // Kinds already on show (the causal pair) wait a round.
+      next: picked.some((p) => p.type === type) ? -1 : 0,
+    }));
+  while (picked.length < max) {
     let added = false;
-    for (const list of ordered) {
+    for (const group of ordered) {
       if (picked.length >= max) break;
-      const next = list[round];
-      if (next) {
-        picked.push(next);
+      const i = group.next++;
+      const node = i >= 0 ? group.list[i] : undefined;
+      if (node) {
+        picked.push(node);
         added = true;
-      }
+      } else if (i < 0) added = true; // skipped a turn; try again next round
     }
     if (!added) break;
   }
@@ -111,7 +137,7 @@ export interface LayoutOptions {
 export function layoutMiniGraph(graph: GraphData, focusId: string, options: LayoutOptions = {}): MiniGraph {
   const { max = 10, rx = 0.38, ry = 0.36, cx = 0.5, cy = 0.47 } = options;
   const focus = graph.nodes.find((n) => n.id === focusId) ?? null;
-  const picked = pickNodes(graph.nodes, focusId, max);
+  const picked = pickNodes(graph.nodes, focusId, max, graph.links);
   const center: PlacedNode | null = focus ? { ...focus, x: cx, y: cy, center: true } : null;
   const n = picked.length;
   const ring: PlacedNode[] = picked.map((node, i) => {

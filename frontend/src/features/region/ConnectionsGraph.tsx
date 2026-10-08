@@ -9,6 +9,7 @@ import { ENTITY_TYPE_ICONS, IMPACT_ICONS } from "@/lib/icons";
 import { LINK_TYPES, entityTypeTone, impactTone, type Tone } from "@/lib/meaning";
 import { cn } from "@/lib/utils";
 
+import { useElementWidth } from "./use-element-width";
 import { causalNotes, describeCausalNote, layoutMiniGraph, neighbours, type CausalNote, type PlacedNode } from "./region-graph";
 
 export interface ConnectionsGraphProps {
@@ -39,7 +40,10 @@ function nodeLook(node: PlacedNode): { tone: Tone; Icon: (typeof ENTITY_TYPE_ICO
  * Hover or focus a node to light up its links; tap it to open it.
  */
 export function ConnectionsGraph({ graph, focusId, regionName, onOpen, onSeeAll }: ConnectionsGraphProps) {
-  const mini = useMemo(() => layoutMiniGraph(graph, focusId, { max: 10, rx: 0.39, ry: 0.35, cy: 0.45 }), [graph, focusId]);
+  const [boxRef, width] = useElementWidth<HTMLDivElement>();
+  // Fewer nodes in a narrow box (the side panel, phones), so labels never collide.
+  const max = width !== null && width < 440 ? 8 : 10;
+  const mini = useMemo(() => layoutMiniGraph(graph, focusId, { max, rx: 0.36, ry: 0.35, cy: 0.45 }), [graph, focusId, max]);
   const [active, setActive] = useState<string | null>(null);
   const lit = useMemo(() => (active ? neighbours(mini, active) : null), [mini, active]);
 
@@ -62,6 +66,7 @@ export function ConnectionsGraph({ graph, focusId, regionName, onOpen, onSeeAll 
   return (
     <div className="flex flex-col gap-3">
       <div
+        ref={boxRef}
         role="group"
         aria-label={`Connections of ${regionName}: ${mini.nodes.length} of ${total} shown`}
         className={cn(

@@ -23,6 +23,27 @@ describe("pickNodes", () => {
     expect(picked.map((n) => n.id)).toEqual(["org:b", "org:a", "commodity:rice", "story:s0", "story:s1"]);
   });
 
+  it("puts the surest cause-and-effect pair in first, then fills by kind", () => {
+    const nodes = [
+      node("region:eg", "region", 20),
+      node("story:busy", "story", 9),
+      node("story:reserves", "story", 2),
+      node("story:pound", "story", 1),
+      node("org:cbe", "organization", 3),
+      node("commodity:wheat", "commodity", 2),
+    ];
+    const links = [
+      { source: "story:reserves", target: "story:pound", type: "inferred", causal: true, confidence: 0.6, created_at: null },
+      { source: "story:busy", target: "story:pound", type: "inferred", causal: true, confidence: 0.4, created_at: null },
+      { source: "story:busy", target: "region:eg", type: "reported", causal: true, confidence: 0.9, created_at: null },
+    ];
+    const picked = pickNodes(nodes, "region:eg", 4, links);
+    // The pair (0.6) beats the busier story; stories then wait a round for the other kinds.
+    expect(picked.map((n) => n.id)).toEqual(["org:cbe", "commodity:wheat", "story:reserves", "story:pound"]);
+    const more = pickNodes(nodes, "region:eg", 5, links);
+    expect(more.map((n) => n.id)).toContain("story:busy");
+  });
+
   it("never picks the region itself, and stops when nodes run out", () => {
     const picked = pickNodes([node("region:in", "region"), node("org:a", "organization")], "region:in", 10);
     expect(picked.map((n) => n.id)).toEqual(["org:a"]);
