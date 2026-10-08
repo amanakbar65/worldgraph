@@ -2,6 +2,10 @@
  * One icon set (lucide) for sectors, entity types, event types, impacts and
  * forecasts. Every colour in the app travels with one of these icons, so
  * meaning never depends on colour alone.
+ *
+ * In JSX, read `.icon` off the records (`SECTORS[id].icon`): the React lint
+ * rejects rendering a component returned by a function call. The helper
+ * functions are for non-JSX code (map layers, canvas, tests).
  */
 import {
   Activity,
@@ -150,9 +154,12 @@ export function eventTypeIcon(eventType: string | null | undefined): LucideIcon 
 }
 
 export function eventTypeInfo(eventType: string | null | undefined): IconInfo {
-  if (!eventType) return DEFAULT_EVENT_ICON;
-  const key = eventType.trim().toLowerCase().replace(/[\s_]+/g, "-");
-  return EVENT_TYPE_ICONS[key] ?? DEFAULT_EVENT_ICON;
+  return EVENT_TYPE_ICONS[eventTypeKey(eventType)] ?? DEFAULT_EVENT_ICON;
+}
+
+/** The lookup key for an event type: lowercase, words joined by hyphens. */
+export function eventTypeKey(eventType: string | null | undefined): string {
+  return (eventType ?? "").trim().toLowerCase().replace(/[\s_]+/g, "-");
 }
 
 /** "price-move" → "Price move". */

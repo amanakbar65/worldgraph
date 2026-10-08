@@ -9,6 +9,7 @@
  * The class strings are written out in full so Tailwind's scanner finds them.
  */
 import type { Direction, EntityType, Horizon, Impact, Kpi, LinkType } from "@/api/contract";
+import { formatProbability } from "@/lib/format";
 
 /** One meaning colour, ready to use as classes or as a CSS variable. */
 export interface Tone {
@@ -266,4 +267,23 @@ export function kpiChangeImpact(change: number | null, higherIs: Kpi["higher_is"
   const up = change > 0;
   if (higherIs === "worse") return up ? "risk" : "opportunity";
   return up ? "opportunity" : "risk";
+}
+
+// ---------------------------------------------------------------------------
+// Forecasts
+// ---------------------------------------------------------------------------
+
+/** Accessible name for a forecast: "62% crowd forecast, up 8 points in 24 hours, thin market". */
+export function describeForecast(probability: number, change24h?: number | null, thin?: boolean): string {
+  const parts = [`${formatProbability(probability)} crowd forecast`];
+  if (change24h !== undefined && change24h !== null) {
+    const points = Math.round(change24h * 100);
+    parts.push(
+      points === 0
+        ? "unchanged in 24 hours"
+        : `${points > 0 ? "up" : "down"} ${Math.abs(points)} point${Math.abs(points) === 1 ? "" : "s"} in 24 hours`,
+    );
+  }
+  if (thin) parts.push("thin market");
+  return parts.join(", ");
 }
