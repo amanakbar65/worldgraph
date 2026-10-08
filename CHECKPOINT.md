@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 8 Oct 2026, 15:00 UTC (saved ahead of a usage limit).
+**Last updated:** 8 Oct 2026, 19:40 UTC.
 
 ## How to resume (any new session)
 
@@ -31,24 +31,17 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 
 ## In flight
 
-**Screens:** run `wf_3516be8d-024` (`orchestration/worldgraph-screens.js`, args `{"done": ["ai-artifact-web"]}`), launched 14:24 UTC. Two agents run at a time, in the script's order: globe, story-cascade, region, forecasts, business, graph-entity, ask-brief-search-settings.
+**Screens:** run `wf_746a0799-b34`, launched 19:34 UTC with args `{"done": ["ai-artifact-web", "story-cascade"], "resume": {"globe": "wip/wf_3516be8d-024-1"}}`. The story-cascade screen is merged (255 frontend tests pass). The other 6 run two at a time: globe (resuming its saved work), region, forecasts, business, graph-entity, ask-brief-search-settings. Their worktrees are `.claude/worktrees/wf_746a0799-b34-<n>`, saved to `wip/wf_746a0799-b34-<n>`. The old globe worktree `wf_3516be8d-024-1` is kept until the new globe agent merges (its work is on `wip/wf_3516be8d-024-1`).
 
-State at 15:00 UTC (each worktree is saved to its `wip/` branch every 10 minutes):
+**If interrupted:**
+1. `cd /home/user/worldgraph`, then `git worktree list`.
+2. Merge finished branches after the checks.
+3. Relaunch with `done` = merged labels plus "ai-artifact-web" and "story-cascade", and `resume` = `{label: "wip/wf_746a0799-b34-<n>"}` for unfinished ones.
+4. Restart `orchestration/checkpoint.sh 600`.
 
-| Label | Worktree → saved to | State |
-| --- | --- | --- |
-| globe | `wf_3516be8d-024-1` → `wip/wf_3516be8d-024-1` | 1 WIP commit (MapLibre globe, deck.gl layers, controls, Top 5, list view) plus edits |
-| story-cascade | `wf_3516be8d-024-2` → `wip/wf_3516be8d-024-2` | 3 commits (data shaping and dagre layout; story card, cascade, evidence, AI projections; render tests), likely finishing |
-| region, forecasts, business, graph-entity, ask-brief-search-settings | not started | |
+**Live data is on** (the owner added `DATABASE_URL` at about 15:00). Runs succeeded at 15:03 and 16:12: 411 live stories (all pending analysis), 859 articles and 73 Manifold forecasts. A news run takes about 7 minutes.
 
-**If interrupted** (e.g. a usage limit):
-1. `cd /home/user/worldgraph` first (worktrees fail outside the repo), then `git fetch origin` and `git worktree list`.
-2. For each agent, read its report in `/root/.claude/projects/-home-user/<session>/subagents/workflows/wf_3516be8d-024/journal.jsonl`, or look at its commits. If it finished, run the checks in its worktree and `git merge --no-edit worktree-wf_3516be8d-024-<n>`.
-3. Relaunch the unfinished ones: `orchestration/worldgraph-screens.js` with `args.done` = "ai-artifact-web" plus every merged label, and `args.resume` = `{"globe": "wip/wf_3516be8d-024-1", "story-cascade": "wip/wf_3516be8d-024-2"}` for whichever of those isn't merged. Labels with no worktree yet just start fresh.
-4. Restart the progress saver: `orchestration/checkpoint.sh 600` in the background (it stops after 2 hours).
-5. Push `main` before launching (worktrees branch from `origin/main`).
-
-When all 7 are merged: run the frontend checks, then QA (below).
+**Problem:** GitHub's `*/15` schedule fired only about every 7 hours, and a run catches up at most 1 hour of GDELT. The proposed fix is `backend/supabase/ops_dispatch.sql` (pg_cron calls workflow_dispatch every 15 minutes, using a fine-grained token in Supabase Vault named `github_dispatch_token`). It is **waiting for the owner's OK and a token, and is not applied**.
 
 ## Next
 
@@ -64,7 +57,8 @@ When all 7 are merged: run the frontend checks, then QA (below).
 
 ## Waiting on the owner
 
-- GitHub secret `DATABASE_URL` (Supabase → Connect → Session pooler URI) to switch on live data every 15 minutes.
+- Done: `DATABASE_URL` is set and live data works.
+- Decision: a reliable 15-minute trigger (`ops_dispatch.sql`, needs a GitHub token in Supabase Vault).
 - Optional cleanup: the old `worldgraph` branch in `amanakbar65/Others`.
 - Before a public launch:
   - feed terms for commercial use;
