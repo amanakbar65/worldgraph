@@ -5,8 +5,8 @@ Newest entries first. Each entry says what changed, how it was checked, and what
 ## Current status
 
 - **Done:** data model and API (Postgres functions), sample data (21 storylines, 230 stories, 31 forecasts, 163 KPI series), the live pipeline (news, hazards, forecasts, retention, website AI job), CI and the 15-minute workflow, shared AI prompts. Supabase has the schema (migrations 0001–0005, 0007, 0008), the sample data and a 30-minute sample clock.
-- **In progress:** forecast/business/AI SQL functions (0006), map shapes (TopoJSON), the UI kit.
-- **Next:** the screens (globe, region, story and cascade, graph and entities, forecasts, My Business, Ask, brief, search, settings), the claude.ai test link, end-to-end tests and a review pass.
+- **In progress:** the screens (7 agents).
+- **Next:** QA (end-to-end tests plus five reviews), fixes, then publish the claude.ai test link.
 - **Waiting on the owner:**
   - add the GitHub secret `DATABASE_URL` (Supabase "Session pooler" URI) to switch on the 15-minute live data;
   - the leftover `worldgraph` branch in `amanakbar65/Others` can be deleted (the integration couldn't).
@@ -17,6 +17,22 @@ Newest entries first. Each entry says what changed, how it was checked, and what
 See `CHECKPOINT.md` for the live state and resume steps.
 
 ## Log
+
+### 8 Oct 2026: UI kit, test-link plumbing, screens under way
+
+- **UI kit** merged: tokens with a contrast and colour-blindness tested palette (both themes), icons and meaning helpers, primitives, and domain components (story card, forecast row, probability ring and bar, KPI tile, charts, states, sources), all shown in `DesignPreview`.
+- **Test link and website plumbing** merged:
+  - the AI engines (your Claude account on the test link; the Claude API on the website);
+  - on-use analysis of new stories (owner only, at most 3 batches, validated before saving);
+  - the connector "needs approval" flow, and deep links in the URL hash;
+  - the artifact build (9.1 MB, 51 files) and a sample snapshot;
+  - Netlify functions with the US$2/day budget check (not deployed).
+- **First frame:** the test link shows the bundled sample after about 0.3 s while the connector starts, with times moved forward to now.
+- **Shared fixes:** Button on design tokens, full-strength focus ring, and separate dev-server caches for parallel agents.
+- **Supabase:** the `ops` helpers are hardened (fixed search_path, no public execute).
+- **README** for the owner, including how to switch on live news.
+- **Checks:** 185 frontend tests, lint, types and builds pass.
+- **Screens:** being built by 7 agents (see `CHECKPOINT.md`). Interrupted once by a session limit; resumed after the reset.
 
 ### 7 Oct 2026: live pipeline, AI job, CI
 

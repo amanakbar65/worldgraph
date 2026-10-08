@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 8 Oct 2026, 14:30 UTC.
+**Last updated:** 8 Oct 2026, 15:00 UTC (saved ahead of a usage limit).
 
 ## How to resume (any new session)
 
@@ -31,11 +31,22 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 
 ## In flight
 
-**Screens** (run `wf_3516be8d-024`, launched 14:28 UTC after the 11:12 run hit the session limit within 30 s, `orchestration/worldgraph-screens.js` with args `{"done": ["ai-artifact-web"]}`): globe, story-cascade, region, forecasts, business, graph-entity, ask-brief-search-settings. Two run at a time; worktrees are `.claude/worktrees/wf_3516be8d-024-<n>`, saved to `wip/wf_3516be8d-024-<n>` every 10 minutes (each agent's label is in its first commit message and its transcript).
+**Screens:** run `wf_3516be8d-024` (`orchestration/worldgraph-screens.js`, args `{"done": ["ai-artifact-web"]}`), launched 14:24 UTC. Two agents run at a time, in the script's order: globe, story-cascade, region, forecasts, business, graph-entity, ask-brief-search-settings.
 
-If interrupted:
-- `git worktree list`; merge any finished branch (check its report or commits);
-- relaunch the same script with `args.done` = every merged label plus "ai-artifact-web", and `args.resume = {"<label>": "wip/wf_3516be8d-024-<n>"}` for unfinished ones.
+State at 15:00 UTC (each worktree is saved to its `wip/` branch every 10 minutes):
+
+| Label | Worktree → saved to | State |
+| --- | --- | --- |
+| globe | `wf_3516be8d-024-1` → `wip/wf_3516be8d-024-1` | 1 WIP commit (MapLibre globe, deck.gl layers, controls, Top 5, list view) plus edits |
+| story-cascade | `wf_3516be8d-024-2` → `wip/wf_3516be8d-024-2` | 3 commits (data shaping and dagre layout; story card, cascade, evidence, AI projections; render tests), likely finishing |
+| region, forecasts, business, graph-entity, ask-brief-search-settings | not started | |
+
+**If interrupted** (e.g. a usage limit):
+1. `cd /home/user/worldgraph` first (worktrees fail outside the repo), then `git fetch origin` and `git worktree list`.
+2. For each agent, read its report in `/root/.claude/projects/-home-user/<session>/subagents/workflows/wf_3516be8d-024/journal.jsonl`, or look at its commits. If it finished, run the checks in its worktree and `git merge --no-edit worktree-wf_3516be8d-024-<n>`.
+3. Relaunch the unfinished ones: `orchestration/worldgraph-screens.js` with `args.done` = "ai-artifact-web" plus every merged label, and `args.resume` = `{"globe": "wip/wf_3516be8d-024-1", "story-cascade": "wip/wf_3516be8d-024-2"}` for whichever of those isn't merged. Labels with no worktree yet just start fresh.
+4. Restart the progress saver: `orchestration/checkpoint.sh 600` in the background (it stops after 2 hours).
+5. Push `main` before launching (worktrees branch from `origin/main`).
 
 When all 7 are merged: run the frontend checks, then QA (below).
 
