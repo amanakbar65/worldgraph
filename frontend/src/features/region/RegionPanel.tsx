@@ -76,7 +76,8 @@ export default function RegionPanel({ panel }: { panel: Extract<Panel, { kind: "
       </div>
     );
   }
-  return <RegionBody data={query.data} nav={nav} updating={query.isPlaceholderData} />;
+  // Keyed by region: going from one place to the next starts fresh (toggles, notes, highlights).
+  return <RegionBody key={query.data.region.id} data={query.data} nav={nav} updating={query.isPlaceholderData} />;
 }
 
 function RegionBody({ data, nav, updating }: { data: Data; nav: RegionNav; updating: boolean }) {
@@ -209,15 +210,21 @@ function RegionActions({ regionId, regionName, nav }: { regionId: string; region
         </Button>
         <Button
           variant="secondary"
-          className={cn(action, watching && "text-fg")}
+          className={cn(action, "aria-pressed:bg-fg/15 aria-pressed:text-fg aria-pressed:shadow-[inset_0_0_0_1px_var(--line-strong)]")}
           onClick={toggleWatch}
           disabled={watchlist.loading}
           aria-pressed={watching}
-          aria-label={watching ? `Watching ${regionName}` : `Watch ${regionName}`}
-          title={watchlist.kind === "memory" ? "Saved for this visit only" : undefined}
+          aria-label={`Watch ${regionName}`}
+          title={
+            watchlist.kind === "memory"
+              ? "Saved for this visit only"
+              : watching
+                ? `On your watchlist. Tap to remove ${regionName}.`
+                : `Add ${regionName} to your watchlist`
+          }
         >
           <Star aria-hidden className={cn(watching && "fill-current")} />
-          {watching ? "Watching" : "Watch"}
+          Watch
         </Button>
       </div>
       <p role="status" aria-live="polite" className={cn("text-label text-fg-muted", !note && !watchlist.saveError && "sr-only")}>

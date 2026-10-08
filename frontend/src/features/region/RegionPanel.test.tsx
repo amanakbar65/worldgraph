@@ -137,14 +137,25 @@ describe("RegionPanel (a country)", () => {
   it("adds the region to the watchlist and takes it off again", async () => {
     renderPanel();
     const watch = screen.getByRole("button", { name: "Watch India" });
+    expect(watch.getAttribute("aria-pressed")).toBe("false");
     await waitFor(() => expect((watch as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(watch);
-    const watching = screen.getByRole("button", { name: "Watching India" });
-    expect(watching.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Watch India" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByText("India added to your watchlist.")).toBeTruthy();
     await waitFor(() => expect(JSON.parse(localStorage.getItem("worldgraph.user.watchlist") ?? "[]")).toEqual(["region:in"]));
-    fireEvent.click(watching);
+    fireEvent.click(screen.getByRole("button", { name: "Watch India" }));
+    expect(screen.getByText("India removed from your watchlist.")).toBeTruthy();
     await waitFor(() => expect(JSON.parse(localStorage.getItem("worldgraph.user.watchlist") ?? "[]")).toEqual([]));
+  });
+
+  it("starts fresh when it moves on to another place", () => {
+    const view = renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: "Show all 6" }));
+    expect(screen.getByRole("button", { name: "Show fewer" })).toBeTruthy();
+    mocks.responses = { region: { ...REGION_INDIA, region: { ...REGION_INDIA.region, id: "region:pk", name: "Pakistan" } } };
+    view.rerender(<RegionPanel panel={{ kind: "region", id: "region:pk" }} />);
+    expect(screen.getByRole("heading", { level: 2, name: "Pakistan" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Show all 6" })).toBeTruthy();
   });
 
   it("changes the window from the panel", () => {
