@@ -26,7 +26,15 @@ function Divider() {
  * A small button inside the status pill. It looks compact but its hit area
  * is at least 40 px tall (the ::before layer), so it's easy to tap.
  */
-function PillButton({ onClick, children, label }: { onClick: () => void; children: ReactNode; label: string }) {
+function PillButton({
+  onClick,
+  children,
+  label,
+}: {
+  onClick: () => void;
+  children: ReactNode;
+  label: string;
+}) {
   return (
     <button
       type="button"
@@ -77,7 +85,8 @@ export function StatusBar() {
     tone = "warn";
   }
 
-  const fresh = state.status === "live" && !showingSample ? freshnessText(meta.data?.data.last_ingest_at, now) : null;
+  const fresh =
+    state.status === "live" && !showingSample ? freshnessText(meta.data?.data.last_ingest_at, now) : null;
   const ai = analysisStatusText(analysis);
   const needsApproval = waiting > 0 || asking;
 

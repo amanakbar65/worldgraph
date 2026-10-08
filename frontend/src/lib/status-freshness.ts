@@ -3,7 +3,10 @@
  * Short form ("4 min ago") for narrow screens. Null when there's no time
  * or it can't be read.
  */
-export function freshnessText(iso: string | null | undefined, now: number): { long: string; short: string } | null {
+export function freshnessText(
+  iso: string | null | undefined,
+  now: number,
+): { long: string; short: string } | null {
   if (!iso) return null;
   const at = Date.parse(iso);
   if (Number.isNaN(at)) return null;

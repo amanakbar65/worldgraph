@@ -51,7 +51,7 @@ function waitForApproval(
     if (signal?.aborted) return onAbort();
     signal?.addEventListener("abort", onAbort, { once: true });
     const settle =
-      <T,>(fn: (v: T) => void) =>
+      <T>(fn: (v: T) => void) =>
       (value: T) => {
         signal?.removeEventListener("abort", onAbort);
         fn(value);

@@ -170,7 +170,10 @@ export async function runAnalysis(deps: RunnerDeps): Promise<AnalysisStatus> {
 
       let raw: AnalysisResult;
       try {
-        raw = await deps.analyse({ today: (deps.today ?? todayUtc)(), items: items.map(compact) }, controller.signal);
+        raw = await deps.analyse(
+          { today: (deps.today ?? todayUtc)(), items: items.map(compact) },
+          controller.signal,
+        );
       } catch (error) {
         final = aiFailure(error, analysed);
         break;

@@ -1,13 +1,36 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AiError, getAiEngine, runAi } from "./engine";
+import { __testing, AiError, getAiEngine, runAi } from "./engine";
 import { AskAnswer } from "./schemas";
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+  __testing.reset();
+});
+
 describe("AI engine", () => {
-  it("is unavailable outside claude.ai until an engine is wired in", async () => {
+  it("uses the website's AI function outside claude.ai", async () => {
     const engine = await getAiEngine();
-    expect(engine.kind).toBe("none");
-    await expect(runAi("ask", {}, AskAnswer)).rejects.toBeInstanceOf(AiError);
+    expect(engine.kind).toBe("api");
+  });
+
+  it("validates replies and rejects ones that don't fit", async () => {
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify({ data: { status: "maybe" } }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const error = await runAi("ask", {}, AskAnswer).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(AiError);
+    expect((error as AiError).kind).toBe("invalid");
+  });
+
+  it("reports a missing AI function as unavailable", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("Not found", { status: 404 })),
+    );
+    const error = await runAi("ask", {}, AskAnswer).catch((e: unknown) => e);
+    expect((error as AiError).kind).toBe("unavailable");
   });
 
   it("validates Ask answers", () => {

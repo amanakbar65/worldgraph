@@ -80,7 +80,8 @@ for (const { full, path } of published) {
     for (const m of css.matchAll(/@import\s+(url\()?["']?https?:/gi)) fail(`${path} imports ${m[0]}`);
   }
 }
-if (published.length + 1 > LIMITS.files) fail(`${published.length + 1} files (one publish takes at most 255)`);
+if (published.length + 1 > LIMITS.files)
+  fail(`${published.length + 1} files (one publish takes at most 255)`);
 if (total > LIMITS.total) fail(`The test link is ${(total / MB).toFixed(2)} MB (keep it under 16 MB)`);
 
 // --- Manifest for the publish step -----------------------------------------
@@ -163,7 +164,9 @@ writeFileSync(join(dist, "ARTIFACT.md"), doc);
 for (const [g, v] of Object.entries(groups)) {
   console.log(`  ${g.padEnd(22)} ${String(v.count).padStart(4)} files  ${fmt(v.bytes).padStart(10)}`);
 }
-console.log(`  ${"total".padEnd(22)} ${String(published.length + 1).padStart(4)} files  ${fmt(total).padStart(10)}`);
+console.log(
+  `  ${"total".padEnd(22)} ${String(published.length + 1).padStart(4)} files  ${fmt(total).padStart(10)}`,
+);
 if (problems.length) {
   console.error("\nThe test link can't be published as is:");
   for (const p of problems) console.error(`  - ${p}`);

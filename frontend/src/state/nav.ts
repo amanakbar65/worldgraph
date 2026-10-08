@@ -165,7 +165,12 @@ function initialFromLocation(): Partial<Pick<NavState, "view" | "panels" | "wind
   try {
     const link = parseHash(window.location.hash);
     if (!link) return {};
-    return { view: link.view, panels: link.panel ? [link.panel] : [], window: link.window, sectors: link.sectors };
+    return {
+      view: link.view,
+      panels: link.panel ? [link.panel] : [],
+      window: link.window,
+      sectors: link.sectors,
+    };
   } catch {
     return {};
   }

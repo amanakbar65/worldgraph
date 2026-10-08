@@ -33,7 +33,9 @@ export function buildPrompt(task: AiTask, input: unknown): string {
 }
 
 function isSampleError(error: unknown): error is Claude.sample.SampleError {
-  return typeof error === "object" && error !== null && typeof (error as { code?: unknown }).code === "string";
+  return (
+    typeof error === "object" && error !== null && typeof (error as { code?: unknown }).code === "string"
+  );
 }
 
 /** Turn the `sample` capability's error codes into the app's AiError kinds. */
@@ -124,7 +126,8 @@ export function httpEngine(endpoint = "/api/ai", fetchImpl: typeof fetch = (...a
 }
 
 export function httpStatusToAiError(status: number, message?: string): AiError {
-  if (status === 402) return new AiError("budget", "Today's AI allowance is used up. It resets at midnight UTC.");
+  if (status === 402)
+    return new AiError("budget", "Today's AI allowance is used up. It resets at midnight UTC.");
   if (status === 429) return new AiError("rate_limited", "WorldGraph AI is busy. Try again in a minute.");
   if (status === 503 || status === 404 || status === 403) {
     return new AiError("unavailable", message ?? "WorldGraph AI isn't available right now.");

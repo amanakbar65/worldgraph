@@ -98,14 +98,22 @@ export async function spentTodayUsd(db: AiDb): Promise<number> {
   return Number(rows[0]?.spent ?? 0);
 }
 
-async function recordUsage(db: AiDb, model: string, task: WebAiTask, usage: Usage, cost: number): Promise<void> {
+async function recordUsage(
+  db: AiDb,
+  model: string,
+  task: WebAiTask,
+  usage: Usage,
+  cost: number,
+): Promise<void> {
   await db.query(
     "insert into llm_usage (engine, model, purpose, input_tokens, output_tokens, cost_usd) " +
       "values ('api', $1, $2, $3, $4, $5)",
     [
       model,
       task,
-      (usage.input_tokens ?? 0) + (usage.cache_read_input_tokens ?? 0) + (usage.cache_creation_input_tokens ?? 0),
+      (usage.input_tokens ?? 0) +
+        (usage.cache_read_input_tokens ?? 0) +
+        (usage.cache_creation_input_tokens ?? 0),
       usage.output_tokens ?? 0,
       cost,
     ],
@@ -126,7 +134,8 @@ export async function handleAi(rawBody: string, deps: AiDeps): Promise<AiResult>
   const { task, input } = parsed;
   if (task === "analysis") return fail(403, "Story analysis runs in the pipeline, not here.");
   if (task !== "ask" && task !== "projection") return fail(400, "Unknown task.");
-  if (!input || typeof input !== "object" || Array.isArray(input)) return fail(400, "Input must be an object.");
+  if (!input || typeof input !== "object" || Array.isArray(input))
+    return fail(400, "Input must be an object.");
   const data = JSON.stringify(input);
   if (byteLength(data) > MAX_INPUT_BYTES) return fail(413, "Too much data for one question.");
 
@@ -195,7 +204,8 @@ export async function handleAi(rawBody: string, deps: AiDeps): Promise<AiResult>
     }
   }
   if (message.stop_reason === "refusal") return fail(502, "The AI declined this question.");
-  if (message.stop_reason === "max_tokens") return fail(502, "The answer was too long. Ask something narrower.");
+  if (message.stop_reason === "max_tokens")
+    return fail(502, "The answer was too long. Ask something narrower.");
   const text = (message.content ?? []).find((b) => b.type === "text")?.text ?? "";
   try {
     return { status: 200, body: { data: JSON.parse(text) as unknown } };
