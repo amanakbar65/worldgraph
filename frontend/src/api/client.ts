@@ -5,7 +5,7 @@ import type { RpcArgs, RpcName, RpcResponse } from "./contract";
 import { DataError, stableJson, type CallOptions, type DataSource } from "./source";
 import { ConnectorSource } from "./sources/connector";
 import { HttpSource } from "./sources/http";
-import { StaticSource } from "./sources/static";
+import { loadSnapshot, snapshotKey, StaticSource, useSnapshot } from "./sources/static";
 import { TARGET } from "@/platform/runtime";
 
 /** What the app is currently showing: live data, the bundled snapshot, or nothing. */
@@ -73,6 +73,13 @@ export const dataSource: DataSource =
     ? new LiveWithSnapshot(new ConnectorSource(), new StaticSource())
     : new Tracked(new HttpSource());
 
+/**
+ * Test link: show the bundled snapshot as a placeholder while the connector
+ * starts (that can take several seconds), then swap in live data.
+ */
+const SNAPSHOT_FIRST_FRAME = TARGET === "artifact";
+if (SNAPSHOT_FIRST_FRAME) void loadSnapshot();
+
 export function rpcKey<N extends RpcName>(name: N, args: RpcArgs[N]) {
   return ["rpc", name, stableJson(args)] as const;
 }
@@ -83,9 +90,13 @@ export function useRpc<N extends RpcName>(
   args: RpcArgs[N],
   options: Omit<UseQueryOptions<RpcResponse<N>, Error>, "queryKey" | "queryFn"> = {},
 ) {
+  const placeholder = useSnapshot((s) =>
+    SNAPSHOT_FIRST_FRAME ? (s.data.get(snapshotKey(name, args)) as RpcResponse<N> | undefined) : undefined,
+  );
   return useQuery<RpcResponse<N>, Error>({
     queryKey: rpcKey(name, args),
     queryFn: ({ signal }) => dataSource.call(name, args, { signal }),
+    placeholderData: (() => placeholder) as UseQueryOptions<RpcResponse<N>, Error>["placeholderData"],
     ...options,
   });
 }

@@ -72,7 +72,9 @@ export function StatusBar() {
   const now = useNow();
 
   const showingSample = meta.data?.data.showing_sample ?? false;
-  let data = { long: "Connecting…", short: "Connecting…" };
+  let data = meta.isPlaceholderData
+    ? { long: "Saved sample · connecting to live data…", short: "Connecting…" }
+    : { long: "Connecting…", short: "Connecting…" };
   let tone: "ok" | "warn" | "muted" = "muted";
   if (state.status === "live") {
     data = showingSample ? { long: "Sample data", short: "Sample" } : { long: "Live data", short: "Live" };
