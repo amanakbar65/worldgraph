@@ -1,9 +1,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { AnalysisAutoRun } from "@/ai/AnalysisAutoRun";
+import { startHashSync } from "@/state/nav";
 import { useSettings } from "@/state/settings";
 
-/** Applies the theme and calm settings to <html> and provides data caching. */
+/**
+ * Applies the theme and calm settings to <html>, provides data caching,
+ * keeps the URL hash in step with the screen (deep links and Back), and
+ * starts on-use story analysis in the test link.
+ */
 export function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
     () =>
@@ -48,5 +54,12 @@ export function Providers({ children }: { children: ReactNode }) {
     document.documentElement.setAttribute("data-wg-calm", String(calm));
   }, [calm]);
 
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  useEffect(() => startHashSync(), []);
+
+  return (
+    <QueryClientProvider client={client}>
+      {children}
+      <AnalysisAutoRun />
+    </QueryClientProvider>
+  );
 }
