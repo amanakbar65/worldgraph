@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 8 Oct 2026, 09:50 UTC.
+**Last updated:** 8 Oct 2026, 11:15 UTC.
 
 ## How to resume (any new session)
 
@@ -23,42 +23,31 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 | Live pipeline | `backend/src/worldgraph/pipeline/` | GDELT, 22 feeds, USGS, GDACS, clustering, Manifold, retention, website AI job |
 | Prompts | `prompts/` | analysis, ask, projection (+ schemas), shared by both AI engines |
 | Frontend foundation | `frontend/src/{api,app,state,platform,ai}` | Contract, data sources, shell, AI interface, per-viewer storage |
+| UI kit | `frontend/src/components/**`, `lib/{icons,meaning,time,links}.ts`, `styles/tokens.css` | Palette tested for contrast and colour blindness in both themes; `DesignPreview` (and `frontend/preview.html`) shows every component |
+| Map assets | `frontend/public/geo/*`, `src/lib/geo.ts` | Natural Earth TopoJSON with India's official view |
+| Test link and website plumbing | `src/ai/engines.ts`, `analysis-runner.ts`, `scripts/artifact-page.mjs`, `public/snapshot/`, `netlify/functions/`, `netlify.toml` | AI engines, on-use analysis, connector approval, deep links, snapshot, artifact build (9 MB, 51 files), Netlify functions (not deployed) |
 | CI and live-data job | `.github/workflows/` | CI green; live data waits for the `DATABASE_URL` secret |
 | Supabase | project `xmznnjpflimsjvwftxpa` | Migrations 0001–0005, 0007–0009; sample data; pg_cron sample clock every 30 min |
 
 ## In flight
 
-Done since the last pause:
-- 0006 (forecasts, forecast, affects, opportunities, ask_context, pending_analysis, save_analysis with skipped, faster forecast_card) is merged: 142 tests, 440 backend tests in total, all passing. It is applied to Supabase.
-- Map assets are merged.
-- Supabase now has migrations 0001–0009.
-
-Running now (launched 09:50 UTC; the progress saver pushes worktrees to `wip/<worktree>` every 10 minutes):
-
-| Agent | Run ID | Worktree → saved to |
-| --- | --- | --- |
-| ui-kit | `wf_896dc2bb-e78` | `wf_896dc2bb-e78-1` → `wip/wf_896dc2bb-e78-1` |
-| ai-artifact-web | `wf_eb4d66f1-194` | `wf_eb4d66f1-194-1` → `wip/wf_eb4d66f1-194-1` |
-
-1. **ui-kit**, via `orchestration/worldgraph-content-api.js`. It started from `wip/wf_828b324a-939-3`; if interrupted again, point its `RESUME` note at `wip/wf_896dc2bb-e78-1`. Args: `{"done": [the 8 earlier labels, "map-assets", "sql:forecasts-business-ai"]}`.
-2. **ai-artifact-web** (the screens agent that doesn't need the UI kit), via `orchestration/worldgraph-screens.js`. If interrupted, relaunch with `args.resume = {"ai-artifact-web": "wip/wf_eb4d66f1-194-1"}`. Args: `{"done": ["globe", "story-cascade", "region", "forecasts", "business", "graph-entity", "ask-brief-search-settings"]}`.
+**Screens** (run `wf_a3b4d4a5-3ec`, launched 11:12 UTC, `orchestration/worldgraph-screens.js` with args `{"done": ["ai-artifact-web"]}`): globe, story-cascade, region, forecasts, business, graph-entity, ask-brief-search-settings. Two run at a time; worktrees are `.claude/worktrees/wf_a3b4d4a5-3ec-<n>`, saved to `wip/wf_a3b4d4a5-3ec-<n>` every 10 minutes (each agent's label is in its first commit message and its transcript).
 
 If interrupted:
-- check `git worktree list`;
-- snapshot or merge what's finished;
-- relaunch the same script, adding resume branches. The screens script takes `args.resume = {label: "wip/<worktree>"}`; the content script needs its `RESUME` map edited.
+- `git worktree list`; merge any finished branch (check its report or commits);
+- relaunch the same script with `args.done` = every merged label plus "ai-artifact-web", and `args.resume = {"<label>": "wip/wf_a3b4d4a5-3ec-<n>"}` for unfinished ones.
 
-When both are merged, launch `orchestration/worldgraph-screens.js` with `{"done": ["ai-artifact-web"]}` for the other 7 screens.
+When all 7 are merged: run the frontend checks, then QA (below).
 
 ## Next
 
-1. **Screens** (`orchestration/worldgraph-screens.js`, 8 agents): globe, ai-artifact-web (AI engines, on-use analysis, test-link build, snapshot, Netlify functions, deep links), story-cascade, region, forecasts, business, graph-entity, ask-brief-search-settings. Needs the UI kit and map assets merged first.
-2. **QA:**
-   - Playwright end-to-end tests on the dev server and the artifact build;
-   - an adversarial review workflow (correctness, accessibility, design rules, legal rules such as no betting wording and the real-money gating);
-   - fixes.
+1. **QA:** `orchestration/worldgraph-qa.js` (no args): an e2e test author plus 5 reviewers (correctness, accessibility and design, product and legal rules, artifact and security, polish). Each finding is reproduced before it's reported. Triage the findings by area, then run `orchestration/worldgraph-qa-fix.js` with `args.groups = [{label, owns: [paths], findings: [...]}]`, with areas that don't overlap.
+2. **Known follow-ups (from agent reports):**
+   - First frame inside claude.ai: give react-query `placeholderData` from the snapshot (StaticSource), so the first frame isn't skeletons for up to ~10 s while `use("mcp")` resolves (`src/api/client.ts`).
+   - Rebuild the snapshot right before publishing (`npm run snapshot` against a database with fresh sample data): times are frozen at build.
+   - Website (later): raise the Netlify function timeout above 25 s for AI; set `DATABASE_CA_CERT` so TLS is verified.
 3. **Publish the test link:**
-   - `npm run build:artifact`;
+   - `npm run build:artifact`; the file list is in `dist-artifact/artifact-files.json`;
    - publish with the Artifact tool, with capabilities mcp (Supabase execute_sql), sample, db and user (load the artifact-capabilities skill first);
    - give the owner the link.
 4. README for the owner, final `PROGRESS.md` entry.
@@ -78,5 +67,6 @@ When both are merged, launch `orchestration/worldgraph-screens.js` with `{"done"
 
 - Workflow concurrency is 2 (4 CPUs). Agents hit usage limits mid-run, so keep `checkpoint.sh` running and keep this file current.
 - Supabase refuses function-level `SET` of extension settings (`pg_trgm.similarity_threshold`).
+- Dev servers in agent worktrees: `vite.config.ts` now allows the real node_modules path (fonts) and uses a per-checkout `.vite-cache`.
 - `ops.run_remote_sql` only runs files from this repo's raw GitHub URLs with a matching md5; push first, use commit-SHA URLs.
 - The GDELT links in `lastupdate.txt` are plain HTTP; the proxy only allows HTTPS (rewrite to https://data.gdeltproject.org).
