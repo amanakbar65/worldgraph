@@ -586,7 +586,7 @@ export function GlobeMap(props: GlobeMapProps) {
   // MapLibre's stylesheet makes its container position: relative, so it sits in a sized wrapper.
   return (
     <div className="absolute inset-0">
-      <div ref={container} className="size-full" data-testid="globe-map" />
+      <div ref={container} className="size-full" data-testid="globe-map" data-ready={loaded} />
     </div>
   );
 }

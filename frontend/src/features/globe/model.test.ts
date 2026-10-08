@@ -378,11 +378,11 @@ describe("labels", () => {
     };
     const out = declutterLabels(
       [
-        label("b", { priority: 500 }),
-        label("a", { priority: 900 }),
-        label("c", { priority: 400 }),
-        label("d", { priority: 990 }),
-        label("e", { priority: 980 }),
+        label("b", { priority: 500, lon: 1 }),
+        label("a", { priority: 900, lon: 0 }),
+        label("c", { priority: 400, lon: 2 }),
+        label("d", { priority: 990, lon: 3 }),
+        label("e", { priority: 980, lon: 4 }),
       ],
       (lon) => at[["a", "b", "c", "d", "e"][lon]],
       { width: 800, height: 600 },

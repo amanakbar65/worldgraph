@@ -197,9 +197,13 @@ export function arcPath(src: LngLat, dst: LngLat, segments = 40): [number, numbe
     const t = i / segments;
     let lon: number;
     let lat: number;
-    if (delta < 1e-9) {
+    if (delta < 1e-9 || i === 0) {
       lon = src[0];
       lat = src[1];
+    } else if (i === segments) {
+      // Land exactly on the effect (no rounding drift), on the unwrapped side.
+      lon = dst[0];
+      lat = dst[1];
     } else {
       const A = Math.sin((1 - t) * delta) / Math.sin(delta);
       const B = Math.sin(t * delta) / Math.sin(delta);
