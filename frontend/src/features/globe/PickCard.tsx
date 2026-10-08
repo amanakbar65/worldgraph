@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import type { PickInfo } from "./GlobeMap";
 import { GLASS } from "./GlobeControls";
 import { countryName, eventAsStory, type GlobeCountry, type GlobeEvent } from "./model";
+import { useGlobeHover } from "./store";
 
 export interface PickContext {
   /** Every event on the globe is sample data (no live data yet). */
@@ -158,7 +159,20 @@ export function PickContent({ info, context, hint = true }: { info: PickInfo; co
  * and never takes the pointer itself. The list view is the keyboard and
  * screen-reader route to the same information.
  */
-export function HoverCard({ info, context, bounds }: { info: PickInfo; context: PickContext; bounds: { width: number; height: number } }) {
+export function HoverCard({ context, bounds }: { context: PickContext; bounds: { width: number; height: number } }) {
+  const info = useGlobeHover((s) => s.hover);
+  return info ? <HoverCardAt info={info} context={context} bounds={bounds} /> : null;
+}
+
+function HoverCardAt({
+  info,
+  context,
+  bounds,
+}: {
+  info: PickInfo;
+  context: PickContext;
+  bounds: { width: number; height: number };
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   useLayoutEffect(() => {

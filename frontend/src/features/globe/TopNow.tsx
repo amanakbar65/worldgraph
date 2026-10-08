@@ -190,7 +190,7 @@ export function TopNowStrip(props: TopNowProps & { collapsed: boolean; onCollaps
         <ul
           id={listId}
           aria-label="Top stories and crowd moves, swipe for more"
-          className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory items-start gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           <StoryRows stories={stories} props={props} carousel />
           <MoverRows movers={movers} props={props} carousel />

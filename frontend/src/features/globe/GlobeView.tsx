@@ -45,7 +45,7 @@ import {
   type LngLat,
 } from "./model";
 import { HoverCard, SelectionCard, type PickContext } from "./PickCard";
-import { useGlobeUi } from "./store";
+import { hoveredItem, useGlobeHover, useGlobeUi } from "./store";
 import { TopNowCard, TopNowStrip } from "./TopNow";
 
 const HOME_CENTER: LngLat = [25, 20];
@@ -114,7 +114,9 @@ export default function GlobeView() {
   const [rootRef, size] = useElementSize<HTMLDivElement>();
   const [stripRef, stripSize] = useElementSize<HTMLDivElement>();
   const [view, setView] = useState<ViewInfo>({ zoom: 1.8, center: HOME_CENTER, centerCountry: null });
-  const [hover, setHover] = useState<PickInfo | null>(null);
+  const setHover = useGlobeHover((s) => s.setHover);
+  const hoverItem = useGlobeHover(hoveredItem);
+  const hovering = useGlobeHover((s) => s.hover !== null);
   const [selected, setSelected] = useState<PickInfo | null>(null);
   const [itemFocus, setItemFocus] = useState<string | null>(null);
   const [camera, setCamera] = useState<CameraRequest | null>(null);
@@ -162,14 +164,13 @@ export default function GlobeView() {
   const fresh = useMemo(() => events.filter((e) => isFresh(e.first_seen, now)), [events, now]);
 
   const panelItem = panel && (panel.kind === "story" || panel.kind === "forecast" || panel.kind === "cascade") ? panel.id : null;
-  const hoverItem = hover && (hover.kind === "event" || hover.kind === "forecast") ? hover.id : null;
   const selectedItem = selected && (selected.kind === "event" || selected.kind === "forecast") ? selected.id : null;
   const focusId = hoverItem ?? itemFocus ?? selectedItem ?? panelItem;
   const focusStory = focusId && eventsById.has(focusId) ? focusId : null;
 
   const arcs: ArcDatum[] = useMemo(
     () =>
-      filterArcs(data?.arcs ?? [], { focusId: focusStory, max: 40, minConfidence: 0.45 }).map((a) => ({
+      filterArcs(data?.arcs ?? [], { focusId: focusStory, max: 28, minConfidence: 0.5 }).map((a) => ({
         ...a,
         path: paths.get(a.id) ?? [],
       })),
@@ -267,6 +268,7 @@ export default function GlobeView() {
 
   const act = useCallback(
     (info: PickInfo) => {
+      setHover(null);
       switch (info.kind) {
         case "event":
           openPanel({ kind: "story", id: info.id });
@@ -288,7 +290,7 @@ export default function GlobeView() {
           break;
       }
     },
-    [fly, openPanel, openRegion, view.zoom],
+    [fly, openPanel, openRegion, view.zoom, setHover],
   );
 
   const onPick = useCallback(
@@ -302,9 +304,12 @@ export default function GlobeView() {
     [act, isDesktop],
   );
 
-  const onHover = useCallback((info: PickInfo | null) => {
-    if (window.matchMedia?.("(hover: hover)").matches !== false) setHover(info);
-  }, []);
+  const onHover = useCallback(
+    (info: PickInfo | null) => {
+      if (window.matchMedia?.("(hover: hover)").matches !== false) setHover(info);
+    },
+    [setHover],
+  );
 
   const openStory = useCallback(
     (story: Pick<StorySummary, "id" | "lon" | "lat">) => {
@@ -372,7 +377,6 @@ export default function GlobeView() {
     ((selected.kind === "event" && !eventsById.has(selected.id)) ||
       (selected.kind === "forecast" && !forecasts.some((f) => f.id === selected.id)));
   const shownSelection = isDesktop || selectionGone ? null : selected;
-  const shownHover = isDesktop && !listOpen ? hover : null;
 
   const pickContext: PickContext = useMemo(
     () => ({ allSample, eventsById, countriesById }),
@@ -451,7 +455,7 @@ export default function GlobeView() {
           home={home}
           camera={camera}
           calm={calm}
-          autoRotate={!interacted && panel === null && !listOpen && hover === null && selected === null}
+          autoRotate={!interacted && panel === null && !listOpen && !hovering && selected === null}
           onHover={onHover}
           onPick={onPick}
           onView={setView}
@@ -461,7 +465,12 @@ export default function GlobeView() {
         />
       )}
 
-      {shownHover && <HoverCard info={shownHover} context={pickContext} bounds={size} />}
+      {isDesktop && !listOpen && (
+        <HoverCard
+          context={pickContext}
+          bounds={{ width: size.width - (sidePanelOpen ? SIDE_PANEL : 0), height: size.height }}
+        />
+      )}
 
       <div className="pointer-events-none absolute inset-0">
         {isDesktop ? (

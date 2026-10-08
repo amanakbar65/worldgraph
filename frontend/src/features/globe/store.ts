@@ -1,5 +1,6 @@
 import { create } from "zustand";
 
+import type { PickInfo } from "./GlobeMap";
 import { DEFAULT_TOGGLES, type LayerToggles } from "./layers";
 
 /**
@@ -35,3 +36,18 @@ export const useGlobeUi = create<GlobeUiState>((set) => ({
   setInteracted: () => set({ interacted: true }),
   setAppliedFocus: (appliedFocus) => set({ appliedFocus }),
 }));
+
+/**
+ * What the pointer is over (desktop). Kept apart from the view's state so a
+ * moving pointer re-renders only the hover card, not the whole screen.
+ */
+export const useGlobeHover = create<{ hover: PickInfo | null; setHover: (hover: PickInfo | null) => void }>(
+  (set) => ({
+    hover: null,
+    setHover: (hover) => set({ hover }),
+  }),
+);
+
+/** The id of the hovered event or forecast (what the globe rings and links light up). */
+export const hoveredItem = (s: { hover: PickInfo | null }): string | null =>
+  s.hover && (s.hover.kind === "event" || s.hover.kind === "forecast") ? s.hover.id : null;

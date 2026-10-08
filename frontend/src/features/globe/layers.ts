@@ -29,6 +29,7 @@ import {
   impactColor,
   isBigMover,
   ringStep,
+  zoomScale,
   type ArcDatum,
   type GlobeEvent,
   type HexBin,
@@ -148,7 +149,7 @@ const BILLBOARD: { parameters: { depthCompare: "always"; cullMode: "none" }; ext
 export function buildLayers(input: LayerInput): Layer[] {
   const { palette, paletteKey, toggles, zoom } = input;
   const layers: Layer[] = [];
-  const pointScale = 1 + Math.min(0.6, Math.max(0, (zoom - 2) * 0.12));
+  const pointScale = zoomScale(zoom);
 
   if (toggles.heat && input.hexes.length > 0) {
     // Fades as you zoom in, where the points tell the story better.
@@ -200,10 +201,10 @@ export function buildLayers(input: LayerInput): Layer[] {
           id: "forecast-glow",
           data: movers,
           getPosition: (d) => [d.lon ?? 0, d.lat ?? 0],
-          getRadius: 20,
+          getRadius: 16,
           radiusUnits: "pixels",
-          radiusScale: (0.9 + 0.25 * Math.sin(breath * Math.PI)) * pointScale,
-          getFillColor: withAlpha(palette.forecast, 0.22),
+          radiusScale: (0.9 + 0.3 * Math.sin(breath * Math.PI)) * pointScale,
+          getFillColor: withAlpha(palette.forecast, palette.theme === "dark" ? 0.2 : 0.16),
           opacity: 0.6 + 0.4 * Math.sin(breath * Math.PI),
           stroked: false,
           billboard: true,

@@ -389,6 +389,10 @@ export function GlobeMap(props: GlobeMapProps) {
     map.on("touchstart", onInteract);
     map.on("wheel", onInteract);
     map.on("moveend", reportView);
+    // A flight moves the globe under a still pointer: drop the hover card.
+    map.on("movestart", () => {
+      if (!autoMoving.current) onOut();
+    });
     map.on("error", (e) => {
       // Worker or WebGL failures stop the map; a bad shape in a source doesn't.
       const message = String((e.error as { message?: unknown } | undefined)?.message ?? "");

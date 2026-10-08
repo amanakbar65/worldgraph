@@ -121,9 +121,9 @@ export function eventRadius(importance: number): number {
   return 3 + 8 * t ** 1.4;
 }
 
-/** Points grow a little as you zoom in, so they stay easy to hit. */
+/** Marks are a little smaller on a small, far-away globe and grow as you zoom in. */
 export function zoomScale(zoom: number): number {
-  return 1 + Math.min(0.6, Math.max(0, (zoom - 2) * 0.12));
+  return Math.min(1.5, Math.max(0.7, 0.85 + 0.15 * (zoom - 1.8)));
 }
 
 // ---------------------------------------------------------------------------
@@ -187,7 +187,7 @@ export function distanceMeters(a: LngLat, b: LngLat): number {
  */
 export function arcPath(src: LngLat, dst: LngLat, segments = 40): [number, number, number][] {
   const d = distanceMeters(src, dst);
-  const height = Math.min(1_400_000, 0.16 * d);
+  const height = Math.min(650_000, 0.07 * d);
   const [lon1, lat1] = src.map((v) => v * RAD);
   const [lon2, lat2] = dst.map((v) => v * RAD);
   const delta = d / EARTH_RADIUS_M;
@@ -223,13 +223,13 @@ export function arcPath(src: LngLat, dst: LngLat, segments = 40): [number, numbe
 export function arcColor(arc: GlobeArc & { focus?: boolean }, palette: GlobePalette, dimmed: boolean): Rgba {
   const base = impactColor(arc.impact, palette);
   if (arc.focus) return withAlpha(base, 0.95);
-  const a = (arc.link_type === "reported" ? 0.7 : 0.42) * (0.55 + 0.45 * arc.confidence);
-  return withAlpha(base, dimmed ? a * 0.35 : a);
+  const a = (arc.link_type === "reported" ? 0.5 : 0.36) * (0.6 + 0.4 * arc.confidence);
+  return withAlpha(base, dimmed ? a * 0.3 : a);
 }
 
-/** Line width in pixels: confidence 0.3 → 1 px, 1.0 → 2.6 px; focus adds a little. */
+/** Line width in pixels: confidence 0.3 → 1 px, 1.0 → 2.2 px; focus adds a little. */
 export function arcWidth(arc: GlobeArc & { focus?: boolean }): number {
-  return 1 + 1.6 * Math.max(0, Math.min(1, (arc.confidence - 0.3) / 0.7)) + (arc.focus ? 0.8 : 0);
+  return 1 + 1.2 * Math.max(0, Math.min(1, (arc.confidence - 0.3) / 0.7)) + (arc.focus ? 0.8 : 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -261,7 +261,7 @@ export function countryFill(country: GlobeCountry | undefined, maxCount: number,
   const base = mix(palette.land, palette.landActive, 0.35 + 0.65 * activity);
   const lean = leaningImpact(country.risk, country.opportunity, country.neutral);
   if (lean === "neutral") return base;
-  const strength = (0.08 + 0.22 * activity) * Math.min(1, Math.abs(country.score) * 1.6);
+  const strength = (0.06 + 0.18 * activity) * Math.min(1, Math.abs(country.score) * 1.6);
   return mix(base, impactColor(lean, palette), strength);
 }
 
@@ -517,7 +517,8 @@ export function declutterLabels<T extends LabelCandidate>(
 /** The zoom at which the globe fills about 80 % of the free space (w × h in CSS pixels). */
 export function homeZoom(width: number, height: number): number {
   const free = Math.max(120, Math.min(width, height));
-  const radius = free * 0.4;
+  // Phones get a fuller globe; there is less else to look at.
+  const radius = free * (width < 500 ? 0.46 : 0.41);
   const zoom = Math.log2((radius * 2 * Math.PI) / 512);
   return Math.min(2.4, Math.max(0.2, zoom));
 }
