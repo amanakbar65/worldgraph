@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Palette checks for src/styles/tokens.css, in both themes.
  *
@@ -26,7 +27,13 @@
  */
 import { describe, expect, it } from "vitest";
 
-import tokensCss from "./tokens.css?raw";
+// Vitest blanks every CSS import (even `?raw`), so read the file from disk.
+// The specifier sits in a variable to keep Node's types out of the app build.
+const NODE_FS = "node:fs";
+const { readFileSync } = (await import(/* @vite-ignore */ NODE_FS)) as {
+  readFileSync(path: string, encoding: "utf8"): string;
+};
+const tokensCss = readFileSync(decodeURIComponent(new URL("./tokens.css", import.meta.url).pathname), "utf8");
 
 // ---------------------------------------------------------------------------
 // Parsing
