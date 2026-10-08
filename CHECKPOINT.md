@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 8 Oct 2026, 09:35 UTC.
+**Last updated:** 8 Oct 2026, 09:50 UTC.
 
 ## How to resume (any new session)
 
@@ -33,9 +33,15 @@ Done since the last pause:
 - Map assets are merged.
 - Supabase now has migrations 0001–0009.
 
-Running now (launched 09:35 UTC; the progress saver pushes worktrees to `wip/<worktree>` every 10 minutes):
-1. **ui-kit**, via `orchestration/worldgraph-content-api.js`. It resumes from `wip/wf_828b324a-939-3`. Args: `{"done": [the 8 earlier labels, "map-assets", "sql:forecasts-business-ai"]}`.
-2. **ai-artifact-web** (the screens agent that doesn't need the UI kit), via `orchestration/worldgraph-screens.js`. Args: `{"done": ["globe", "story-cascade", "region", "forecasts", "business", "graph-entity", "ask-brief-search-settings"]}`.
+Running now (launched 09:50 UTC; the progress saver pushes worktrees to `wip/<worktree>` every 10 minutes):
+
+| Agent | Run ID | Worktree → saved to |
+| --- | --- | --- |
+| ui-kit | `wf_896dc2bb-e78` | `wf_896dc2bb-e78-1` → `wip/wf_896dc2bb-e78-1` |
+| ai-artifact-web | `wf_eb4d66f1-194` | `wf_eb4d66f1-194-1` → `wip/wf_eb4d66f1-194-1` |
+
+1. **ui-kit**, via `orchestration/worldgraph-content-api.js`. It started from `wip/wf_828b324a-939-3`; if interrupted again, point its `RESUME` note at `wip/wf_896dc2bb-e78-1`. Args: `{"done": [the 8 earlier labels, "map-assets", "sql:forecasts-business-ai"]}`.
+2. **ai-artifact-web** (the screens agent that doesn't need the UI kit), via `orchestration/worldgraph-screens.js`. If interrupted, relaunch with `args.resume = {"ai-artifact-web": "wip/wf_eb4d66f1-194-1"}`. Args: `{"done": ["globe", "story-cascade", "region", "forecasts", "business", "graph-entity", "ask-brief-search-settings"]}`.
 
 If interrupted:
 - check `git worktree list`;
