@@ -97,23 +97,25 @@ export function StatusBar() {
         title={data.long}
       >
         <span role="status" className="flex min-w-0 items-center gap-1.5">
+          {/* Neutral colours only: teal and amber mean opportunity and risk in this app. */}
           {tone === "warn" ? (
-            <TriangleAlert aria-hidden className="size-3.5 shrink-0 text-risk" />
+            <TriangleAlert aria-hidden className="size-3.5 shrink-0 text-fg" />
           ) : tone === "ok" ? (
-            <CircleDot aria-hidden className={cn("size-3.5 shrink-0 text-opportunity")} />
+            <CircleDot aria-hidden className="size-3.5 shrink-0 text-fg" />
           ) : (
             <Database aria-hidden className="size-3.5 shrink-0" />
           )}
           <Responsive {...data} />
         </span>
 
-        {fresh && !ai && !needsApproval && (
-          <>
+        {fresh && !needsApproval && (
+          // With AI news beside it, the freshness note only shows on wider screens.
+          <span className={cn("shrink-0 items-center gap-2", ai ? "hidden md:flex" : "flex")}>
             <Divider />
-            <span className="tabular shrink-0 text-fg-subtle">
+            <span className="tabular text-fg-subtle">
               <Responsive {...fresh} />
             </span>
-          </>
+          </span>
         )}
 
         {needsApproval && (
