@@ -59,7 +59,7 @@ export function EventList({ events, window, allSample, note, onOpen, onFocusItem
         id={headingId}
         title="All events"
         count={sorted.length}
-        description={`${WINDOW_LABELS[window].long} · most important first`}
+        description={`${WINDOW_LABELS[window].long} · by importance`}
         action={
           (allSample || onClose) && (
             <>

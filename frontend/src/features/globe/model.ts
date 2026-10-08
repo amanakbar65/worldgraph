@@ -108,7 +108,7 @@ export function binEvents(events: readonly GlobeEvent[], resolution: number): He
 /** Fill for a hex: its leaning impact, stronger where more is happening (square-root scale). */
 export function hexFill(bin: HexBin, maxWeight: number, palette: GlobePalette): Rgba {
   const t = maxWeight > 0 ? Math.sqrt(bin.weight / maxWeight) : 0;
-  return withAlpha(impactColor(bin.impact, palette), 0.16 + 0.42 * t);
+  return withAlpha(impactColor(bin.impact, palette), 0.12 + 0.32 * t);
 }
 
 // ---------------------------------------------------------------------------

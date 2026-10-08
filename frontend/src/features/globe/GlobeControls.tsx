@@ -166,7 +166,7 @@ export function LayersButton({
 }
 
 function KeyItem({ children }: { children: ReactNode }) {
-  return <li className="flex items-center gap-1.5 whitespace-nowrap">{children}</li>;
+  return <li className="flex items-center gap-1.5 [&>*:not(:last-child)]:shrink-0">{children}</li>;
 }
 
 /**
@@ -185,18 +185,20 @@ export function MapKey({ detailed = false, className }: { detailed?: boolean; cl
             <KeyItem key={impact}>
               <span aria-hidden className={cn("size-2.5 rounded-full", tone.bg)} />
               <Icon aria-hidden className={cn("size-3.5", tone.text)} />
-              {tone.label}
-              {detailed && impact !== "neutral" && (
-                <span className="text-fg-subtle">· country shade leans this way</span>
-              )}
+              <span className="whitespace-nowrap">
+                {tone.label}
+                {detailed && impact !== "neutral" && <span className="text-fg-subtle"> · countries lean this way</span>}
+              </span>
             </KeyItem>
           );
         })}
         <KeyItem>
           <span aria-hidden className="size-3 rounded-full border-2 border-forecast" />
           <Users aria-hidden className="size-3.5 text-forecast" />
-          Crowd forecast
-          {detailed && <span className="text-fg-subtle">· glow: moved 5+ points in 24 h</span>}
+          <span className="whitespace-nowrap">
+            Crowd forecast
+            {detailed && <span className="text-fg-subtle"> · glow: moved 5+ points</span>}
+          </span>
         </KeyItem>
         {detailed && (
           <>

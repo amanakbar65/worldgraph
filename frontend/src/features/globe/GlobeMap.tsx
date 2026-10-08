@@ -530,16 +530,13 @@ export function GlobeMap(props: GlobeMapProps) {
     const map = mapRef.current;
     if (!map || !camera) return;
     const duration = calm ? 0 : FLIGHT_MS;
-    const pad = propsRef.current.padding;
     if (camera.kind !== "zoom") interacted.current = true;
+    // Settle the padding first (a panel may have just opened): MapLibre fits
+    // inside the map's padding plus the margin given here.
+    map.setPadding(propsRef.current.padding);
     switch (camera.kind) {
       case "bounds":
-        map.fitBounds(camera.bounds, {
-          padding: { top: pad.top + 32, right: pad.right + 32, bottom: pad.bottom + 32, left: pad.left + 32 },
-          maxZoom: camera.maxZoom ?? 5.5,
-          duration,
-          essential: false,
-        });
+        map.fitBounds(camera.bounds, { padding: 64, maxZoom: camera.maxZoom ?? 5.5, duration, essential: false });
         break;
       case "point":
         map.flyTo({ center: camera.center, zoom: camera.zoom ?? Math.max(map.getZoom(), 4), duration, essential: false });
