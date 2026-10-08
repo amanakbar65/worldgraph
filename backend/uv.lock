@@ -829,12 +829,48 @@ wheels = [
 ]
 
 [[package]]
+name = "shapely"
+version = "2.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f3/ab/924b6e202f796d270a3041a230151f7908db5ea48c74effe6f8023e9bd05/shapely-2.2.0.tar.gz", hash = "sha256:e8865e553d874a1ec4a032057ea81fca9def37b188cd8fb550af3b3480b3f88c", size = 380326, upload-time = "2026-10-07T09:18:01.001Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/63/af/ac371511dbf0f0a172544a647246f746ceb2b5d12b3e1238224bec3a3796/shapely-2.2.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:626fe4c0d32860a98e75ecffabf5a62254c6168eac96b633ad313cd62a38bb2b", size = 1785072, upload-time = "2026-10-07T09:16:13.707Z" },
+    { url = "https://files.pythonhosted.org/packages/02/96/5c48977168f32de067bfafce7f584dd04becf152152bf088636cc034828e/shapely-2.2.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:c36ccbff5c3374c349c370bfdac22c7676b268b4a707c98e9031f498965aa02d", size = 1584868, upload-time = "2026-10-07T09:16:15.795Z" },
+    { url = "https://files.pythonhosted.org/packages/ae/34/b90723043091161f636fde302e850583dcebd610e798f9edd6e3245f5a2a/shapely-2.2.0-cp312-cp312-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:a9a380624cdd7a7e661bf15a4d1625082766f07ccd2540cb0a9e0df1ad4f6c11", size = 2176960, upload-time = "2026-10-07T09:16:17.965Z" },
+    { url = "https://files.pythonhosted.org/packages/ad/87/6842e4c996914a47b6bfd3ef14a543e67e993f86a9ea5679c34efc9314ab/shapely-2.2.0-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:650a5f4d8a8e3c96982079d8c99b6ddbe6602bbd1e34c75c2b95dbc0d28ac997", size = 2300970, upload-time = "2026-10-07T09:16:20.191Z" },
+    { url = "https://files.pythonhosted.org/packages/54/ea/06295d871f0befc3eafa96b7bb87a31e848f042d03ba80c5938b12eb68dd/shapely-2.2.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:a851e077f0f02a3383923e02eca5447a29ddbf234e39593b91c8b7ac75218133", size = 3244534, upload-time = "2026-10-07T09:16:22.36Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/2a/ab017941b2014f29b8fca233e3f5a75e5fe109a1f27d316ba85d95a515ff/shapely-2.2.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:dc5faa593948aa64d9afae48331b80f43f7aacc68425d99064a4d6772f53f1ad", size = 3391336, upload-time = "2026-10-07T09:16:24.226Z" },
+    { url = "https://files.pythonhosted.org/packages/63/ee/4ccaa854f3b7ecd9181920b913c2d2f4b15053331457b7f615139a9774cc/shapely-2.2.0-cp312-cp312-win32.whl", hash = "sha256:da47a0cc9e630b4dff0db46e8972b29d2d27f337425ce9d4c77fd046ce48eabd", size = 1617174, upload-time = "2026-10-07T09:16:26.277Z" },
+    { url = "https://files.pythonhosted.org/packages/f6/26/ba9192f0a72c830aa8cc1c61e207ada57cc54b7de81668b1836f575ee717/shapely-2.2.0-cp312-cp312-win_amd64.whl", hash = "sha256:90895df6542ae039fc6557dec6194e3509e883fbd6f5788e3c3e7a38fe46b257", size = 1791280, upload-time = "2026-10-07T09:16:27.94Z" },
+    { url = "https://files.pythonhosted.org/packages/8e/92/4e4f93d7b7db9af2a77126c6c96af2c0c422635e2276f5abb533f67b42df/shapely-2.2.0-cp312-cp312-win_arm64.whl", hash = "sha256:7cf5b3a801b9b4febf774efde2e31280e647388deae8452693d8e6420b3a1ff2", size = 1879393, upload-time = "2026-10-07T09:16:29.684Z" },
+]
+
+[[package]]
 name = "shellingham"
 version = "1.5.4"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/58/15/8b3609fd3830ef7b27b655beb4b4e9c62313a4e8da8c676e142cc210d58e/shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de", size = 10310, upload-time = "2023-10-24T04:13:40.426Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686", size = 9755, upload-time = "2023-10-24T04:13:38.866Z" },
+]
+
+[[package]]
+name = "simplification"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ed/e4/acaf8400d85ced98c4a371818fcde69c202fdbd3942666e374989cb370be/simplification-1.0.0.tar.gz", hash = "sha256:c1e33379455f5da02462b2d674b816a5f385bbbde216652101465fd33e4a2e3c", size = 1451089, upload-time = "2026-06-08T12:00:07.849Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/54/a4/38cfcf4d209748ad543b8fde594f66513227fb74b0840cceba0192ef3ded/simplification-1.0.0-cp311-abi3-macosx_11_0_arm64.whl", hash = "sha256:8def6393614096bfcb69e889f0da371a58009de8fc3d6660e31dfda3d0f35e61", size = 243223, upload-time = "2026-06-08T12:00:00.562Z" },
+    { url = "https://files.pythonhosted.org/packages/f4/2e/b0a647c7757b432dbc2a5b84ae49c8e01a8a78380442d3d67b1352e2f141/simplification-1.0.0-cp311-abi3-macosx_11_0_x86_64.whl", hash = "sha256:4e0fa16ea12cdce014d0cf649a36bf91733bddbfab8e6fd7bab7251bbd5c28f1", size = 261130, upload-time = "2026-06-08T12:00:01.84Z" },
+    { url = "https://files.pythonhosted.org/packages/09/7a/55f40b9a903bf45ac24da8bb4f2fbc3419c80462e6c43dd6b5713d53383c/simplification-1.0.0-cp311-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:249ec6b7bbf2baed3655246dde003a9607ae7cb182e7c7053ada52c01ceef808", size = 274461, upload-time = "2026-06-08T12:00:03.918Z" },
+    { url = "https://files.pythonhosted.org/packages/69/1c/083b6a0d5909741620581f6730f23357ca308bc6fb33823d35b9be9587cb/simplification-1.0.0-cp311-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:e533dd74ee873728de1eda7a456c2ebd021243137c59c5c674e5d9665b930d22", size = 290118, upload-time = "2026-06-08T12:00:05.333Z" },
+    { url = "https://files.pythonhosted.org/packages/2f/67/08db7eabb5f2fb74702ec5b478a0c206177d68d9875a7b13c3b8bbda15b9/simplification-1.0.0-cp311-abi3-win_amd64.whl", hash = "sha256:e114c5feaa44fa6272dbf2a455f901b9c6196fb653b45652db0741c0770fe154", size = 333377, upload-time = "2026-06-08T12:00:06.486Z" },
 ]
 
 [[package]]
@@ -871,6 +907,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/f3/1f/c79a01f671a49728ebb0b61f7ff9ea45663b66cab40bc0858e9859b25c16/tokenizers-0.23.2-cp310-abi3-win32.whl", hash = "sha256:debf978920d93ba9c219bd67cc4bbfaf912c9039e41e7a28b91ec15e3728c95a", size = 2592809, upload-time = "2026-09-03T08:55:48.02Z" },
     { url = "https://files.pythonhosted.org/packages/db/f7/0a69ac6b82dbccf3f71add938a161c497952749294b8dd6dfe03a819dc40/tokenizers-0.23.2-cp310-abi3-win_amd64.whl", hash = "sha256:2e96f5699d5249c9c64aa8412e044f727aae3a4098cf830f9901ec1afc361cde", size = 2863236, upload-time = "2026-09-03T08:55:46.193Z" },
     { url = "https://files.pythonhosted.org/packages/d7/b0/dee84cb44175be1b4c35bd2f770727494e78f0bb38e571a623ade94dbebb/tokenizers-0.23.2-cp310-abi3-win_arm64.whl", hash = "sha256:e49c394456dd9985787fec76132438ba3fb8911f857b1bf3d40119f9292d41aa", size = 2729352, upload-time = "2026-09-03T08:55:44.345Z" },
+]
+
+[[package]]
+name = "topojson"
+version = "2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "shapely" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0d/58/e3524df5df9af2af700a8ad9a0c124a61a7ec6592bc36b9dabcb730294f0/topojson-2.1.tar.gz", hash = "sha256:ee4d197d96775321de4c5e7f29cbf0d06829de672b9f3387b3e775dd1982057a", size = 99860, upload-time = "2026-10-04T21:40:37.659Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/92/cc/c3a28bc0e6a11bc294bd00852ed0ad37be11702c0fe3195acb3a9c6eaaab/topojson-2.1-py3-none-any.whl", hash = "sha256:40b9f9e4b7c3934cef7d1463f9b63cb53dd5ba6308779d348130faf9dc502fd4", size = 104736, upload-time = "2026-10-04T21:40:36.179Z" },
 ]
 
 [[package]]
@@ -978,6 +1027,11 @@ dev = [
     { name = "pytest" },
     { name = "ruff" },
 ]
+geo = [
+    { name = "shapely" },
+    { name = "simplification" },
+    { name = "topojson" },
+]
 pipeline = [
     { name = "anthropic" },
     { name = "fastembed" },
@@ -1002,6 +1056,11 @@ dev = [
     { name = "jsonschema", specifier = ">=4.25" },
     { name = "pytest", specifier = ">=9.1" },
     { name = "ruff", specifier = ">=0.16" },
+]
+geo = [
+    { name = "shapely", specifier = ">=2.2.0" },
+    { name = "simplification", specifier = ">=1.0.0" },
+    { name = "topojson", specifier = ">=2.1" },
 ]
 pipeline = [
     { name = "anthropic", specifier = ">=1.12.0" },
