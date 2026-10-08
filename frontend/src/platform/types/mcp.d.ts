@@ -181,12 +181,26 @@ declare namespace Claude {
      *   in a loop.
      * - `blocked_by_policy` — tool is in the manifest but org policy blocks
      *   it for this viewer.
-     * - `approval_required` — org policy requires per-call approval for
-     *   this tool and none was given; per-call approval is not yet
-     *   supported in artifacts. Not retryable without viewer action;
-     *   render a "needs approval" degraded state. (Older runtimes
-     *   degrade this code to `upstream_error` per the unknown-code
-     *   rule.)
+     * - `self_only` — the artifacts connector and Claude Docs work from a
+     *   page only on the page's own artifact: `get_artifact` and
+     *   `publish_version` naming this artifact (a page that also reads
+     *   other artifacts' data or project files cannot republish itself),
+     *   and Claude Docs `export` when this artifact is a Doc. Any other
+     *   tool of theirs, or another or a new artifact or Doc as the target,
+     *   is refused for every viewer. Permanent, a page bug: remove the
+     *   call. Claude in a conversation can still use these connectors.
+     * - `approval_required` — this call needs the viewer's approval and
+     *   none was given. The shell asks only while a page's own
+     *   `callTool` waits; on Allow that call resolves as usual. A watch
+     *   never asks, however it is refreshed: its handler gets this
+     *   code, as does a call whose ask the viewer declines, leaves
+     *   unanswered or is not shown. Not retryable without viewer
+     *   action: render a "needs approval" degraded state with a button
+     *   that makes the same call once with `callTool`, and render that
+     *   result. Keep the watch and the button: the watch's next refetch
+     *   delivers if the Allow covers later calls, never if each call
+     *   needs its own. (Older runtimes degrade this code to
+     *   `upstream_error` per the unknown-code rule.)
      * - `tool_error` — the tool ran but reported failure. The call
      *   REJECTS with this code; the full envelope rides the rejection's
      *   `result`. (Tool failures no longer resolve with an `isError`
@@ -265,6 +279,7 @@ declare namespace Claude {
       | "server_unavailable"
       | "not_in_manifest"
       | "blocked_by_policy"
+      | "self_only"
       | "approval_required"
       | "tool_error"
       | "bad_request"

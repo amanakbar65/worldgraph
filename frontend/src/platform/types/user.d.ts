@@ -63,18 +63,23 @@ declare namespace Claude {
      *  top-level, a viewer from outside the organization, or no viewer), and
      *  then every name resolves null: null is NOT "cannot", so decide without
      *  can(): keep a shared-data control and let a refused write decide;
-     *  for the two file-writing names, canEdit(). The names:
+     *  for the two file-writing names, canEdit(); "people.add" has no such
+     *  fallback, so offer no add-people control. The names:
      *    "data.write"      change the artifact's SHARED `db` documents
      *    "files.write"     publish the artifact's own files and page versions
      *    "assets.write"    upload and delete assets
+     *    "people.add"      add a colleague to this artifact by name
      *  When the platform answers at all, any other string resolves false, so
      *  a page written for a name a later host adds simply does not offer that
      *  control on this one. The answer is advice about what to OFFER; the
      *  server enforces every real action regardless, and may refuse one.
      *  "data.write" is about shared documents only: a viewer's own
      *  data/users/<id>/ subtree follows that path's own `db` rule, so write
-     *  there and handle the rejection. Fixed for the life of a view. can()
-     *  changes no other member's answer. Needs no declaration. */
+     *  there and handle the rejection. "people.add" is about the platform's
+     *  own sharing controls (the share menu): the page itself cannot add
+     *  anyone, and the name says nothing about inviting by email, sharing by
+     *  link or changing who manages access. Fixed for the life of a view.
+     *  can() changes no other member's answer. Needs no declaration. */
     function can(capability: string): Promise<boolean | null>;
 
     /** The viewer, in ONE await. NEVER null and never rejects: each field is

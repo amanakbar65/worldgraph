@@ -11,6 +11,7 @@
  *     // input   = "prompt" | [{role: "user"|"assistant", content}, ...] ending on a user turn
  *     // options = { onText?({text, delta}), signal?, tools?, images?, modelTier?, cache? }
  *     // failure = one rejected {code, message, text?}; text = the part you may keep
+ *     // manifest = capabilities: {sample: {}}, or capabilities: {sample: {images: true}} to pass images
  *
  * One function, one promise. Pass `onText` to render the answer while it
  * streams (each call brings `text`, the WHOLE answer so far, to assign,
@@ -54,6 +55,17 @@
  * "Summarize", "Send") or once at load with a prompt that is stable
  * across loads — never from a loop or a timer — and render a sensible
  * page when sampling is unavailable.
+ *
+ * Images are declared. A page that passes `images` must declare it in
+ * its manifest: `capabilities: {sample: {images: true}}`. The dialog that
+ * asks the viewer to allow Claude then also tells them the artifact can
+ * send images to Claude, and a viewer who allowed the artifact before it
+ * declared images is asked again at their next use of Claude. Without the
+ * declaration no view can send images: {@link sample.limits} reports no
+ * `images` and a call that passes them rejects `images_unavailable`;
+ * text calls are unaffected. Declare it only on a page that does pass
+ * images — every viewer of a page that declares images is told the page
+ * can send images to Claude.
  *
  * Timing to design for: on `"quick"` a short prompt answers in a second
  * or two; on `"default"`/`"complex"` Claude thinks silently before it
@@ -180,7 +192,9 @@ declare namespace Claude {
     /**
      * Resolve this view's limits: the input byte cap, and an `images`
      * member ONLY when this view can send images (how many per call, the
-     * largest file accepted, the file types). Use it to decide whether to
+     * largest file accepted, the file types). The `images` member is never
+     * present on an artifact whose manifest does not declare
+     * `capabilities: {sample: {images: true}}`. Use it to decide whether to
      * show an image affordance at all; treat a rejection like an absent
      * `images`. Cheap and local — no usage is spent, the viewer is not
      * prompted.
@@ -310,8 +324,10 @@ declare namespace Claude {
        * call. The platform downsizes each to about 1.2 megapixels, applies
        * orientation, keeps an animation's first frame and strips metadata
        * before anything is sent; say in the prompt what the images are and
-       * what to do with them. Only where {@link limits} reports `images` —
-       * elsewhere the call rejects `images_unavailable`; a file of another
+       * what to do with them. The artifact's manifest must declare
+       * `capabilities: {sample: {images: true}}`. Only where {@link limits}
+       * reports `images` — elsewhere the call rejects
+       * `images_unavailable`; a file of another
        * type, undecodable, or over 20 MB / 10,000 px a side / 64 megapixels
        * rejects `image_rejected`. The page cannot fetch images from URLs
        * (its network is blocked): ask the viewer to pick or drop the file.
@@ -494,7 +510,8 @@ declare namespace Claude {
       /** Largest `input`, in UTF-8 bytes of text — the prompt string, or all
        * turns' `content` together (262144). */
       maxPromptBytes: number;
-      /** Present only when this view can send `images`. */
+      /** Present only when the artifact declares images and this view can
+       * send them. */
       images?: ImageLimits;
       /** Present only when this view can run {@link SampleOptions.tools}. */
       tools?: ToolLimits;
@@ -576,9 +593,9 @@ declare namespace Claude {
      * - `capability_disabled` — granted but unusable in this view.
      * - `capability_removed` — the method is not in the runtime serving
      *   this view (e.g. `json` on an older viewer app).
-     * - `images_unavailable` — this view cannot send images (check
-     *   {@link limits} first). Hide the IMAGE affordance only; text calls
-     *   work.
+     * - `images_unavailable` — this view cannot send images, or the
+     *   artifact does not declare them (check {@link limits} first). Hide
+     *   the IMAGE affordance only; text calls work.
      * - `tools_unavailable` — this view cannot run page tools (check
      *   {@link limits} first). Hide what depends on them; plain calls work.
      *
