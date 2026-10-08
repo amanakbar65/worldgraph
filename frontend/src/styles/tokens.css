@@ -31,21 +31,21 @@
   --ring: oklch(0.78 0.09 245);
 
   /* Meaning (always paired with an icon or ▲ ▼) */
-  --risk: oklch(0.8 0.15 68);
-  --opportunity: oklch(0.8 0.12 192);
-  --neutral: oklch(0.73 0.02 258);
-  --forecast: oklch(0.76 0.14 298);
+  --risk: oklch(0.81 0.155 72);
+  --opportunity: oklch(0.82 0.125 186);
+  --neutral: oklch(0.67 0.018 254);
+  --forecast: oklch(0.75 0.155 305);
 
   /* Entity types: one hue each, the same on globe, graph and chips */
-  --type-region: oklch(0.76 0.11 240);
-  --type-organization: oklch(0.75 0.12 330);
-  --type-person: oklch(0.8 0.08 20);
-  --type-commodity: oklch(0.8 0.14 135);
-  --type-sector: oklch(0.82 0.05 90);
-  --type-infrastructure: oklch(0.72 0.1 270);
-  --type-policy: oklch(0.78 0.11 0);
-  --type-indicator: oklch(0.74 0.03 220);
-  --type-user: oklch(0.88 0.02 262);
+  --type-region: oklch(0.7 0.13 226);
+  --type-organization: oklch(0.86 0.1 332);
+  --type-person: oklch(0.71 0.11 39);
+  --type-commodity: oklch(0.66 0.135 152);
+  --type-sector: oklch(0.78 0.047 100);
+  --type-infrastructure: oklch(0.855 0.068 257);
+  --type-policy: oklch(0.78 0.135 2);
+  --type-indicator: oklch(0.88 0.105 118);
+  --type-user: oklch(0.95 0.005 262);
 
   /* Globe */
   --globe-space: oklch(0.11 0.02 265);
@@ -75,20 +75,20 @@
   --fg-subtle: oklch(0.52 0.02 262);
   --ring: oklch(0.5 0.12 245);
 
-  --risk: oklch(0.55 0.14 58);
-  --opportunity: oklch(0.52 0.1 200);
-  --neutral: oklch(0.5 0.02 258);
-  --forecast: oklch(0.5 0.19 298);
+  --risk: oklch(0.51 0.125 52);
+  --opportunity: oklch(0.49 0.087 220);
+  --neutral: oklch(0.35 0.02 258);
+  --forecast: oklch(0.47 0.2 303);
 
-  --type-region: oklch(0.52 0.14 245);
-  --type-organization: oklch(0.52 0.16 330);
-  --type-person: oklch(0.55 0.12 25);
-  --type-commodity: oklch(0.52 0.13 140);
-  --type-sector: oklch(0.52 0.06 85);
-  --type-infrastructure: oklch(0.5 0.13 272);
-  --type-policy: oklch(0.55 0.15 5);
-  --type-indicator: oklch(0.5 0.04 220);
-  --type-user: oklch(0.3 0.02 262);
+  --type-region: oklch(0.4 0.146 257);
+  --type-organization: oklch(0.4 0.164 339);
+  --type-person: oklch(0.4 0.12 21);
+  --type-commodity: oklch(0.52 0.115 162);
+  --type-sector: oklch(0.43 0.07 92);
+  --type-infrastructure: oklch(0.548 0.19 260);
+  --type-policy: oklch(0.49 0.16 360);
+  --type-indicator: oklch(0.53 0.076 106);
+  --type-user: oklch(0.23 0.017 262);
 
   --globe-space: oklch(0.95 0.008 255);
   --globe-ocean: oklch(0.9 0.02 240);
