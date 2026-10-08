@@ -25,9 +25,11 @@ import {
   mainBounds,
   nextRow,
   ringStep,
+  screenRadius,
   sortEventsForList,
   unwrapRing,
   visibleCap,
+  zoomForScreenRadius,
   zoomScale,
   type GlobeArc,
   type GlobeEvent,
@@ -342,10 +344,24 @@ describe("geometry", () => {
     expect(wide).toBeLessThan(90);
   });
 
+  it("knows how big the globe looks on screen, and the zoom for a given size", () => {
+    // Seen in perspective, the outline is a little smaller than the globe's radius.
+    const r = screenRadius(2, 0, 800);
+    expect(r).toBeGreaterThan(0.8 * ((512 * 4) / (2 * Math.PI)));
+    expect(r).toBeLessThan((512 * 4) / (2 * Math.PI));
+    expect(screenRadius(3, 0, 800)).toBeGreaterThan(r);
+    expect(zoomForScreenRadius(r, 0, 800)).toBeCloseTo(2, 6);
+    expect(zoomForScreenRadius(screenRadius(1.4, 35, 600), 35, 600)).toBeCloseTo(1.4, 6);
+  });
+
   it("frames the globe to the free space", () => {
-    expect(homeZoom(1000, 700)).toBeGreaterThan(homeZoom(390, 600));
-    expect(homeZoom(10_000, 10_000)).toBe(2.4);
-    expect(homeZoom(10, 10)).toBeGreaterThanOrEqual(0.2);
+    const desktop = homeZoom(1064, 784, 844);
+    expect(screenRadius(desktop, 20, 844)).toBeCloseTo(0.84 * 392, 0);
+    expect(desktop).toBeGreaterThan(homeZoom(390, 600, 788));
+    // Phones fill nearly the whole width.
+    expect(screenRadius(homeZoom(390, 520, 788), 20, 788)).toBeCloseTo(0.94 * 195, 0);
+    expect(homeZoom(10_000, 10_000, 10_000)).toBe(2.6);
+    expect(homeZoom(10, 10, 10)).toBeGreaterThanOrEqual(0.2);
   });
 });
 

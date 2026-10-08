@@ -1,6 +1,8 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 import { paletteKey, readGlobePalette, type GlobePalette } from "@/lib/globe-color";
+
+import type { ReplaySpan } from "./model";
 
 /**
  * The globe's colours, read from the CSS tokens and read again whenever the
@@ -76,6 +78,41 @@ export function useMinuteClock(): number {
     () => minute,
     () => minute,
   );
+}
+
+/** How long a replay of the whole window takes. */
+export const REPLAY_MS = 12_000;
+
+export interface ReplayState {
+  span: ReplaySpan;
+  /** The replay's clock (ms since the epoch). */
+  at: number;
+  /** What the replay was started for (window and lens); it lapses when they change. */
+  key: string;
+}
+
+/**
+ * Replay: a clock that sweeps through a time span in REPLAY_MS and then
+ * stops. When calm, it moves in a few still steps instead of smoothly.
+ */
+export function useReplay(calm: boolean) {
+  const [replay, setReplay] = useState<ReplayState | null>(null);
+  const running = replay !== null;
+  useEffect(() => {
+    if (!running) return;
+    const stepMs = calm ? 1000 : 80;
+    const timer = setInterval(() => {
+      setReplay((r) => {
+        if (!r) return r;
+        const at = r.at + ((r.span.to - r.span.from) * stepMs) / REPLAY_MS;
+        return at >= r.span.to ? null : { ...r, at };
+      });
+    }, stepMs);
+    return () => clearInterval(timer);
+  }, [running, calm]);
+  const start = useCallback((span: ReplaySpan, key: string) => setReplay({ span, at: span.from, key }), []);
+  const stop = useCallback(() => setReplay(null), []);
+  return { replay, start, stop };
 }
 
 /** The size of an element, kept up to date. */

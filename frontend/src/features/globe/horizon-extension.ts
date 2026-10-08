@@ -29,3 +29,33 @@ export class HorizonExtension extends LayerExtension {
     };
   }
 }
+
+/**
+ * Fades lines (the cascade arcs) as they turn towards the horizon, so a link
+ * that runs round to the far side melts away softly instead of hugging the
+ * planet's rim like an orbit.
+ *
+ * `f` is how far a point sits inside the visible cap: 0 on the horizon, 1
+ * right under the camera. It uses the direction of the point only, so raised
+ * arcs fade like the ground beneath them, at every zoom.
+ */
+export class HorizonFadeExtension extends LayerExtension {
+  static extensionName = "HorizonFadeExtension";
+
+  getShaders() {
+    return {
+      inject: {
+        "vs:DECKGL_FILTER_COLOR": /* glsl */ `
+          if (project.projectionMode == PROJECTION_MODE_GLOBE) {
+            vec3 fadeCamera = project.cameraPosition;
+            float fadeCameraDistance = max(length(fadeCamera), 256.001);
+            float fadeHorizon = 256.0 / fadeCameraDistance;
+            float fadeAlong = dot(fadeCamera / fadeCameraDistance, normalize(geometry.position.xyz));
+            float fadeInside = (fadeAlong - fadeHorizon) / max(1e-4, 1.0 - fadeHorizon);
+            color.a *= smoothstep(0.04, 0.32, fadeInside);
+          }
+        `,
+      },
+    };
+  }
+}

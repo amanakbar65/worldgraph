@@ -14,6 +14,7 @@ import { WINDOW_LABELS } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 import { GLASS } from "./GlobeControls";
+import { sampleLabelling } from "./model";
 
 export interface TopNowProps {
   data: TopResponse | undefined;
@@ -32,8 +33,21 @@ export interface TopNowProps {
 }
 
 /** A draft from the live news pipeline: its source headline, waiting for the AI. */
-function DraftNote() {
-  return <p className="-mt-1 pb-1 pl-[5.25rem] text-label text-fg-subtle">Draft · awaiting analysis</p>;
+export function DraftNote({ className }: { className?: string }) {
+  return <p className={cn("text-label text-fg-subtle", className)}>Draft · awaiting analysis</p>;
+}
+
+/** The stories and movers to show, with their own "Sample" marks dropped when one badge covers them all. */
+function useRows(data: TopResponse | undefined) {
+  const stories = data?.stories ?? [];
+  const movers = data?.movers ?? [];
+  const labelling = sampleLabelling([...stories, ...movers]);
+  const strip = labelling === "all";
+  return {
+    stories: strip ? stories.map((s) => ({ ...s, is_sample: false })) : stories,
+    movers: strip ? movers.map((m) => ({ ...m, is_sample: false })) : movers,
+    allSample: strip,
+  };
 }
 
 function StoryRows({ stories, props, carousel }: { stories: StorySummary[]; props: TopNowProps; carousel?: boolean }) {
@@ -42,14 +56,15 @@ function StoryRows({ stories, props, carousel }: { stories: StorySummary[]; prop
       {stories.map((story, i) => (
         <li
           key={story.id}
-          className={cn(carousel && cn(GLASS, "w-[82%] shrink-0 snap-start rounded-lg"))}
+          className={cn(carousel && cn(GLASS, "w-[84%] shrink-0 snap-start rounded-xl"))}
           onMouseEnter={() => props.onFocusItem(story.id)}
           onMouseLeave={() => props.onFocusItem(null)}
           onFocus={() => props.onFocusItem(story.id)}
           onBlur={() => props.onFocusItem(null)}
         >
           <StoryCard story={story} variant="compact" rank={i + 1} onOpen={props.onOpenStory} />
-          {!story.analysed && <DraftNote />}
+          {/* Lined up under the headline: card padding, rank, icon and gaps. */}
+          {!story.analysed && <DraftNote className="-mt-1.5 pb-2 pl-[5.5rem]" />}
         </li>
       ))}
     </>
@@ -62,7 +77,7 @@ function MoverRows({ movers, props, carousel }: { movers: ForecastSummary[]; pro
       {movers.map((forecast) => (
         <li
           key={forecast.id}
-          className={cn(carousel && cn(GLASS, "w-[82%] shrink-0 snap-start rounded-lg"))}
+          className={cn(carousel && cn(GLASS, "w-[84%] shrink-0 snap-start rounded-xl"))}
           onMouseEnter={() => props.onFocusItem(forecast.id)}
           onMouseLeave={() => props.onFocusItem(null)}
           onFocus={() => props.onFocusItem(forecast.id)}
@@ -75,10 +90,10 @@ function MoverRows({ movers, props, carousel }: { movers: ForecastSummary[]; pro
   );
 }
 
-function Loading() {
+function Loading({ rows = 5 }: { rows?: number }) {
   return (
-    <div aria-busy="true" aria-label="Loading the top stories" className="flex flex-col gap-3 p-2">
-      {[0, 1, 2, 3, 4].map((i) => (
+    <div aria-busy="true" aria-label="Loading the top stories" className="flex flex-col gap-4 p-2">
+      {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex items-center gap-3">
           <Skeleton className="size-9 rounded-lg" />
           <div className="flex flex-1 flex-col gap-1.5">
@@ -113,13 +128,14 @@ function Empty({ props }: { props: TopNowProps }) {
   );
 }
 
-/** Desktop: a glass card in the left column. */
-export function TopNowCard(props: TopNowProps) {
+/**
+ * Desktop: the "Top 5 now" side card's content: the five most important
+ * stories, then the crowd forecasts that moved most in 24 hours.
+ */
+export function TopNowBody(props: TopNowProps) {
   const headingId = useId();
   const { data, error, loading } = props;
-  const stories = data?.stories ?? [];
-  const movers = data?.movers ?? [];
-  const sample = stories.some((s) => s.is_sample) || movers.some((m) => m.is_sample);
+  const { stories, movers, allSample } = useRows(data);
 
   let body: ReactNode;
   if (error && !data) body = <ErrorState error={error} onRetry={props.onRetry} compact />;
@@ -129,7 +145,7 @@ export function TopNowCard(props: TopNowProps) {
     body = (
       <>
         {stories.length > 0 ? (
-          <ul className="flex flex-col">
+          <ul aria-labelledby={headingId} className="flex flex-col">
             <StoryRows stories={stories} props={props} />
           </ul>
         ) : (
@@ -154,19 +170,18 @@ export function TopNowCard(props: TopNowProps) {
     );
 
   return (
-    <section
-      aria-labelledby={headingId}
-      className={cn(GLASS, "flex max-h-full min-h-0 flex-col overflow-hidden rounded-xl")}
-    >
-      <SectionHeader
-        id={headingId}
-        title="Top 5 now"
-        description={`${WINDOW_LABELS[props.window].long} · most important first`}
-        action={sample ? <SampleBadge /> : undefined}
-        className="shrink-0 px-4 pt-3 pb-1"
-      />
+    <>
+      <div className="flex min-h-8 shrink-0 items-center gap-2 px-4 pt-1">
+        <h2 id={headingId} className="sr-only">
+          Top 5 now
+        </h2>
+        <p className="min-w-0 flex-1 truncate text-label text-fg-muted">
+          {WINDOW_LABELS[props.window].long} · most important first
+        </p>
+        {allSample && <SampleBadge />}
+      </div>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2">{body}</div>
-    </section>
+    </>
   );
 }
 
@@ -175,22 +190,29 @@ export function TopNowStrip(props: TopNowProps & { collapsed: boolean; onCollaps
   const headingId = useId();
   const listId = useId();
   const { data, error, loading, collapsed } = props;
-  const stories = data?.stories ?? [];
-  const movers = data?.movers ?? [];
-  const sample = stories.some((s) => s.is_sample) || movers.some((m) => m.is_sample);
+  const { stories, movers, allSample } = useRows(data);
   const lead = stories[0];
 
   let body: ReactNode = null;
   if (!collapsed) {
     if (error && !data) body = <ErrorState error={error} onRetry={props.onRetry} compact className={cn(GLASS, "rounded-xl")} />;
-    else if (loading && !data) body = <Loading />;
-    else if (stories.length === 0 && movers.length === 0) body = <div className={cn(GLASS, "rounded-xl")}><Empty props={props} /></div>;
+    else if (loading && !data)
+      body = (
+        <div className={cn(GLASS, "rounded-xl")}>
+          <Loading rows={1} />
+        </div>
+      );
+    else if (stories.length === 0 && movers.length === 0)
+      body = (
+        <div className={cn(GLASS, "rounded-xl")}>
+          <Empty props={props} />
+        </div>
+      );
     else
       body = (
         <ul
-          id={listId}
           aria-label="Top stories and crowd moves, swipe for more"
-          className="flex snap-x snap-mandatory items-start gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="-mx-3 flex snap-x snap-mandatory scroll-px-3 items-start gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           <StoryRows stories={stories} props={props} carousel />
           <MoverRows movers={movers} props={props} carousel />
@@ -200,17 +222,17 @@ export function TopNowStrip(props: TopNowProps & { collapsed: boolean; onCollaps
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
-      <div className={cn(GLASS, "flex h-10 items-center gap-2 self-start rounded-full pr-1 pl-3")}>
-        <h2 id={headingId} className="flex items-center gap-1.5 text-body font-semibold text-fg">
+      <div className={cn(GLASS, "flex h-10 max-w-full items-center gap-2 self-start rounded-full pr-1 pl-3")}>
+        <h2 id={headingId} className="flex shrink-0 items-center gap-1.5 text-body font-semibold text-fg">
           <Flame aria-hidden className="size-4 text-fg-muted" />
           Top 5 now
         </h2>
-        {sample && <SampleBadge compact />}
-        {collapsed && lead && <span className="max-w-[9rem] truncate text-label text-fg-muted">{lead.headline}</span>}
+        {allSample && <SampleBadge compact />}
+        {collapsed && lead && <span className="min-w-0 truncate text-label text-fg-muted">{lead.headline}</span>}
         <Button
           variant="ghost"
           size="icon"
-          className="size-9 rounded-full"
+          className="size-9 shrink-0 rounded-full"
           aria-expanded={!collapsed}
           aria-controls={listId}
           aria-label={collapsed ? "Show the top stories" : "Hide the top stories"}
@@ -219,7 +241,9 @@ export function TopNowStrip(props: TopNowProps & { collapsed: boolean; onCollaps
           <ChevronDown aria-hidden className={cn("transition-transform", collapsed && "rotate-180")} />
         </Button>
       </div>
-      {body}
+      <div id={listId} hidden={collapsed}>
+        {body}
+      </div>
     </section>
   );
 }

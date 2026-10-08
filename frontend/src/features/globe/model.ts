@@ -5,7 +5,8 @@
  */
 import { cellToBoundary, cellToLatLng, latLngToCell } from "h3-js";
 
-import type { ForecastSummary, GlobeResponse, Impact, StorySummary } from "@/api/contract";
+import type { ForecastSummary, GlobeResponse, Impact, SectorId, StorySummary } from "@/api/contract";
+import { SECTORS } from "@/lib/icons";
 import { mix, withAlpha, type GlobePalette, type Rgba } from "@/lib/globe-color";
 
 export type GlobeEvent = GlobeResponse["events"][number];
@@ -108,7 +109,7 @@ export function binEvents(events: readonly GlobeEvent[], resolution: number): He
 /** Fill for a hex: its leaning impact, stronger where more is happening (square-root scale). */
 export function hexFill(bin: HexBin, maxWeight: number, palette: GlobePalette): Rgba {
   const t = maxWeight > 0 ? Math.sqrt(bin.weight / maxWeight) : 0;
-  return withAlpha(impactColor(bin.impact, palette), 0.12 + 0.32 * t);
+  return withAlpha(impactColor(bin.impact, palette), 0.08 + 0.3 * t);
 }
 
 // ---------------------------------------------------------------------------
@@ -269,6 +270,64 @@ export function countryFill(country: GlobeCountry | undefined, maxCount: number,
   return mix(base, impactColor(lean, palette), strength);
 }
 
+/** Per-country counts and balance from a set of events (as api.globe sends them), busiest first. */
+export function countryStats(events: readonly GlobeEvent[]): GlobeCountry[] {
+  const byId = new Map<string, GlobeCountry>();
+  for (const e of events) {
+    if (!e.country_id) continue;
+    let c = byId.get(e.country_id);
+    if (!c) {
+      c = { id: e.country_id, count: 0, risk: 0, opportunity: 0, neutral: 0, score: 0 };
+      byId.set(e.country_id, c);
+    }
+    c.count += 1;
+    c[e.impact] += 1;
+  }
+  const out = [...byId.values()];
+  for (const c of out) c.score = Math.round(((c.opportunity - c.risk) / c.count) * 1000) / 1000;
+  return out.sort((a, b) => b.count - a.count || a.id.localeCompare(b.id));
+}
+
+// ---------------------------------------------------------------------------
+// Replay: the window's events appearing in the order they were first seen
+// ---------------------------------------------------------------------------
+
+export interface ReplaySpan {
+  from: number;
+  to: number;
+}
+
+/** Where a replay runs: from just before the first event to now (ms since the epoch). */
+export function replaySpan(events: readonly GlobeEvent[], now: number, windowMs: number): ReplaySpan {
+  let first = now;
+  for (const e of events) {
+    const t = Date.parse(e.first_seen);
+    if (Number.isFinite(t) && t < first) first = t;
+  }
+  const from = Math.max(now - windowMs, first - windowMs * 0.02);
+  return { from: Math.min(from, now - 60_000), to: now };
+}
+
+/**
+ * The replay at time `at`: the events seen by then, and those that appeared
+ * in the last `trail` milliseconds (drawn with a pulse, as if new).
+ */
+export function replayFrame(
+  events: readonly GlobeEvent[],
+  at: number,
+  trail: number,
+): { shown: GlobeEvent[]; appearing: GlobeEvent[] } {
+  const shown: GlobeEvent[] = [];
+  const appearing: GlobeEvent[] = [];
+  for (const e of events) {
+    const t = Date.parse(e.first_seen);
+    if (!(t <= at)) continue;
+    shown.push(e);
+    if (t > at - trail) appearing.push(e);
+  }
+  return { shown, appearing };
+}
+
 // ---------------------------------------------------------------------------
 // The list view and cards
 // ---------------------------------------------------------------------------
@@ -281,6 +340,23 @@ export function sortEventsForList(events: readonly GlobeEvent[]): GlobeEvent[] {
       Date.parse(b.first_seen) - Date.parse(a.first_seen) ||
       a.id.localeCompare(b.id),
   );
+}
+
+/**
+ * How to mark sample data in a list: "all" (one badge covers the list, rows
+ * drop their own marks), "some" (each sample row keeps its mark) or "none".
+ */
+export function sampleLabelling(items: readonly { is_sample: boolean }[]): "all" | "some" | "none" {
+  const n = items.reduce((sum, item) => sum + (item.is_sample ? 1 : 0), 0);
+  if (n === 0) return "none";
+  return n === items.length ? "all" : "some";
+}
+
+/** What the sector lens shows, in words: "All sectors", "Energy", "3 sectors". */
+export function lensSummary(selected: readonly SectorId[]): string {
+  if (selected.length === 0) return "All sectors";
+  if (selected.length === 1) return SECTORS[selected[0]]?.label ?? selected[0];
+  return `${selected.length} sectors`;
 }
 
 /** Where arrow keys move focus in a list of `count` rows. */
@@ -437,13 +513,70 @@ export function angularDistance(a: LngLat, b: LngLat): number {
   return (distanceMeters(a, b) / EARTH_RADIUS_M) / RAD;
 }
 
+/** MapLibre's default vertical field of view, in degrees. */
+const FOV_DEG = 36.87;
+
+/** Distance from the camera to the point under it, in CSS pixels (MapLibre's cameraToCenterDistance). */
+function cameraDistance(heightPx: number, fovDeg = FOV_DEG): number {
+  return (0.5 * Math.max(1, heightPx)) / Math.tan(((fovDeg / 2) * Math.PI) / 180);
+}
+
+/** The globe's radius in pixels at this zoom (MapLibre scales it by 1 / cos(latitude) of the centre). */
+function globeRadius(zoom: number, centerLat: number): number {
+  return (512 * 2 ** zoom) / (2 * Math.PI) / Math.max(0.2, Math.cos(centerLat * RAD));
+}
+
 /** How far from the view's centre (in degrees) the camera can see the globe's surface. */
-export function visibleCap(zoom: number, centerLat: number, heightPx: number, fovDeg = 36.87): number {
-  const worldSize = 512 * 2 ** zoom;
-  const radius = worldSize / (2 * Math.PI) / Math.max(0.2, Math.cos((centerLat * Math.PI) / 180));
-  const cameraToCenter = (0.5 * heightPx) / Math.tan(((fovDeg / 2) * Math.PI) / 180);
-  const ratio = radius / (cameraToCenter + radius);
+export function visibleCap(zoom: number, centerLat: number, heightPx: number, fovDeg = FOV_DEG): number {
+  const radius = globeRadius(zoom, centerLat);
+  const ratio = radius / (cameraDistance(heightPx, fovDeg) + radius);
   return (Math.acos(Math.min(1, ratio)) * 180) / Math.PI;
+}
+
+/**
+ * The radius of the globe's outline on screen, in CSS pixels. Seen in
+ * perspective from close by, the outline is a little smaller than the
+ * globe's radius: r = c·R / √(c² + 2cR), with c the camera distance.
+ */
+export function screenRadius(zoom: number, centerLat: number, heightPx: number): number {
+  const c = cameraDistance(heightPx);
+  const radius = globeRadius(zoom, centerLat);
+  return (c * radius) / Math.sqrt(c * c + 2 * c * radius);
+}
+
+/** The zoom at which the globe's outline has this radius on screen (the inverse of screenRadius). */
+export function zoomForScreenRadius(target: number, centerLat: number, heightPx: number): number {
+  const c = cameraDistance(heightPx);
+  const r = Math.max(1, target);
+  const radius = (r * r + r * Math.sqrt(r * r + c * c)) / c;
+  const worldSize = radius * 2 * Math.PI * Math.max(0.2, Math.cos(centerLat * RAD));
+  return Math.log2(worldSize / 512);
+}
+
+/**
+ * The camera that frames `bounds` ([[west, south], [east, north]], east may
+ * pass 180) in a free area of `width` × `height` pixels. On the globe a
+ * degree of longitude spans worldSize / 360 pixels at the centre, and a
+ * degree of latitude 1 / cos(latitude) times that. (MapLibre's own
+ * cameraForBounds ignores side padding in globe view, so it can't be used
+ * with a side panel open.)
+ */
+export function cameraForBounds(
+  bounds: [LngLat, LngLat],
+  width: number,
+  height: number,
+): { center: LngLat; zoom: number } {
+  const [[w, s], [e, n]] = bounds;
+  const lat = (s + n) / 2;
+  let lon = (w + e) / 2;
+  if (lon > 180) lon -= 360;
+  const spanLon = Math.max(0.05, e - w);
+  const spanLat = Math.max(0.05, n - s);
+  const pxPerDegree = Math.min(
+    Math.max(40, width) / spanLon,
+    (Math.max(40, height) * Math.max(0.2, Math.cos(lat * RAD))) / spanLat,
+  );
+  return { center: [lon, lat], zoom: Math.log2((pxPerDegree * 360) / 512) };
 }
 
 /** Roughly on the visible side of the globe as seen from above `center`. */
@@ -518,11 +651,15 @@ export function declutterLabels<T extends LabelCandidate>(
   return out;
 }
 
-/** The zoom at which the globe fills about 80 % of the free space (w × h in CSS pixels). */
-export function homeZoom(width: number, height: number): number {
+/**
+ * The starting zoom: the globe's outline fills most of the free space
+ * (`width` × `height`, the part of the map the controls leave), seen on a map
+ * `mapHeight` pixels tall centred on `centerLat`. Phones get a fuller globe;
+ * there is less else to look at.
+ */
+export function homeZoom(width: number, height: number, mapHeight: number, centerLat = 20): number {
   const free = Math.max(120, Math.min(width, height));
-  // Phones get a fuller globe; there is less else to look at.
-  const radius = free * (width < 500 ? 0.46 : 0.41);
-  const zoom = Math.log2((radius * 2 * Math.PI) / 512);
-  return Math.min(2.4, Math.max(0.2, zoom));
+  const radius = (free * (width < 500 ? 0.94 : 0.84)) / 2;
+  const zoom = zoomForScreenRadius(radius, centerLat, mapHeight);
+  return Math.min(2.6, Math.max(0.2, zoom));
 }

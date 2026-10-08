@@ -7,6 +7,7 @@ import { SampleBadge } from "@/components/SampleBadge";
 import { SectionHeader } from "@/components/SectionHeader";
 import { StoryCard } from "@/components/StoryCard";
 import { Button } from "@/components/ui/button";
+import { formatCompact } from "@/lib/format";
 import { WINDOW_LABELS } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
@@ -18,15 +19,14 @@ const LIST_PAGE = 40;
 export interface EventListProps {
   events: readonly GlobeEvent[];
   window: TimeWindow;
-  allSample: boolean;
+  /** Sample data on the globe: "all" (no live data yet) or "some" (sample switched on beside live data). */
+  sample: "all" | "some" | null;
   /** Shown above the rows, e.g. when the list stands in for a globe that can't be drawn. */
   note?: ReactNode;
   onOpen: (event: GlobeEvent) => void;
   onFocusItem: (id: string | null) => void;
-  onClose?: () => void;
   /** What to show when there is nothing to list. */
   empty?: ReactNode;
-  className?: string;
 }
 
 /**
@@ -34,7 +34,7 @@ export interface EventListProps {
  * the same events, most important first. Tab or the arrow keys move between
  * rows (Home and End jump to the ends); Enter opens the story.
  */
-export function EventList({ events, window, allSample, note, onOpen, onFocusItem, onClose, empty, className }: EventListProps) {
+export function EventListBody({ events, window, sample, note, onOpen, onFocusItem, empty }: EventListProps) {
   const headingId = useId();
   const sorted = useMemo(() => sortEventsForList(events), [events]);
   const [shown, setShown] = useState(LIST_PAGE);
@@ -51,33 +51,26 @@ export function EventList({ events, window, allSample, note, onOpen, onFocusItem
   };
 
   return (
-    <section
-      aria-labelledby={headingId}
-      className={cn(GLASS, "flex max-h-full min-h-0 flex-col overflow-hidden rounded-xl", className)}
-    >
-      <SectionHeader
-        id={headingId}
-        title="All events"
-        count={sorted.length}
-        description={`${WINDOW_LABELS[window].long} · by importance`}
-        action={
-          (allSample || onClose) && (
-            <>
-              {allSample && <SampleBadge />}
-              {onClose && (
-                <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close the list">
-                  <X aria-hidden />
-                </Button>
-              )}
-            </>
-          )
-        }
-        className="shrink-0 px-4 pt-3 pb-1"
-      />
+    <>
+      <div className="flex min-h-8 shrink-0 items-center gap-2 px-4 pt-1">
+        <h2 id={headingId} className="sr-only">
+          All events
+        </h2>
+        <p className="min-w-0 flex-1 truncate text-label text-fg-muted tabular-nums">
+          {formatCompact(sorted.length)} {sorted.length === 1 ? "event" : "events"} · {WINDOW_LABELS[window].long} · by
+          importance
+        </p>
+        {sample === "all" && <SampleBadge />}
+        {sample === "some" && (
+          <span className="flex shrink-0 items-center gap-1 text-label text-fg-muted">
+            Includes <SampleBadge />
+          </span>
+        )}
+      </div>
       {note}
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2">
         {sorted.length === 0 ? (
-          (empty ?? <EmptyState compact icon={ListX} title="No events to list" />)
+          (empty ?? <EmptyState compact icon={ListX} title="No events to list" description="Try a longer window." />)
         ) : (
           <>
             <ul ref={list} aria-labelledby={headingId} onKeyDown={onKeyDown} className="flex flex-col">
@@ -90,7 +83,8 @@ export function EventList({ events, window, allSample, note, onOpen, onFocusItem
                   onBlur={() => onFocusItem(null)}
                 >
                   <StoryCard
-                    story={eventAsStory(event, { isSample: allSample })}
+                    // One badge above covers a list that is all sample data.
+                    story={eventAsStory(event, { isSample: false })}
                     variant="compact"
                     rank={i + 1}
                     onOpen={() => onOpen(event)}
@@ -108,6 +102,31 @@ export function EventList({ events, window, allSample, note, onOpen, onFocusItem
           </>
         )}
       </div>
+    </>
+  );
+}
+
+/** Phones: the list as its own card, with a close button. */
+export function EventList({ onClose, className, ...props }: EventListProps & { onClose?: () => void; className?: string }) {
+  const titleId = useId();
+  return (
+    <section
+      aria-labelledby={titleId}
+      className={cn(GLASS, "flex max-h-full min-h-0 flex-col overflow-hidden rounded-xl", className)}
+    >
+      <SectionHeader
+        id={titleId}
+        title="All events"
+        action={
+          onClose && (
+            <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close the list">
+              <X aria-hidden />
+            </Button>
+          )
+        }
+        className="shrink-0 pt-1 pr-1 pl-4"
+      />
+      <EventListBody {...props} />
     </section>
   );
 }

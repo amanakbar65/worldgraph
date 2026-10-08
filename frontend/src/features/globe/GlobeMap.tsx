@@ -10,7 +10,7 @@ import {
   type StyleSpecification,
 } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import type { ForecastSummary } from "@/api/contract";
 import { toCss, withAlpha, type GlobePalette } from "@/lib/globe-color";
@@ -19,12 +19,14 @@ import type { CountryCollection, StateCollection } from "@/lib/geo";
 import { buildLayers, PICKABLE_LAYERS, type LayerInput } from "./layers";
 import {
   angularDistance,
+  cameraForBounds,
   declutterLabels,
   type ArcDatum,
   type GlobeEvent,
   type HexBin,
   type LabelCandidate,
   type LngLat,
+  screenRadius,
   visibleCap,
 } from "./model";
 
@@ -91,6 +93,14 @@ export interface GlobeMapProps {
 }
 
 const EMPTY: FeatureCollection = { type: "FeatureCollection", features: [] };
+
+/** The atmosphere glow; GlobeMap sets --rim-x, --rim-y (the globe's centre) and --rim-r (its outline). */
+const atmosphere = (percent: number) => `color-mix(in oklch, var(--globe-atmosphere) ${percent}%, transparent)`;
+const RIM_STYLE: CSSProperties = {
+  backgroundImage: `radial-gradient(circle at var(--rim-x, 50%) var(--rim-y, 50%), transparent calc(var(--rim-r, 0px) - 3px), ${atmosphere(
+    46,
+  )} var(--rim-r, 0px), ${atmosphere(18)} calc(var(--rim-r, 0px) * 1.03), ${atmosphere(7)} calc(var(--rim-r, 0px) * 1.12), transparent calc(var(--rim-r, 0px) * 1.45))`,
+};
 const FLIGHT_MS = 1600;
 const PRIORITY: Record<string, number> = { events: 0, forecasts: 1, arcs: 2, hex: 3 };
 
@@ -196,6 +206,7 @@ function skySpec(p: GlobePalette): NonNullable<StyleSpecification["sky"]> {
  */
 export function GlobeMap(props: GlobeMapProps) {
   const container = useRef<HTMLDivElement>(null);
+  const rimRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const overlayRef = useRef<MapLibreOverlay | null>(null);
   const propsRef = useRef(props);
@@ -389,6 +400,27 @@ export function GlobeMap(props: GlobeMapProps) {
     map.on("touchstart", onInteract);
     map.on("wheel", onInteract);
     map.on("moveend", reportView);
+
+    // The atmosphere: a soft glow hugging the globe's outline, kept in step
+    // with the camera on every frame (written straight to the DOM, no render).
+    let lastRim = "";
+    const placeRim = () => {
+      const rim = rimRef.current;
+      if (!rim) return;
+      const c = map.getCenter();
+      const p = map.project(c);
+      const r = screenRadius(map.getZoom(), c.lat, el.clientHeight);
+      const key = `${p.x.toFixed(1)} ${p.y.toFixed(1)} ${r.toFixed(1)}`;
+      if (key === lastRim) return;
+      lastRim = key;
+      rim.style.setProperty("--rim-x", `${p.x.toFixed(1)}px`);
+      rim.style.setProperty("--rim-y", `${p.y.toFixed(1)}px`);
+      rim.style.setProperty("--rim-r", `${r.toFixed(1)}px`);
+      rim.style.opacity = "1";
+    };
+    map.on("move", placeRim);
+    map.on("resize", placeRim);
+    map.on("load", placeRim);
     // A flight moves the globe under a still pointer: drop the hover card.
     map.on("movestart", () => {
       if (!autoMoving.current) onOut();
@@ -535,9 +567,19 @@ export function GlobeMap(props: GlobeMapProps) {
     // inside the map's padding plus the margin given here.
     map.setPadding(propsRef.current.padding);
     switch (camera.kind) {
-      case "bounds":
-        map.fitBounds(camera.bounds, { padding: 64, maxZoom: camera.maxZoom ?? 5.5, duration, essential: false });
+      case "bounds": {
+        const canvas = map.getCanvas();
+        const pad = propsRef.current.padding;
+        const margin = 48;
+        const framed = cameraForBounds(
+          camera.bounds,
+          canvas.clientWidth - pad.left - pad.right - 2 * margin,
+          canvas.clientHeight - pad.top - pad.bottom - 2 * margin,
+        );
+        const zoom = Math.max(1, Math.min(camera.maxZoom ?? 5.5, framed.zoom));
+        map.flyTo({ center: framed.center, zoom, duration, essential: false });
         break;
+      }
       case "point":
         map.flyTo({ center: camera.center, zoom: camera.zoom ?? Math.max(map.getZoom(), 4), duration, essential: false });
         break;
@@ -586,6 +628,12 @@ export function GlobeMap(props: GlobeMapProps) {
   // MapLibre's stylesheet makes its container position: relative, so it sits in a sized wrapper.
   return (
     <div className="absolute inset-0">
+      <div
+        ref={rimRef}
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-700"
+        style={RIM_STYLE}
+      />
       <div ref={container} className="size-full" data-testid="globe-map" data-ready={loaded} />
     </div>
   );

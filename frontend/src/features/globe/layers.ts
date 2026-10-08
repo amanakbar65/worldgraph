@@ -19,7 +19,7 @@ import {
 import type { ForecastSummary } from "@/api/contract";
 import { withAlpha, type GlobePalette, type Rgba } from "@/lib/globe-color";
 
-import { HorizonExtension } from "./horizon-extension";
+import { HorizonExtension, HorizonFadeExtension } from "./horizon-extension";
 
 import {
   arcColor,
@@ -133,6 +133,7 @@ export const PICKABLE_LAYERS = ["events", "forecasts", "arcs", "hex"] as const;
 
 const dashes = new PathStyleExtension({ dash: true });
 const horizon = new HorizonExtension();
+const horizonFade = new HorizonFadeExtension();
 
 /** Flat shapes on the sphere: no depth fighting with the globe, back faces culled. */
 const SURFACE = { depthCompare: "always", cullMode: "back" } as const;
@@ -168,6 +169,51 @@ export function buildLayers(input: LayerInput): Layer[] {
     );
   }
 
+  // Place names sit under the data: marks matter more than the map's own names.
+  const labels = input.labels;
+  if (labels.length > 0) {
+    const cities = labels.filter((l) => l.kind === "city");
+    if (cities.length > 0) {
+      layers.push(
+        new ScatterplotLayer<PlaceLabel>({
+          id: "city-dots",
+          data: cities,
+          getPosition: (d) => [d.lon, d.lat],
+          getRadius: 2,
+          radiusUnits: "pixels",
+          getFillColor: withAlpha(palette.label, 0.8),
+          billboard: true,
+          ...BILLBOARD,
+          updateTriggers: { getFillColor: [paletteKey] },
+        }),
+      );
+    }
+    layers.push(
+      new TextLayer<PlaceLabel>({
+        id: "labels",
+        data: labels,
+        getPosition: (d) => [d.lon, d.lat],
+        getText: (d) => d.name,
+        getSize: (d) => (d.kind === "country" ? 12 : 11),
+        sizeUnits: "pixels",
+        getColor: (d) => withAlpha(palette.label, d.kind === "country" ? 0.78 : 0.9) as Rgba,
+        getTextAnchor: (d) => (d.kind === "city" ? "start" : "middle"),
+        getAlignmentBaseline: "center",
+        getPixelOffset: (d) => (d.kind === "city" ? [6, 0] : [0, 0]),
+        fontFamily: input.fontFamily,
+        fontWeight: 500,
+        fontSettings: { sdf: true, fontSize: 48, buffer: 6 },
+        outlineWidth: 3,
+        outlineColor: withAlpha(palette.ocean, 0.85),
+        characterSet: "auto",
+        billboard: true,
+        parameters: BILLBOARD.parameters,
+        extensions: [horizon],
+        updateTriggers: { getColor: [paletteKey], outlineColor: [paletteKey] },
+      } as TextLayerProps<PlaceLabel>),
+    );
+  }
+
   if (toggles.arcs && input.arcs.length > 0) {
     layers.push(
       new PathLayer<ArcDatum>({
@@ -184,7 +230,7 @@ export function buildLayers(input: LayerInput): Layer[] {
         dashUnits: "pixels",
         dashJustified: true,
         dashGapPickable: true,
-        extensions: [dashes],
+        extensions: [dashes, horizonFade],
         pickable: true,
         updateTriggers: { getColor: [paletteKey, input.dimArcs, input.focusId], getWidth: [input.focusId] },
       } as PathLayerProps<ArcDatum> & PathStyleExtensionProps<ArcDatum>),
@@ -319,50 +365,6 @@ export function buildLayers(input: LayerInput): Layer[] {
         ...BILLBOARD,
         updateTriggers: { getLineColor: [paletteKey] },
       }),
-    );
-  }
-
-  const labels = input.labels;
-  if (labels.length > 0) {
-    const cities = labels.filter((l) => l.kind === "city");
-    if (cities.length > 0) {
-      layers.push(
-        new ScatterplotLayer<PlaceLabel>({
-          id: "city-dots",
-          data: cities,
-          getPosition: (d) => [d.lon, d.lat],
-          getRadius: 2,
-          radiusUnits: "pixels",
-          getFillColor: withAlpha(palette.label, 0.8),
-          billboard: true,
-          ...BILLBOARD,
-          updateTriggers: { getFillColor: [paletteKey] },
-        }),
-      );
-    }
-    layers.push(
-      new TextLayer<PlaceLabel>({
-        id: "labels",
-        data: labels,
-        getPosition: (d) => [d.lon, d.lat],
-        getText: (d) => d.name,
-        getSize: (d) => (d.kind === "country" ? 12 : 11),
-        sizeUnits: "pixels",
-        getColor: (d) => withAlpha(palette.label, d.kind === "country" ? 0.78 : 0.9) as Rgba,
-        getTextAnchor: (d) => (d.kind === "city" ? "start" : "middle"),
-        getAlignmentBaseline: "center",
-        getPixelOffset: (d) => (d.kind === "city" ? [6, 0] : [0, 0]),
-        fontFamily: input.fontFamily,
-        fontWeight: 500,
-        fontSettings: { sdf: true, fontSize: 48, buffer: 6 },
-        outlineWidth: 3,
-        outlineColor: withAlpha(palette.ocean, 0.85),
-        characterSet: "auto",
-        billboard: true,
-        parameters: BILLBOARD.parameters,
-        extensions: [horizon],
-        updateTriggers: { getColor: [paletteKey], outlineColor: [paletteKey] },
-      } as TextLayerProps<PlaceLabel>),
     );
   }
 
