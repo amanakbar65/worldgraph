@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 8 Oct 2026, 11:15 UTC.
+**Last updated:** 8 Oct 2026, 14:30 UTC.
 
 ## How to resume (any new session)
 
@@ -11,7 +11,7 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 3. Start the progress saver: `orchestration/checkpoint.sh 600 &` (it pushes agents' unfinished work to `wip/<worktree>` every 10 minutes, and pushes `main` if it is ahead).
 4. Look at "In flight" below. For each item: if its agent finished, merge its branch; if not, relaunch the script named there with the `args` shown. The script tells each agent to start from its `wip/` branch.
 5. Agent worktrees branch from `origin/main`: **push `main` before launching agents.**
-6. Keep the working directory inside the repo while a workflow runs (worktrees fail to start outside a git repo).
+6. **`cd /home/user/worldgraph` before launching any workflow.** After a restart the shell starts in `/home/user`, and every agent then fails instantly with "not in a git repository".
 
 ## Done
 
@@ -31,11 +31,11 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 
 ## In flight
 
-**Screens** (run `wf_a3b4d4a5-3ec`, launched 11:12 UTC, `orchestration/worldgraph-screens.js` with args `{"done": ["ai-artifact-web"]}`): globe, story-cascade, region, forecasts, business, graph-entity, ask-brief-search-settings. Two run at a time; worktrees are `.claude/worktrees/wf_a3b4d4a5-3ec-<n>`, saved to `wip/wf_a3b4d4a5-3ec-<n>` every 10 minutes (each agent's label is in its first commit message and its transcript).
+**Screens** (run `wf_3516be8d-024`, launched 14:28 UTC after the 11:12 run hit the session limit within 30 s, `orchestration/worldgraph-screens.js` with args `{"done": ["ai-artifact-web"]}`): globe, story-cascade, region, forecasts, business, graph-entity, ask-brief-search-settings. Two run at a time; worktrees are `.claude/worktrees/wf_3516be8d-024-<n>`, saved to `wip/wf_3516be8d-024-<n>` every 10 minutes (each agent's label is in its first commit message and its transcript).
 
 If interrupted:
 - `git worktree list`; merge any finished branch (check its report or commits);
-- relaunch the same script with `args.done` = every merged label plus "ai-artifact-web", and `args.resume = {"<label>": "wip/wf_a3b4d4a5-3ec-<n>"}` for unfinished ones.
+- relaunch the same script with `args.done` = every merged label plus "ai-artifact-web", and `args.resume = {"<label>": "wip/wf_3516be8d-024-<n>"}` for unfinished ones.
 
 When all 7 are merged: run the frontend checks, then QA (below).
 
