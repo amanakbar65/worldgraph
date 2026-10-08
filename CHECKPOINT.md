@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 8 Oct 2026, 03:50 UTC.
+**Last updated:** 8 Oct 2026, 03:52 UTC.
 
 ## How to resume (any new session)
 
@@ -36,6 +36,12 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 
 Args for `orchestration/worldgraph-content-api.js` (pass as the Workflow `args`, a JSON object):
 `{"done": ["storylines:finance-macro", "storylines:energy-climate", "storylines:agri-food", "storylines:industry-tech", "storylines:trade-health-consumer", "indicators", "sql:map-region-brief", "sql:story-graph-search"]}`
+
+**Current run:** `wf_828b324a-939` (launched 03:51 UTC); progress saver running (`orchestration/checkpoint.sh 600`).
+- Worktree `-1` is the 0006 SQL agent; its progress is saved to branch `wip/wf_828b324a-939-1`.
+- Worktree `-2` is map assets; its progress is saved to `wip/wf_828b324a-939-2`.
+- The UI kit gets the next free worktree.
+- If this run dies, first fold the newest `wip/wf_828b324a-939-*` branch into `wip/sql-forecasts-business-ai` or `wip/map-assets`, then relaunch.
 
 After it finishes:
 - merge its three branches;
