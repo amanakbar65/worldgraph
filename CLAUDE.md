@@ -2,6 +2,7 @@
 
 A visual world-knowledge app for businesses: a globe, a knowledge graph, cascades and crowd forecasts.
 
+- **Start here after any pause:** `CHECKPOINT.md` (live state, what's in flight, how to resume). Keep it current at every milestone.
 - **Plan (source of truth):** `PLAN.md`. The original brief, `BUILD_BRIEF.md`, is kept word for word; PLAN.md overrides it where they differ.
 - **Log:** `PROGRESS.md`. Read it first; update it after each meaningful step.
 - **Data sources and their terms:** `SOURCES.md`. Add a row *before* integrating a source.
@@ -24,7 +25,8 @@ frontend/                Vite + React + TypeScript SPA (runs as a claude.ai Arti
   src/features/<screen>/ one folder per screen
   src/components/ui/     shared UI kit
 prompts/                 shared AI prompts + JSON output schemas (used by both engines)
-netlify/                 Netlify functions (website mode; not deployed until the owner says)
+frontend/netlify/        Netlify functions (website mode; not deployed until the owner says)
+orchestration/           multi-agent build scripts and the progress saver (checkpoint.sh)
 .github/workflows/       CI and the 15-minute pipeline
 ```
 
