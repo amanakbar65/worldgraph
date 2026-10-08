@@ -62,7 +62,11 @@ export function ConnectionsGraph({ graph, focusId, regionName, onOpen, onSeeAll 
       <div
         role="group"
         aria-label={`Connections of ${regionName}: ${mini.nodes.length} of ${total} shown`}
-        className="relative h-80 w-full overflow-hidden rounded-xl border border-line bg-bg-sunken/50"
+        className={cn(
+          "relative w-full overflow-hidden rounded-xl border border-line bg-bg-sunken",
+          // A few nodes need less room.
+          mini.nodes.length <= 4 ? "h-60" : "h-80",
+        )}
         onMouseLeave={() => setActive(null)}
       >
         <svg aria-hidden viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full">
@@ -166,7 +170,7 @@ function GraphNodeButton({
       <span
         aria-hidden
         className={cn(
-          "line-clamp-2 max-w-full rounded bg-bg-sunken/80 px-1 text-center text-label leading-tight break-words",
+          "line-clamp-2 max-w-full rounded bg-bg-sunken/85 px-1 text-center text-label leading-tight break-words",
           node.center ? "font-semibold text-fg" : "text-fg-muted group-hover:text-fg",
         )}
       >

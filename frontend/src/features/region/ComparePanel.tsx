@@ -1,7 +1,7 @@
 import { Activity, Columns3, Gauge, MapPin, Newspaper, Plus, RotateCcw, X } from "lucide-react";
 import { useId, useMemo, type CSSProperties, type ReactNode } from "react";
 
-import type { CompareResponse, Kpi, RegionRef } from "@/api/contract";
+import type { CompareResponse, Kpi, RegionRef, RegionResponse } from "@/api/contract";
 import { useRpc } from "@/api/client";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
@@ -35,7 +35,15 @@ import {
   type CompareRegion,
   type PulseRow,
 } from "./compare-data";
-import { levelLabel, shortLevelLabel, totalOf, windowWords, type PulseTile } from "./region-data";
+import {
+  busiestSectors,
+  levelLabel,
+  shapeSectorPulse,
+  shortLevelLabel,
+  totalOf,
+  windowWords,
+  type PulseTile,
+} from "./region-data";
 import { ImpactCountsInline, ImpactSplitBar, MomentumArrow, Updating, WindowSwitch } from "./region-parts";
 import { RegionPicker } from "./RegionPicker";
 import { useRegionNav, type RegionNav } from "./use-region-nav";
@@ -48,7 +56,8 @@ const STARTERS: { id: string; name: string }[] = [
   { id: "region:de", name: "Germany" },
 ];
 
-type Seed = { region: { id: string; name: string; subtype: string; breadcrumb: RegionRef[] }; children: { id: string; name: string; count: number }[] };
+/** api.region for the one place picked so far. */
+type Seed = RegionResponse;
 
 /**
  * Two or three places side by side: story counts, the same key numbers
@@ -171,6 +180,7 @@ function NothingPicked({ onAdd }: { onAdd: (id: string) => void }) {
 }
 
 function OnePicked({ id, seed, onAdd, nav }: { id: string; seed: Seed | undefined; onAdd: (id: string) => void; nav: RegionNav }) {
+  const timeWindow = useNav((s) => s.window);
   const picks: { id: string; name: string }[] = [];
   if (seed) {
     const parent = seed.region.breadcrumb.at(-1);
@@ -178,18 +188,33 @@ function OnePicked({ id, seed, onAdd, nav }: { id: string; seed: Seed | undefine
     for (const child of seed.children.filter((c) => c.count > 0).slice(0, 3)) picks.push({ id: child.id, name: child.name });
   }
   for (const s of STARTERS) if (picks.length < 4 && s.id !== id && !picks.some((p) => p.id === s.id)) picks.push(s);
+  const busiest = seed ? busiestSectors(shapeSectorPulse(seed.sector_pulse, timeWindow)) : [];
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid items-start gap-4 md:grid-cols-2">
       {seed ? (
-        <ColumnHead
-          region={{ id, name: seed.region.name, subtype: seed.region.subtype, country_id: null }}
-          kpis={[]}
-          onOpen={() => nav.openRegion(id)}
-        />
+        <div className="flex flex-col gap-3">
+          <ColumnHead
+            region={{ id, name: seed.region.name, subtype: seed.region.subtype, country_id: null }}
+            kpis={[]}
+            onOpen={() => nav.openRegion(id)}
+          />
+          {seed.kpis.length > 0 && (
+            <div className="grid grid-cols-2 gap-2">
+              {seed.kpis.slice(0, 4).map((kpi) => (
+                <KpiTile key={kpi.id} kpi={kpi} onClick={(k) => nav.openEntityPage(k.id)} />
+              ))}
+            </div>
+          )}
+          <p className="text-label text-fg-muted">
+            {busiest.length > 0
+              ? `Busiest in the ${windowWords(timeWindow, true)}: ${busiest.map((t) => t.label).join(", ")}.`
+              : `No stories in the ${windowWords(timeWindow, true)}.`}
+          </p>
+        </div>
       ) : (
-        <Skeleton className="h-16 rounded-xl" />
+        <Skeleton className="h-40 rounded-xl" />
       )}
-      <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-line-strong p-4">
+      <div className="flex flex-col items-center justify-center gap-3 self-stretch rounded-xl border border-dashed border-line-strong p-4">
         <EmptyState
           compact
           icon={Plus}

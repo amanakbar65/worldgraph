@@ -66,7 +66,7 @@ export function ImpactCountsInline({ counts, className }: { counts: ImpactCounts
         const tone = impactTone(impact);
         const Icon = IMPACT_ICONS[impact].icon;
         return (
-          <span key={impact} className="inline-flex items-center gap-0.5 text-fg-muted" title={`${counts[impact]} ${impact}`}>
+          <span key={impact} className="inline-flex items-center gap-1 text-fg-muted" title={`${counts[impact]} ${impact}`}>
             <Icon aria-hidden className={cn("size-3.5", tone.text)} />
             <span aria-hidden>{counts[impact]}</span>
             <span className="sr-only">
@@ -162,7 +162,8 @@ export function SectorPulseGrid({
               <span className="flex items-center gap-1.5">
                 <SectorIcon aria-hidden className={cn("size-4 shrink-0", quiet ? "text-fg-subtle" : "text-fg-muted")} />
                 <span className="ml-auto inline-flex items-center gap-1 text-label tabular-nums">
-                  {!quiet && <ImpactIcon aria-hidden className={cn("size-3.5", tone.text)} />}
+                  {/* Neutral has no colour to explain, and a bare minus would read as "−1". */}
+                  {!quiet && tile.impact !== "neutral" && <ImpactIcon aria-hidden className={cn("size-3.5", tone.text)} />}
                   <span className={quiet ? "text-fg-subtle" : "font-semibold text-fg"}>{tile.count}</span>
                   <MomentumArrow direction={tile.direction} />
                 </span>
