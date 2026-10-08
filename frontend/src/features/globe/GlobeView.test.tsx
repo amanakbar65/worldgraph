@@ -119,8 +119,8 @@ vi.mock("@deck.gl/maplibre", () => ({
     setProps(props: { layers?: { id: string }[] }) {
       this.props = { ...this.props, ...props };
     }
-    pickMultipleObjects() {
-      return [];
+    pickObject() {
+      return null;
     }
   },
 }));

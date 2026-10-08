@@ -16,7 +16,7 @@ import type { ForecastSummary } from "@/api/contract";
 import { toCss, withAlpha, type GlobePalette } from "@/lib/globe-color";
 import type { CountryCollection, StateCollection } from "@/lib/geo";
 
-import { buildLayers, PICKABLE_LAYERS, type LayerInput } from "./layers";
+import { buildLayers, PICK_PASSES, type LayerInput } from "./layers";
 import {
   angularDistance,
   cameraForBounds,
@@ -103,7 +103,6 @@ const RIM_STYLE: CSSProperties = {
   )} var(--rim-r, 0px), ${atmosphere(18)} calc(var(--rim-r, 0px) * 1.03), ${atmosphere(7)} calc(var(--rim-r, 0px) * 1.12), transparent calc(var(--rim-r, 0px) * 1.45))`,
 };
 const FLIGHT_MS = 1600;
-const PRIORITY: Record<string, number> = { events: 0, forecasts: 1, arcs: 2, hex: 3 };
 
 function baseStyle(p: GlobePalette): StyleSpecification {
   return {
@@ -267,46 +266,45 @@ export function GlobeMap(props: GlobeMapProps) {
       return angularDistance([c.lng, c.lat], [lon, lat]) < cap;
     };
 
-    const pickDeck = (x: number, y: number): PickInfo | null => {
-      const picks = overlay.pickMultipleObjects({
-        x,
-        y,
-        radius: 6,
-        depth: 8,
-        layerIds: [...PICKABLE_LAYERS],
-      });
-      const visible = (layer: string, object: unknown, coordinate?: number[]) => {
-        if (layer === "events") return isVisible((object as GlobeEvent).lon, (object as GlobeEvent).lat);
-        if (layer === "forecasts") {
-          const f = object as ForecastSummary;
-          return f.lon !== null && f.lat !== null && isVisible(f.lon, f.lat);
-        }
-        if (layer === "hex") return isVisible((object as HexBin).lon, (object as HexBin).lat);
-        return coordinate ? isVisible(coordinate[0], coordinate[1]) : true;
-      };
-      const top = picks
-        .filter((info) => info.object && info.layer && visible(info.layer.id, info.object, info.coordinate))
-        .sort((a, b) => (PRIORITY[a.layer!.id] ?? 9) - (PRIORITY[b.layer!.id] ?? 9))[0];
-      if (!top) return null;
-      const object = top.object as unknown;
-      switch (top.layer!.id) {
-        case "events":
-          return { kind: "event", id: (object as GlobeEvent).id, x, y, event: object as GlobeEvent };
-        case "forecasts":
-          return {
-            kind: "forecast",
-            id: (object as ForecastSummary).id,
-            x,
-            y,
-            forecast: object as ForecastSummary,
-          };
-        case "arcs":
-          return { kind: "arc", id: String((object as ArcDatum).id), x, y, arc: object as ArcDatum };
-        case "hex":
-          return { kind: "hex", id: (object as HexBin).h3, x, y, hex: object as HexBin };
-        default:
-          return null;
+    const visible = (layer: string, object: unknown, coordinate?: number[]) => {
+      if (layer === "events") return isVisible((object as GlobeEvent).lon, (object as GlobeEvent).lat);
+      if (layer === "forecasts") {
+        const f = object as ForecastSummary;
+        return f.lon !== null && f.lat !== null && isVisible(f.lon, f.lat);
       }
+      if (layer === "hex") return isVisible((object as HexBin).lon, (object as HexBin).lat);
+      return coordinate ? isVisible(coordinate[0], coordinate[1]) : true;
+    };
+
+    /**
+     * What deck.gl has under the pointer. One picking pass for the marks
+     * (events, forecast rings) with a generous radius, and only if that finds
+     * nothing, one more for links and heat: each pass redraws the picking
+     * buffer, so a deep multi-pick on every pointer move would be slow.
+     */
+    const pickDeck = (x: number, y: number): PickInfo | null => {
+      for (const [layerIds, radius] of PICK_PASSES) {
+        const top = overlay.pickObject({ x, y, radius, layerIds: [...layerIds] });
+        if (!top?.object || !top.layer || !visible(top.layer.id, top.object, top.coordinate)) continue;
+        const object = top.object as unknown;
+        switch (top.layer.id) {
+          case "events":
+            return { kind: "event", id: (object as GlobeEvent).id, x, y, event: object as GlobeEvent };
+          case "forecasts":
+            return {
+              kind: "forecast",
+              id: (object as ForecastSummary).id,
+              x,
+              y,
+              forecast: object as ForecastSummary,
+            };
+          case "arcs":
+            return { kind: "arc", id: String((object as ArcDatum).id), x, y, arc: object as ArcDatum };
+          case "hex":
+            return { kind: "hex", id: (object as HexBin).h3, x, y, hex: object as HexBin };
+        }
+      }
+      return null;
     };
 
     const pick = (x: number, y: number): PickInfo | null => {

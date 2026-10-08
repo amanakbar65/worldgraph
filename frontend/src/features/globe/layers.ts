@@ -128,8 +128,14 @@ export function makeRingAtlas(): RingAtlas | null {
 // Layers
 // ---------------------------------------------------------------------------
 
-/** Layer ids, for picking. */
-export const PICKABLE_LAYERS = ["events", "forecasts", "arcs", "hex"] as const;
+/**
+ * Picking passes over the layer ids, in order, with their radius in pixels:
+ * the marks first (they sit on top), then the links and the heat.
+ */
+export const PICK_PASSES: readonly (readonly [readonly string[], number])[] = [
+  [["events", "forecasts"], 6],
+  [["arcs", "hex"], 3],
+];
 
 const dashes = new PathStyleExtension({ dash: true });
 const horizon = new HorizonExtension();
