@@ -138,6 +138,37 @@ export function alignKpis(regions: readonly (Pick<CompareRegion, "region" | "kpi
 }
 
 // ---------------------------------------------------------------------------
+// Compact figures (three places on a phone)
+// ---------------------------------------------------------------------------
+
+/** Digits that suit the size of the number, as the KPI tiles show them: 81.24, 412.6, 1,284, 1.4M. */
+export function formatKpiValue(value: number, locale?: string): string {
+  const abs = Math.abs(value);
+  if (abs >= 100_000) {
+    return new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(value);
+  }
+  const digits = abs >= 1000 ? 0 : abs >= 100 ? 1 : 2;
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: digits }).format(value);
+}
+
+/** "▲ 0.3 pts" / "▼ 0.39" / "• 0", or null when there's no earlier value. */
+export function formatKpiChange(kpi: Pick<Kpi, "change" | "unit">, locale?: string): string | null {
+  if (kpi.change === null) return null;
+  const arrow = kpi.change > 0 ? "▲" : kpi.change < 0 ? "▼" : "•";
+  const pts = kpi.unit.trim() === "%" ? " pts" : "";
+  return `${arrow} ${formatKpiValue(Math.abs(kpi.change), locale)}${pts}`;
+}
+
+/** The same change in words: "up 0.3 points", "down 0.39 INR per USD", "unchanged". */
+export function describeKpiChange(kpi: Pick<Kpi, "change" | "unit">, locale?: string): string | null {
+  if (kpi.change === null) return null;
+  if (kpi.change === 0) return "unchanged";
+  const amount = formatKpiValue(Math.abs(kpi.change), locale);
+  const unit = kpi.unit.trim() === "%" ? "points" : kpi.unit;
+  return `${kpi.change > 0 ? "up" : "down"} ${amount} ${unit}`;
+}
+
+// ---------------------------------------------------------------------------
 // Sector pulse, side by side
 // ---------------------------------------------------------------------------
 

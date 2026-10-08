@@ -39,7 +39,7 @@ function nodeLook(node: PlacedNode): { tone: Tone; Icon: (typeof ENTITY_TYPE_ICO
  * Hover or focus a node to light up its links; tap it to open it.
  */
 export function ConnectionsGraph({ graph, focusId, regionName, onOpen, onSeeAll }: ConnectionsGraphProps) {
-  const mini = useMemo(() => layoutMiniGraph(graph, focusId, { max: 10 }), [graph, focusId]);
+  const mini = useMemo(() => layoutMiniGraph(graph, focusId, { max: 10, rx: 0.39, ry: 0.35, cy: 0.45 }), [graph, focusId]);
   const [active, setActive] = useState<string | null>(null);
   const lit = useMemo(() => (active ? neighbours(mini, active) : null), [mini, active]);
 
@@ -62,7 +62,7 @@ export function ConnectionsGraph({ graph, focusId, regionName, onOpen, onSeeAll 
       <div
         role="group"
         aria-label={`Connections of ${regionName}: ${mini.nodes.length} of ${total} shown`}
-        className="relative h-72 w-full overflow-hidden rounded-xl border border-line bg-bg-sunken/50"
+        className="relative h-80 w-full overflow-hidden rounded-xl border border-line bg-bg-sunken/50"
         onMouseLeave={() => setActive(null)}
       >
         <svg aria-hidden viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full">
@@ -144,7 +144,7 @@ function GraphNodeButton({
       aria-label={`${node.name}, ${kind}${node.is_sample ? ", sample data" : ""}`}
       title={node.name}
       className={cn(
-        "group absolute flex w-[5.5rem] cursor-pointer flex-col items-center gap-1 rounded-lg transition-opacity focus-visible:z-10",
+        "group absolute flex w-24 cursor-pointer flex-col items-center gap-1 rounded-lg transition-opacity focus-visible:z-10",
         node.center && "z-[1] w-28",
         dim && "opacity-40",
       )}
@@ -166,7 +166,7 @@ function GraphNodeButton({
       <span
         aria-hidden
         className={cn(
-          "max-w-full truncate rounded px-1 text-label leading-tight",
+          "line-clamp-2 max-w-full rounded bg-bg-sunken/80 px-1 text-center text-label leading-tight break-words",
           node.center ? "font-semibold text-fg" : "text-fg-muted group-hover:text-fg",
         )}
       >
@@ -176,18 +176,27 @@ function GraphNodeButton({
   );
 }
 
-const LEGEND_WORDS: Partial<Record<EntityType, string>> = {
-  story: "Story",
-  forecast: "Crowd forecast",
-};
-
 function LegendItem({ type }: { type: EntityType }) {
+  if (type === "story") {
+    // Stories wear their impact: opportunity, risk or neutral.
+    return (
+      <li className="inline-flex items-center gap-1 text-label text-fg-muted">
+        <span aria-hidden className="inline-flex items-center gap-0.5">
+          {(["opportunity", "risk"] as const).map((impact) => {
+            const Icon = IMPACT_ICONS[impact].icon;
+            return <Icon key={impact} className={cn("size-3.5", impactTone(impact).text)} />;
+          })}
+        </span>
+        Story, by impact
+      </li>
+    );
+  }
   const tone = entityTypeTone(type);
-  const Icon = type === "story" ? IMPACT_ICONS.neutral.icon : (ENTITY_TYPE_ICONS[type] ?? ENTITY_TYPE_ICONS.story).icon;
+  const Icon = (ENTITY_TYPE_ICONS[type] ?? ENTITY_TYPE_ICONS.story).icon;
   return (
     <li className="inline-flex items-center gap-1 text-label text-fg-muted">
-      <Icon aria-hidden className={cn("size-3.5", type === "story" ? "text-fg-muted" : tone.text)} />
-      {LEGEND_WORDS[type] ?? tone.label}
+      <Icon aria-hidden className={cn("size-3.5", tone.text)} />
+      {type === "forecast" ? "Crowd forecast" : tone.label}
     </li>
   );
 }

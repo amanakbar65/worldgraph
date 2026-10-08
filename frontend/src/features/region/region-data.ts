@@ -32,6 +32,13 @@ export function levelLabel(subtype: string | null | undefined): string {
   return (subtype && LEVEL_WORDS[subtype]) || "Region";
 }
 
+const SHORT_LEVEL_WORDS: Record<string, string> = { state: "State" };
+
+/** A shorter level word for tight spots: "State" instead of "State or province". */
+export function shortLevelLabel(subtype: string | null | undefined): string {
+  return (subtype && SHORT_LEVEL_WORDS[subtype]) || levelLabel(subtype);
+}
+
 /** What a region's children are called, e.g. "States and provinces" for a country. */
 export function childrenTitle(subtype: string, childSubtypes: readonly string[] = []): string {
   if (subtype === "bloc") return "Member countries";
@@ -104,6 +111,15 @@ export const SHORT_SECTOR_LABELS: Record<SectorId, string> = {
   consumer: "Consumer",
 };
 
+/** How one-sided a sector is: strong (≥ 0.5), mild (≥ 0.15) or weak. */
+export type PulseLevel = "strong" | "mild" | "weak";
+
+export function pulseLevel(strength: number): PulseLevel {
+  if (strength >= 0.5) return "strong";
+  if (strength >= 0.15) return "mild";
+  return "weak";
+}
+
 export interface PulseTile {
   sector: SectorId;
   /** Full name, e.g. "Logistics and trade". */
@@ -119,15 +135,15 @@ export interface PulseTile {
   score: number;
   /** 0..1: how one-sided the sector is (|score|). */
   strength: number;
+  level: PulseLevel;
   /** One sentence for screen readers and tooltips. */
   description: string;
 }
 
-const IMPACT_PHRASES: Record<Impact, string> = {
-  risk: "mostly risk",
-  opportunity: "mostly opportunity",
-  neutral: "mixed or neutral",
-};
+function impactPhrase(impact: Impact, level: PulseLevel): string {
+  if (impact === "neutral") return "mixed or neutral";
+  return level === "strong" ? `mostly ${impact}` : `leaning ${impact}`;
+}
 
 function clampScore(score: number): number {
   if (!Number.isFinite(score)) return 0;
@@ -136,7 +152,7 @@ function clampScore(score: number): number {
 
 /** "Energy: 7 stories, mostly opportunity, more than the previous 7 days." */
 export function describePulse(
-  p: Pick<PulseTile, "label" | "impact" | "direction" | "count">,
+  p: Pick<PulseTile, "label" | "impact" | "direction" | "count" | "level">,
   window: TimeWindow,
 ): string {
   if (p.count === 0) {
@@ -150,7 +166,7 @@ export function describePulse(
       : p.direction === "down"
         ? `, fewer than the previous ${windowWords(window)}`
         : "";
-  return `${p.label}: ${stories}, ${IMPACT_PHRASES[p.impact]}${momentum}.`;
+  return `${p.label}: ${stories}, ${impactPhrase(p.impact, p.level)}${momentum}.`;
 }
 
 /** "24 hours" / "7 days" / "30 days"; with `last`, "last 7 days". */
@@ -183,6 +199,7 @@ export function shapeSectorPulse(pulse: readonly SectorPulse[], window: TimeWind
       count,
       score,
       strength: Math.abs(score),
+      level: pulseLevel(Math.abs(score)),
     };
     return { ...tile, description: describePulse(tile, window) };
   });

@@ -5,7 +5,7 @@
  */
 import { ChevronRight, Hourglass } from "lucide-react";
 
-import type { Direction, StorySummary, TimeWindow } from "@/api/contract";
+import type { Direction, Impact, StorySummary, TimeWindow } from "@/api/contract";
 import { SampleBadge } from "@/components/SampleBadge";
 import { StoryCard } from "@/components/StoryCard";
 import { TimeAgo } from "@/components/TimeAgo";
@@ -58,7 +58,7 @@ export function Updating({ active }: { active: boolean }) {
 export function ImpactCountsInline({ counts, className }: { counts: ImpactCounts; className?: string }) {
   const parts = (["opportunity", "risk", "neutral"] as const).filter((k) => counts[k] > 0);
   if (parts.length === 0) {
-    return <span className={cn("text-label text-fg-subtle", className)}>No stories</span>;
+    return <span className={cn("inline-flex text-label text-fg-subtle", className)}>No stories</span>;
   }
   return (
     <span className={cn("inline-flex items-center gap-2 text-label tabular-nums", className)}>
@@ -96,6 +96,22 @@ export function ImpactSplitBar({ counts, scale = 1, className }: { counts: Impac
 // ---------------------------------------------------------------------------
 // Sector pulse
 // ---------------------------------------------------------------------------
+
+/** A lighter wash for sectors that only lean one way (classes written out for Tailwind). */
+const MILD_TINT: Record<Impact, string> = {
+  risk: "bg-risk/6",
+  opportunity: "bg-opportunity/6",
+  neutral: "bg-neutral/6",
+};
+
+/** Tile look by how one-sided the sector is: a near tie stays quiet, a clear lean gets the wash. */
+function tileLook(tile: PulseTile): string {
+  if (tile.count === 0) return "border-line bg-transparent hover:bg-surface-2/60";
+  const tone = impactTone(tile.impact);
+  if (tile.impact === "neutral" || tile.level === "weak") return "border-line bg-surface-2/40 hover:border-line-strong";
+  if (tile.level === "mild") return cn("border-line hover:border-line-strong", MILD_TINT[tile.impact]);
+  return cn(tone.border, tone.tint, "hover:border-line-strong");
+}
 
 /** ▲ / ▼ for momentum vs the previous window. */
 export function MomentumArrow({ direction, className }: { direction: Direction | null; className?: string }) {
@@ -139,7 +155,7 @@ export function SectorPulseGrid({
               onClick={() => onToggle(tile)}
               className={cn(
                 "flex min-h-14 w-full cursor-pointer flex-col justify-between gap-1 rounded-lg border px-2.5 py-2 text-left transition-colors",
-                quiet ? "border-line bg-transparent hover:bg-surface-2/60" : cn(tone.border, tone.tint, "hover:border-line-strong"),
+                tileLook(tile),
                 on && "outline-2 outline-offset-1 outline-fg/70",
               )}
             >
@@ -216,7 +232,7 @@ export function ChildRow({ child, max, onOpen }: { child: RegionChild; max: numb
         <span className={cn("truncate text-body", quiet ? "text-fg-muted" : "font-medium text-fg")}>{child.name}</span>
         {!quiet && <ImpactSplitBar counts={child} scale={max > 0 ? total / max : 0} className="h-1" />}
       </span>
-      <ImpactCountsInline counts={child} className="shrink-0" />
+      <ImpactCountsInline counts={child} className="w-24 shrink-0 justify-end" />
       <ChevronRight aria-hidden className="size-4 shrink-0 text-fg-subtle" />
     </button>
   );
