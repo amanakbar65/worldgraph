@@ -1605,7 +1605,7 @@ begin
         return 'confidence must be 0-1';
     end if;
 
-    -- sectors: 1-3 different sector ids
+    -- sectors: 1-3 known sector ids (a repeated one is saved once)
     v_x := p_item -> 'sectors';
     if jsonb_typeof(v_x) is distinct from 'array' or jsonb_array_length(v_x) not between 1 and 3 then
         return 'sectors must list 1-3 sectors';
@@ -1613,8 +1613,8 @@ begin
     select count(*) into v_n
     from jsonb_array_elements(v_x) as e(v)
     where jsonb_typeof(e.v) <> 'string' or (e.v #>> '{}') <> all(api._c_sectors());
-    if v_n > 0 or (select count(distinct e.v) from jsonb_array_elements(v_x) as e(v)) <> jsonb_array_length(v_x) then
-        return 'sectors must be different known sector ids';
+    if v_n > 0 then
+        return 'sectors must be known sector ids';
     end if;
 
     -- actions: at most 3, each 1-8 words
@@ -1739,7 +1739,7 @@ begin
                 horizon = v_item ->> 'horizon',
                 confidence = (v_item ->> 'confidence')::real,
                 sectors = array(select x.v from jsonb_array_elements_text(v_item -> 'sectors')
-                                with ordinality as x(v, ord) order by x.ord),
+                                with ordinality as x(v, ord) group by x.v order by min(x.ord)),
                 actions = array(select btrim(x.v) from jsonb_array_elements_text(
                                     case when jsonb_typeof(v_item -> 'actions') = 'array'
                                          then v_item -> 'actions' else '[]'::jsonb end)

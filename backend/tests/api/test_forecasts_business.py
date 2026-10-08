@@ -692,6 +692,25 @@ def test_forecast_history_downsampled(sdb: psycopg.Connection) -> None:
     sample_id = scalar(sdb, "select node_id from forecast where provider = 'sample' order by node_id limit 1")
     count = scalar(sdb, "select count(*) from forecast_snapshot where forecast_id = %s", sample_id)
     assert len(call(sdb, "forecast", {"id": sample_id})["forecast"]["history"]) == min(count, 240)
+    # A single snapshot, and exactly 241 (one more than the cap).
+    add_forecast(sdb, "forecast:test-one-point")
+    sdb.execute(
+        "delete from forecast_snapshot where forecast_id = 'forecast:test-one-point'"
+        " and ts < now() - interval '2 hours'"
+    )
+    one = check("forecast", call(sdb, "forecast", {"id": "forecast:test-one-point"}))["forecast"]["history"]
+    assert [p["p"] for p in one] == [0.55]
+    add_forecast(sdb, "forecast:test-241")
+    sdb.execute(
+        """insert into forecast_snapshot (forecast_id, ts, probability, volume, liquidity)
+           select 'forecast:test-241', now() - interval '3 days' + g * interval '1 minute', 0.5, 1000, 100
+           from generate_series(1, 239) g"""
+    )
+    assert (
+        scalar(sdb, "select count(*) from forecast_snapshot where forecast_id = 'forecast:test-241'") == 241
+    )
+    capped = call(sdb, "forecast", {"id": "forecast:test-241"})["forecast"]["history"]
+    assert len(capped) == 240 and capped[-1]["p"] == 0.55
 
 
 def test_forecast_branches(sdb: psycopg.Connection) -> None:
@@ -1483,7 +1502,6 @@ def test_save_analysis_saves_everything(sdb: psycopg.Connection) -> None:
         ({"sectors": []}, "sectors"),
         ({"sectors": ["energy", "tech", "health", "consumer"]}, "sectors"),
         ({"sectors": ["space"]}, "sectors"),
-        ({"sectors": ["energy", "energy"]}, "sectors"),
         ({"actions": ["a", "b", "c", "d"]}, "actions"),
         ({"actions": ["one two three four five six seven eight nine"]}, "action"),
         ({"actions": [""]}, "action"),
@@ -1592,9 +1610,11 @@ def test_save_analysis_live_story_ignores_sample_entities(sdb: psycopg.Connectio
 
 
 def test_save_analysis_replaces_guessed_sector_mentions(sdb: psycopg.Connection) -> None:
-    # The pipeline guessed "energy"; the analysis says logistics and manufacturing.
+    # The pipeline guessed "energy"; the analysis says logistics and manufacturing
+    # (a repeated sector is saved once).
     add_pending(sdb, "story:test-guess", 50, sectors=("energy",), mentions=("sector:energy", "region:in-gj"))
-    item = valid_item("story:test-guess", sectors=["logistics-trade", "manufacturing"], entities=[])
+    sectors = ["logistics-trade", "manufacturing", "logistics-trade"]
+    item = valid_item("story:test-guess", sectors=sectors, entities=[])
     assert save(sdb, [item])["saved"] == 1
     mentions = {
         r["dst"]
@@ -1695,6 +1715,22 @@ def test_no_dynamic_sql_in_group_c_functions(sdb: psycopg.Connection) -> None:
     assert len(rows) >= 20
     for row in rows:
         assert "execute" not in row["prosrc"].lower().replace("executed", ""), row["proname"]
+
+
+def test_group_c_functions_have_a_fixed_search_path(sdb: psycopg.Connection) -> None:
+    # Supabase's security advisor flags functions without one; and no function
+    # may set an extension setting (Supabase refuses those).
+    rows = query(
+        sdb,
+        """select p.proname, coalesce(p.proconfig, '{}') as config
+           from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+           where ns.nspname = 'api' and (p.proname like '\\_c\\_%%' or p.proname in ('forecasts', 'forecast',
+                 'affects', 'opportunities', 'ask_context', 'pending_analysis', 'save_analysis'))""",
+    )
+    assert len(rows) >= 20
+    for row in rows:
+        assert [c for c in row["config"] if c.startswith("search_path=")], row["proname"]
+        assert all(c.startswith("search_path=") for c in row["config"]), (row["proname"], row["config"])
 
 
 # ---------------------------------------------------------------------------
