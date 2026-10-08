@@ -131,7 +131,10 @@ function CascadeView({ id }: { id: string }) {
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex flex-col gap-3 border-b border-line px-4 py-3 lg:flex-row lg:items-center lg:gap-6">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-fg-muted">
+          <span
+            aria-hidden
+            className="hidden size-10 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-fg-muted sm:flex"
+          >
             <Workflow className="size-5" />
           </span>
           <div className="flex min-w-0 flex-col">
@@ -150,7 +153,7 @@ function CascadeView({ id }: { id: string }) {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-2 sm:gap-x-3">
           <div className="flex items-center gap-2">
             <span className="text-label text-fg-muted" aria-hidden>
               Steps
@@ -284,16 +287,18 @@ function ProjectControl({
   if (!canProject) {
     return <Unavailable label="AI projection" reason="Available once this story has been analysed." />;
   }
+  // On phones the buttons keep their icon and say the words to screen readers only.
+  const narrow = "max-sm:w-10 max-sm:px-0";
   if (status.phase === "running") {
     return (
       <div className="flex items-center gap-1">
-        <Button variant="outline" disabled aria-label="Projecting next effects">
+        <Button variant="outline" disabled className={narrow}>
           <Sparkles aria-hidden className="animate-pulse" />
-          Projecting…
+          <span className="max-sm:sr-only">Projecting…</span>
         </Button>
-        <Button variant="ghost" onClick={onStop}>
+        <Button variant="ghost" onClick={onStop} className={narrow}>
           <Square aria-hidden className="size-3" />
-          Stop
+          <span className="max-sm:sr-only">Stop</span>
         </Button>
       </div>
     );
@@ -302,15 +307,15 @@ function ProjectControl({
   return (
     <div className="flex items-center gap-1">
       <Tooltip content={`Asks ${who} for up to 3 possible next effects. Nothing is saved.`}>
-        <Button variant="outline" onClick={onProject}>
+        <Button variant="outline" onClick={onProject} className={narrow}>
           <Sparkles aria-hidden />
-          {status.phase === "done" ? "Project again" : "Project next effects"}
+          <span className="max-sm:sr-only">{status.phase === "done" ? "Project again" : "Project next effects"}</span>
         </Button>
       </Tooltip>
       {status.phase === "done" && status.effects.length > 0 && (
-        <Button variant="ghost" onClick={onClear} aria-label="Clear the AI projections">
+        <Button variant="ghost" onClick={onClear} className={narrow} aria-label="Clear the AI projections">
           <X aria-hidden />
-          Clear
+          <span className="max-sm:sr-only">Clear</span>
         </Button>
       )}
     </div>

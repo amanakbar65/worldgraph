@@ -70,6 +70,8 @@ export const SIZES = {
     padding: 12,
     /** The forecast's title (and source, volume, update) at the top of a branch box. */
     title: 66,
+    /** The "AI projection" title of the projections box. */
+    aiTitle: 48,
     /** "If YES · 62%" with its ring. */
     header: 56,
     gap: 10,
@@ -86,7 +88,7 @@ export function groupGeometry(group: CascadeGroup) {
   const g = SIZES.group;
   const card = SIZES.node;
   const width = card.width + 2 * g.padding;
-  let y = g.title;
+  let y = group.kind === "ai" ? g.aiTitle : g.title;
   const sections = group.sections.map((section) => {
     const top = y;
     const height = g.header + section.ids.length * card.height + Math.max(0, section.ids.length - 1) * g.gap + g.padding;
@@ -278,7 +280,7 @@ function untangleLaneLinks(
 // ---------------------------------------------------------------------------
 
 /** Below this zoom the cards' text gets too small to read comfortably. */
-export const READABLE_ZOOM = 0.7;
+export const READABLE_ZOOM = 0.6;
 
 /**
  * What to frame when a layout appears: everything if it fits at a readable

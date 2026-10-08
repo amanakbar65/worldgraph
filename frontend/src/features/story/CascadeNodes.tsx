@@ -116,7 +116,7 @@ export function LaneNodeView({ data }: NodeProps<LaneFlowNode>) {
       )}
     >
       {ai ? (
-        <div className="flex h-[66px] items-center gap-2 px-3 text-label">
+        <div className="flex h-12 items-center gap-2 px-3 text-label">
           <Sparkles aria-hidden className="size-3.5 shrink-0 text-fg-muted" />
           <span className="flex min-w-0 flex-col">
             <span className="truncate font-medium text-fg">AI projection</span>

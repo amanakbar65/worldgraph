@@ -14,6 +14,8 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
+  useStore,
+  type ReactFlowState,
   type EdgeTypes,
   type NodeTypes,
 } from "@xyflow/react";
@@ -35,6 +37,7 @@ import { LaneNodeView, StoryNodeView } from "./CascadeNodes";
 const NODE_TYPES: NodeTypes = { story: StoryNodeView, lane: LaneNodeView };
 const EDGE_TYPES: EdgeTypes = { cascade: CascadeEdgeView };
 const ARROWS: ReadonlySet<string> = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]);
+const keepPointerEvents = () => {};
 
 export interface CascadeFlowProps {
   model: CascadeModel;
@@ -67,10 +70,23 @@ function FlowCanvas({ model, layout, selectedEdge, onOpenNode, onOpenEvidence, o
   const edges = useMemo(() => flowEdges(model, layout), [model, layout]);
   const duration = calm ? 0 : 280;
 
-  // A new layout (another depth, projections added): frame it, readably.
+  // A new layout (another depth, projections added): frame it, readably,
+  // once React Flow has measured every card (or it frames the old ones).
+  const measured = useStore(
+    useCallback(
+      (s: ReactFlowState) => {
+        for (const id of layout.nodes.keys()) if (!s.nodeLookup.get(id)?.internals.handleBounds) return false;
+        return true;
+      },
+      [layout],
+    ),
+  );
   const seenAi = useRef<ReadonlySet<string>>(new Set());
+  const framed = useRef<CascadeLayout | null>(null);
   const firstFit = useRef(true);
   useEffect(() => {
+    if (!measured || framed.current === layout) return;
+    framed.current = layout;
     const ai = new Set(model.nodes.filter((n) => n.ai).map((n) => n.id));
     const newAi = [...ai].some((id) => !seenAi.current.has(id));
     seenAi.current = ai;
@@ -88,7 +104,7 @@ function FlowCanvas({ model, layout, selectedEdge, onOpenNode, onOpenEvidence, o
     });
     return () => cancelAnimationFrame(frame);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the layout changes
-  }, [layout]);
+  }, [layout, measured]);
 
   // The card that takes Tab must exist (it may vanish when the depth changes).
   const tabbable = layout.nodes.has(activeNode) ? activeNode : model.focus;
@@ -118,10 +134,9 @@ function FlowCanvas({ model, layout, selectedEdge, onOpenNode, onOpenEvidence, o
     (id: string) => {
       setActiveNode(id);
       reveal(id);
-      requestAnimationFrame(() => {
-        const el = container.current?.querySelector<HTMLElement>(`[data-cascade-node="${CSS.escape(id)}"]`);
-        el?.focus({ preventScroll: true });
-      });
+      // Every card is rendered (tabIndex -1 still takes focus), so focus it now.
+      const el = container.current?.querySelector<HTMLElement>(`[data-cascade-node="${CSS.escape(id)}"]`);
+      el?.focus({ preventScroll: true });
     },
     [reveal],
   );
@@ -226,6 +241,9 @@ function FlowCanvas({ model, layout, selectedEdge, onOpenNode, onOpenEvidence, o
           multiSelectionKeyCode={null}
           zoomActivationKeyCode={null}
           panActivationKeyCode={null}
+          // React Flow turns pointer events off on nodes without a handler; the
+          // cards' own buttons do the work, so this one only keeps them on.
+          onNodeClick={keepPointerEvents}
           onEdgeClick={(_, edge) => onOpenEvidence(edge.id)}
           onEdgeMouseEnter={(_, edge) => setHotEdge(edge.id)}
           onEdgeMouseLeave={() => setHotEdge(null)}
