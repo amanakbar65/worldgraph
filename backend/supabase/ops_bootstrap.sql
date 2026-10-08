@@ -40,3 +40,10 @@ begin
     return 'applied';
 end;
 $$;
+
+-- Hardening (Supabase security advisor): fixed search_path, and only the
+-- owner (postgres) may run these.
+alter function ops.run_remote_sql(text, text) set search_path = public, extensions;
+alter function ops.apply_migration(text, text, text, text) set search_path = public, extensions;
+revoke execute on function ops.run_remote_sql(text, text) from public, anon, authenticated;
+revoke execute on function ops.apply_migration(text, text, text, text) from public, anon, authenticated;
