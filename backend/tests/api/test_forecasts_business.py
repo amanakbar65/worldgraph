@@ -98,7 +98,8 @@ select
         'question', f.question,
         'category', f.category,
         'probability', round(l.probability::numeric, 3),
-        'change_24h', round((l.probability - api._prob_at(f.node_id, l.ts - interval '24 hours'))::numeric, 3),
+        'change_24h', round((l.probability
+                             - api._prob_at(f.node_id, l.ts - interval '24 hours'))::numeric, 3),
         'volume', l.volume,
         'volume_unit', f.volume_unit,
         'liquidity', l.liquidity,
@@ -379,7 +380,8 @@ def valid_link(src: str, **changes: Any) -> dict[str, Any]:
 
 def save(conn: psycopg.Connection, items: list[dict[str, Any]], **extra: Any) -> dict[str, Any]:
     return check(
-        "save_analysis", call(conn, "save_analysis", {"engine": "artifact", "model": "test-model", "items": items, **extra})
+        "save_analysis",
+        call(conn, "save_analysis", {"engine": "artifact", "model": "test-model", "items": items, **extra}),
     )
 
 
@@ -429,7 +431,10 @@ def test_forecast_card_matches_original_view_with_live_rows(sdb: psycopg.Connect
            from generate_series(2, 960) g"""
     )
     add_forecast(sdb, "forecast:test-single")
-    sdb.execute("delete from forecast_snapshot where forecast_id = 'forecast:test-single' and ts < now() - '2 hours'")
+    sdb.execute(
+        "delete from forecast_snapshot where forecast_id = 'forecast:test-single'"
+        " and ts < now() - interval '2 hours'"
+    )
     add_forecast(sdb, "forecast:test-empty")
     sdb.execute("delete from forecast_snapshot where forecast_id = 'forecast:test-empty'")
     add_real_money(sdb)
@@ -518,8 +523,7 @@ def test_forecasts_filters(sdb: psycopg.Connection) -> None:
 
     # Sectors: about sector:<id>, or the category speaks to the sector.
     about_sector = {
-        r["src"]
-        for r in query(sdb, "select src from edge where type = 'about' and dst = 'sector:energy'")
+        r["src"] for r in query(sdb, "select src from edge where type = 'about' and dst = 'sector:energy'")
     }
     expected = {f["id"] for f in every if "energy" in CATEGORY_SECTORS.get(f["category"], set())} | (
         about_sector & {f["id"] for f in every}
@@ -562,7 +566,8 @@ def test_forecasts_limit_and_timing(sdb: psycopg.Connection) -> None:
             select 'forecast:test-bulk-' || g as id, g from generate_series(1, 110) g
         ),
         n as (
-            insert into node (id, type, subtype, name) select id, 'forecast', 'binary', 'Bulk question ' || g from f
+            insert into node (id, type, subtype, name)
+            select id, 'forecast', 'binary', 'Bulk question ' || g from f
         ),
         fc as (
             insert into forecast (node_id, provider, provider_ref, question, short_title, category, end_date)
@@ -654,7 +659,9 @@ def test_forecast_details(sdb: psycopg.Connection) -> None:
     about = {r["dst"] for r in query(sdb, "select dst from edge where src = %s and type = 'about'", fid)}
     assert {e["id"] for e in f["entities"]} == about
     # Related stories: relates_to first.
-    related = [r["dst"] for r in query(sdb, "select dst from edge where src = %s and type = 'relates_to'", fid)]
+    related = [
+        r["dst"] for r in query(sdb, "select dst from edge where src = %s and type = 'relates_to'", fid)
+    ]
     got = ids(f["stories"])
     assert related and got[: len(related)] == sorted(
         related, key=lambda s: (-scalar(sdb, "select importance from story where node_id = %s", s), s)
@@ -702,7 +709,11 @@ def test_forecast_branches(sdb: psycopg.Connection) -> None:
     assert branches[0]["probability"] == pytest.approx(p)
     assert branches[1]["probability"] == pytest.approx(round(1 - p, 3))
     for b in branches:
-        want = {(lk["dst_story"], lk["src_story"], lk["mechanism"]) for lk in links if lk["outcome"] == b["outcome"]}
+        want = {
+            (lk["dst_story"], lk["src_story"], lk["mechanism"])
+            for lk in links
+            if lk["outcome"] == b["outcome"]
+        }
         got = {(e["id"], e["from_story"], e["mechanism"]) for e in b["effects"]}
         assert got == want
         confs = [e["confidence"] for e in b["effects"]]
@@ -721,10 +732,24 @@ def test_forecast_hides_skipped_and_sample_neighbours_for_live(sdb: psycopg.Conn
     add_story(sdb, "story:test-live-skipped", mentions=("region:in",), status="skipped", so_what=None)
     add_story(sdb, "story:test-live-proj", kind="projected", impact="opportunity")
     add_story(sdb, "story:test-live-proj-no", kind="projected")
-    add_forecast(sdb, "forecast:test-live", about=("region:in", "org:does-not-matter") if False else ("region:in",))
-    add_link(sdb, "story:test-live-a", "story:test-live-proj", "conditional", forecast="forecast:test-live", outcome="YES")
+    add_forecast(
+        sdb, "forecast:test-live", about=("region:in", "org:does-not-matter") if False else ("region:in",)
+    )
     add_link(
-        sdb, "story:test-live-a", "story:test-live-proj-no", "conditional", forecast="forecast:test-live", outcome="NO"
+        sdb,
+        "story:test-live-a",
+        "story:test-live-proj",
+        "conditional",
+        forecast="forecast:test-live",
+        outcome="YES",
+    )
+    add_link(
+        sdb,
+        "story:test-live-a",
+        "story:test-live-proj-no",
+        "conditional",
+        forecast="forecast:test-live",
+        outcome="NO",
     )
     data = check("forecast", call(sdb, "forecast", {"id": "forecast:test-live"}))
     stories = ids(data["forecast"]["stories"])
@@ -797,7 +822,9 @@ def test_affects_ordering_paths_and_windows(sdb: psycopg.Connection) -> None:
         assert origin["kind"] == "event"
         assert origin["first_seen"] >= since - timedelta(days=7, minutes=5)
         for src, dst in zip(item["path"], item["path"][1:], strict=False):
-            assert scalar(sdb, "select count(*) from causal_link where src_story = %s and dst_story = %s", src, dst)
+            assert scalar(
+                sdb, "select count(*) from causal_link where src_story = %s and dst_story = %s", src, dst
+            )
         actions = scalar(sdb, "select actions from story where node_id = %s", item["story"]["id"])
         assert item["actions"] == actions
     day = call(sdb, "affects", {"profile": PROFILE, "window": "24h"})["items"]
@@ -808,26 +835,84 @@ def test_affects_ordering_paths_and_windows(sdb: psycopg.Connection) -> None:
 
 def test_affects_relevance_and_downstream(sdb: psycopg.Connection) -> None:
     rice = profile(inputs=["commodity:rice"], locations=["region:in-gj"], keywords=["berth"])
-    add_story(sdb, "story:test-rice", mentions=("commodity:rice",), importance=60, confidence=0.8,
-              country="region:th", admin1=None, region="region:th", actions=("Check rice contracts",))
-    add_story(sdb, "story:test-effect", importance=40, confidence=0.7, country="region:ph", admin1=None,
-              region="region:ph", hours_ago=1)
-    add_story(sdb, "story:test-proj", kind="projected", importance=30, country="region:ph", admin1=None,
-              region="region:ph")
+    add_story(
+        sdb,
+        "story:test-rice",
+        mentions=("commodity:rice",),
+        importance=60,
+        confidence=0.8,
+        country="region:th",
+        admin1=None,
+        region="region:th",
+        actions=("Check rice contracts",),
+    )
+    add_story(
+        sdb,
+        "story:test-effect",
+        importance=40,
+        confidence=0.7,
+        country="region:ph",
+        admin1=None,
+        region="region:ph",
+        hours_ago=1,
+    )
+    add_story(
+        sdb,
+        "story:test-proj",
+        kind="projected",
+        importance=30,
+        country="region:ph",
+        admin1=None,
+        region="region:ph",
+    )
     add_link(sdb, "story:test-rice", "story:test-effect", confidence=0.6)
     add_link(sdb, "story:test-effect", "story:test-proj", "projected", confidence=0.5)
     add_story(sdb, "story:test-gujarat", importance=50, confidence=None)  # located in the profile state
-    add_story(sdb, "story:test-kerala", importance=50, confidence=None, admin1="region:in-kl",
-              region="region:in-kl")  # same country, another state
+    add_story(
+        sdb, "story:test-kerala", importance=50, confidence=None, admin1="region:in-kl", region="region:in-kl"
+    )  # same country, another state
     add_story(sdb, "story:test-national", importance=50, confidence=None, admin1=None, region="region:in")
-    add_story(sdb, "story:test-keyword", headline="A new berth opens", importance=50, confidence=0.6,
-              country="region:br", admin1=None, region="region:br")
-    add_story(sdb, "story:test-skipped", mentions=("commodity:rice",), status="skipped", so_what=None,
-              country="region:th", admin1=None, region="region:th")
-    add_story(sdb, "story:test-pending", mentions=("commodity:rice",), status="pending", so_what=None,
-              confidence=None, importance=20, country="region:th", admin1=None, region="region:th")
-    add_story(sdb, "story:test-old", mentions=("commodity:rice",), hours_ago=24 * 9,
-              country="region:th", admin1=None, region="region:th")
+    add_story(
+        sdb,
+        "story:test-keyword",
+        headline="A new berth opens",
+        importance=50,
+        confidence=0.6,
+        country="region:br",
+        admin1=None,
+        region="region:br",
+    )
+    add_story(
+        sdb,
+        "story:test-skipped",
+        mentions=("commodity:rice",),
+        status="skipped",
+        so_what=None,
+        country="region:th",
+        admin1=None,
+        region="region:th",
+    )
+    add_story(
+        sdb,
+        "story:test-pending",
+        mentions=("commodity:rice",),
+        status="pending",
+        so_what=None,
+        confidence=None,
+        importance=20,
+        country="region:th",
+        admin1=None,
+        region="region:th",
+    )
+    add_story(
+        sdb,
+        "story:test-old",
+        mentions=("commodity:rice",),
+        hours_ago=24 * 9,
+        country="region:th",
+        admin1=None,
+        region="region:th",
+    )
     data = check("affects", call(sdb, "affects", {"profile": rice, "sample": False}))
     by_id = {i["story"]["id"]: i for i in data["items"]}
 
@@ -837,7 +922,9 @@ def test_affects_relevance_and_downstream(sdb: psycopg.Connection) -> None:
     assert [m["id"] for m in by_id["story:test-rice"]["matched"]] == ["commodity:rice"]
     effect = by_id["story:test-effect"]
     assert effect["path"] == ["story:test-rice", "story:test-effect"]
-    assert effect["relevance"] == pytest.approx(round(1.0 * (0.5 + 0.5 * 0.8 * 0.6) * 0.85 * 0.7, 3), abs=0.001)
+    assert effect["relevance"] == pytest.approx(
+        round(1.0 * (0.5 + 0.5 * 0.8 * 0.6) * 0.85 * 0.7, 3), abs=0.001
+    )
     proj = by_id["story:test-proj"]
     assert proj["path"] == ["story:test-rice", "story:test-effect", "story:test-proj"]
     assert proj["relevance"] == pytest.approx(
@@ -852,7 +939,9 @@ def test_affects_relevance_and_downstream(sdb: psycopg.Connection) -> None:
     assert by_id["story:test-pending"]["story"]["analysed"] is False
     assert "story:test-skipped" not in by_id
     assert "story:test-old" not in by_id
-    assert "story:test-old" in story_ids(call(sdb, "affects", {"profile": rice, "sample": False, "window": "30d"})["items"])
+    assert "story:test-old" in story_ids(
+        call(sdb, "affects", {"profile": rice, "sample": False, "window": "30d"})["items"]
+    )
 
 
 def test_affects_suggested_forecasts(sdb: psycopg.Connection) -> None:
@@ -861,10 +950,19 @@ def test_affects_suggested_forecasts(sdb: psycopg.Connection) -> None:
     assert len(fcs) == 6
     moves = [abs(f["change_24h"]) for f in fcs]
     assert moves == sorted(moves, reverse=True)
-    targets = {"sector:manufacturing", "sector:logistics-trade", "region:in-gj", "region:in", "commodity:crude-oil",
-               "region:cn", "region:eu"}
+    targets = {
+        "sector:manufacturing",
+        "sector:logistics-trade",
+        "region:in-gj",
+        "region:in",
+        "commodity:crude-oil",
+        "region:cn",
+        "region:eu",
+    }
     for f in fcs:
-        about = {r["dst"] for r in query(sdb, "select dst from edge where src = %s and type = 'about'", f["id"])}
+        about = {
+            r["dst"] for r in query(sdb, "select dst from edge where src = %s and type = 'about'", f["id"])
+        }
         assert about & targets, f["id"]
 
 
@@ -922,13 +1020,20 @@ def test_opportunities_semantics(sdb: psycopg.Connection) -> None:
     for a, b in zip(ranks, ranks[1:], strict=False):
         assert a >= b - 1e-9
     now = scalar(sdb, "select now()")
-    sector_names = {r["id"].removeprefix("sector:"): r["name"] for r in query(sdb, "select id, name from node where type = 'sector'")}
+    sector_names = {
+        r["id"].removeprefix("sector:"): r["name"]
+        for r in query(sdb, "select id, name from node where type = 'sector'")
+    }
     kinds = set()
     for item in items:
         story = item["story"]
         kinds.add(story["kind"])
         assert story["impact"] == "opportunity"
-        row = query(sdb, "select so_what, importance, source_count, first_seen from story where node_id = %s", story["id"])[0]
+        row = query(
+            sdb,
+            "select so_what, importance, source_count, first_seen from story where node_id = %s",
+            story["id"],
+        )[0]
         assert item["why_now"] == row["so_what"]
         assert item["relevance"] == pytest.approx(round(row["importance"] / 100, 3), abs=0.001)
         assert 1 <= len(item["suits"]) <= 3
@@ -942,8 +1047,10 @@ def test_opportunities_semantics(sdb: psycopg.Connection) -> None:
         else:
             sources = query(
                 sdb,
-                """select s.first_seen, s.source_count from causal_link cl join story s on s.node_id = cl.src_story
-                   where cl.dst_story = %s and s.kind = 'event' and s.first_seen >= now() - interval '30 days'""",
+                """select s.first_seen, s.source_count
+                   from causal_link cl join story s on s.node_id = cl.src_story
+                   where cl.dst_story = %s and s.kind = 'event'
+                     and s.first_seen >= now() - interval '30 days'""",
                 story["id"],
             )
             assert sources
@@ -966,26 +1073,38 @@ def test_opportunities_filters_and_window(sdb: psycopg.Connection) -> None:
     for item in india:
         row = query(sdb, "select country_id from story where node_id = %s", item["story"]["id"])[0]
         mentions = scalar(
-            sdb, "select count(*) from edge where src = %s and type = 'mentions' and dst = 'region:in'", item["story"]["id"]
+            sdb,
+            "select count(*) from edge where src = %s and type = 'mentions' and dst = 'region:in'",
+            item["story"]["id"],
         )
         assert row["country_id"] == "region:in" or mentions
     day = call(sdb, "opportunities", {"window": "24h"})["items"]
     events = [i for i in day if i["story"]["kind"] == "event"]
     assert events and all(
-        ts(i["story"]["first_seen"]) >= scalar(sdb, "select now() - interval '24 hours 5 minutes'") for i in events
+        ts(i["story"]["first_seen"]) >= scalar(sdb, "select now() - interval '24 hours 5 minutes'")
+        for i in events
     )
     assert len(day) < len(call(sdb, "opportunities", {"window": "30d"})["items"]) or len(day) < 40
 
 
 def test_opportunities_profile_relevance(sdb: psycopg.Connection) -> None:
     rice = profile(inputs=["commodity:rice"])
-    add_story(sdb, "story:test-rice-opp", impact="opportunity", mentions=("commodity:rice",), importance=40,
-              confidence=0.9, sectors=("agri-food",))
+    add_story(
+        sdb,
+        "story:test-rice-opp",
+        impact="opportunity",
+        mentions=("commodity:rice",),
+        importance=40,
+        confidence=0.9,
+        sectors=("agri-food",),
+    )
     add_story(sdb, "story:test-other-opp", impact="opportunity", importance=90, confidence=0.9)
     add_story(sdb, "story:test-risk", impact="risk", mentions=("commodity:rice",))
     add_story(sdb, "story:test-skipped-opp", impact="opportunity", status="skipped", so_what=None)
     add_story(sdb, "story:test-pending-opp", impact="opportunity", status="pending", so_what=None)
-    add_article(sdb, "story:test-pending-opp", "https://example.org/p1", snippet="Exporters see a new opening.")
+    add_article(
+        sdb, "story:test-pending-opp", "https://example.org/p1", snippet="Exporters see a new opening."
+    )
     data = check("opportunities", call(sdb, "opportunities", {"profile": rice, "sample": False}))
     by_id = {i["story"]["id"]: i for i in data["items"]}
     assert set(by_id) == {"story:test-rice-opp", "story:test-other-opp", "story:test-pending-opp"}
@@ -1010,7 +1129,10 @@ def test_opportunities_forecast_visibility(sdb: psycopg.Connection) -> None:
     # A relates_to forecast beats one that is only about the story's country.
     add_forecast(sdb, "forecast:test-country", about=("region:in",), volume=900000)
     assert call(sdb, "opportunities", {"sample": False, **US})["items"][0]["forecast"]["id"] == REAL_MONEY
-    assert call(sdb, "opportunities", {"sample": False, **IN})["items"][0]["forecast"]["id"] == "forecast:test-country"
+    assert (
+        call(sdb, "opportunities", {"sample": False, **IN})["items"][0]["forecast"]["id"]
+        == "forecast:test-country"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1069,7 +1191,9 @@ def test_ask_context_retrieval(sdb: psycopg.Connection) -> None:
 
 
 def test_ask_context_entities_prefer_close_matches(sdb: psycopg.Connection) -> None:
-    ents = ids(call(sdb, "ask_context", {"q": "How will the Red Sea attacks affect Indian exporters?"})["entities"])
+    ents = ids(
+        call(sdb, "ask_context", {"q": "How will the Red Sea attacks affect Indian exporters?"})["entities"]
+    )
     assert "region:in" in ents
     assert "region:us-in" not in ents  # Indiana: "indian" matches India better
     assert not any(e.startswith("region:gb-r") for e in ents)  # no Redbridge for "red"
@@ -1079,11 +1203,19 @@ def test_ask_context_entities_prefer_close_matches(sdb: psycopg.Connection) -> N
 
 def test_ask_context_limit_and_live_rules(sdb: psycopg.Connection) -> None:
     assert len(call(sdb, "ask_context", {"q": "india exports prices", "limit": 3})["stories"]) == 3
-    assert len(call(sdb, "ask_context", {"q": "india exports prices rates oil", "limit": 500})["stories"]) == 25
+    assert (
+        len(call(sdb, "ask_context", {"q": "india exports prices rates oil", "limit": 500})["stories"]) == 25
+    )
     assert len(call(sdb, "ask_context", {"q": "india exports prices", "limit": "x"})["stories"]) == 12
     add_story(sdb, "story:test-zeppelin", headline="Zeppelin freight trial starts", sources=2)
     add_article(sdb, "story:test-zeppelin", "https://example.org/z1", title="Zeppelin freight trial")
-    add_story(sdb, "story:test-zeppelin-skip", headline="Zeppelin festival draws crowds", status="skipped", so_what=None)
+    add_story(
+        sdb,
+        "story:test-zeppelin-skip",
+        headline="Zeppelin festival draws crowds",
+        status="skipped",
+        so_what=None,
+    )
     data = check("ask_context", call(sdb, "ask_context", {"q": "zeppelin"}))
     assert ids(data["stories"]) == ["story:test-zeppelin"]
     assert data["stories"][0]["sources"][0]["url"] == "https://example.org/z1"
@@ -1119,7 +1251,7 @@ def test_pending_analysis_items(sdb: psycopg.Connection) -> None:
         sdb,
         sid,
         70,
-        mentions=("region:in-gj", "region:in", "infra:port-of-mundra", "sector:logistics-trade"),
+        mentions=("region:in-gj", "region:in", "infra:mundra-port", "sector:logistics-trade"),
         sectors=("logistics-trade", "not-a-sector"),
     )
     for i in range(10):
@@ -1133,17 +1265,46 @@ def test_pending_analysis_items(sdb: psycopg.Connection) -> None:
             hours_ago=i,
         )
     # Candidates: earlier done live events.
-    add_story(sdb, "story:test-c-entity", mentions=("infra:port-of-mundra",), hours_ago=30, importance=10,
-              country="region:br", admin1=None, region="region:br", sectors=("energy",))
-    add_story(sdb, "story:test-c-country", hours_ago=40, importance=90, sectors=("energy",), admin1=None,
-              region="region:in")
-    add_story(sdb, "story:test-c-sector", hours_ago=50, importance=95, country="region:br", admin1=None,
-              region="region:br")
-    add_story(sdb, "story:test-c-later", mentions=("infra:port-of-mundra",), hours_ago=1)  # after the story
-    add_story(sdb, "story:test-c-old", mentions=("infra:port-of-mundra",), hours_ago=24 * 40)  # too early
-    add_story(sdb, "story:test-c-pending", mentions=("infra:port-of-mundra",), hours_ago=30, status="pending",
-              so_what=None)
-    add_story(sdb, "story:test-c-sample", mentions=("infra:port-of-mundra",), hours_ago=30, sample=True)
+    add_story(
+        sdb,
+        "story:test-c-entity",
+        mentions=("infra:mundra-port",),
+        hours_ago=30,
+        importance=10,
+        country="region:br",
+        admin1=None,
+        region="region:br",
+        sectors=("energy",),
+    )
+    add_story(
+        sdb,
+        "story:test-c-country",
+        hours_ago=40,
+        importance=90,
+        sectors=("energy",),
+        admin1=None,
+        region="region:in",
+    )
+    add_story(
+        sdb,
+        "story:test-c-sector",
+        hours_ago=50,
+        importance=95,
+        country="region:br",
+        admin1=None,
+        region="region:br",
+    )
+    add_story(sdb, "story:test-c-later", mentions=("infra:mundra-port",), hours_ago=1)  # after the story
+    add_story(sdb, "story:test-c-old", mentions=("infra:mundra-port",), hours_ago=24 * 40)  # too early
+    add_story(
+        sdb,
+        "story:test-c-pending",
+        mentions=("infra:mundra-port",),
+        hours_ago=30,
+        status="pending",
+        so_what=None,
+    )
+    add_story(sdb, "story:test-c-sample", mentions=("infra:mundra-port",), hours_ago=30, sample=True)
     sdb.execute("update story set first_seen = now() - interval '3 hours' where node_id = %s", (sid,))
 
     data = check("pending_analysis", call(sdb, "pending_analysis", {}))
@@ -1155,7 +1316,7 @@ def test_pending_analysis_items(sdb: psycopg.Connection) -> None:
     assert sorted(item["sources"]) == ["Outlet 0", "Outlet 1", "Outlet 2"]
     assert item["region"]["id"] == "region:in-gj"
     assert item["sectors"] == ["logistics-trade"]
-    assert {e["id"] for e in item["entities"]} == {"region:in-gj", "region:in", "infra:port-of-mundra"}
+    assert {e["id"] for e in item["entities"]} == {"region:in-gj", "region:in", "infra:mundra-port"}
     assert ids(item["candidates"]) == ["story:test-c-entity", "story:test-c-country", "story:test-c-sector"]
     # The pending candidate itself is listed second (lower importance).
     assert ids(data["items"]) == [sid, "story:test-c-pending"]
@@ -1200,7 +1361,9 @@ def test_save_analysis_saves_everything(sdb: psycopg.Connection) -> None:
     assert row["analysis_engine"] == "artifact" and row["analysis_model"] == "test-model"
     assert row["analysed_at"] is not None
     assert scalar(sdb, "select name from node where id = %s", sid) == item["headline"]
-    mentions = {r["dst"] for r in query(sdb, "select dst from edge where src = %s and type = 'mentions'", sid)}
+    mentions = {
+        r["dst"] for r in query(sdb, "select dst from edge where src = %s and type = 'mentions'", sid)
+    }
     assert {"region:in-gj", "commodity:crude-oil", "sector:logistics-trade"} <= mentions
     assert "org:does-not-exist" not in mentions
 
@@ -1258,7 +1421,9 @@ def test_save_analysis_saves_everything(sdb: psycopg.Connection) -> None:
         ({"id": "story:x'; drop table node; --"}, "id"),
     ],
 )
-def test_save_analysis_rejects_invalid_items(sdb: psycopg.Connection, changes: dict[str, Any], reason: str) -> None:
+def test_save_analysis_rejects_invalid_items(
+    sdb: psycopg.Connection, changes: dict[str, Any], reason: str
+) -> None:
     add_pending(sdb, "story:test-bad", 50)
     add_pending(sdb, "story:test-good", 40)
     add_story(sdb, "story:test-cause", hours_ago=50)
@@ -1290,37 +1455,69 @@ def test_save_analysis_link_rules(sdb: psycopg.Connection) -> None:
     ]
     result = save(sdb, [valid_item(sid, links=links)])
     assert result["saved"] == 1 and result["links_saved"] == 2
-    more = [valid_link("story:does-not-exist"), valid_link("story:test-sample-cause"), valid_link("story:test-reverse")]
+    more = [
+        valid_link("story:does-not-exist"),
+        valid_link("story:test-sample-cause"),
+        valid_link("story:test-reverse"),
+    ]
     assert save(sdb, [valid_item(sid, links=more)])["links_saved"] == 0
     rows = query(sdb, "select src_story, id from causal_link where dst_story = %s order by src_story", sid)
     assert [r["src_story"] for r in rows] == ["story:test-cause-a", "story:test-cause-b"]
     # Live story without an article URL: no evidence row (it would need a URL).
-    assert scalar(sdb, "select count(*) from evidence where causal_link_id = any(%s)", [r["id"] for r in rows]) == 0
+    assert (
+        scalar(sdb, "select count(*) from evidence where causal_link_id = any(%s)", [r["id"] for r in rows])
+        == 0
+    )
 
 
 def test_save_analysis_sample_story_evidence(sdb: psycopg.Connection) -> None:
     sid = "story:red-sea-attacks-reroute"
-    cause = "story:asia-europe-rates-jump"  # a later sample event; still a valid cause by id
+    # A later sample event that has no link with it either way: still a valid cause by id.
+    cause = scalar(
+        sdb,
+        """select s.node_id from story s join story r on r.node_id = %s
+           where s.kind = 'event' and s.first_seen > r.first_seen
+             and not exists (select 1 from causal_link cl
+                             where (cl.src_story, cl.dst_story)
+                                   in ((s.node_id, r.node_id), (r.node_id, s.node_id)))
+           order by s.node_id limit 1""",
+        sid,
+    )
     result = save(sdb, [valid_item(sid, links=[valid_link(cause)], entities=["org:kestrel-lines"])])
     assert result == {"saved": 1, "skipped": 0, "rejected": [], "links_saved": 1}
     link = query(sdb, "select * from causal_link where src_story = %s and dst_story = %s", cause, sid)[0]
-    assert link["is_sample"] is True and link["lag_days"] is None
+    assert link["is_sample"] is True and link["lag_days"] is None  # the cause came later
+    # The opposite direction of an existing link is refused (no loops).
+    effect = scalar(
+        sdb, "select dst_story from causal_link where src_story = %s order by dst_story limit 1", sid
+    )
+    assert save(sdb, [valid_item(sid, links=[valid_link(effect)])])["links_saved"] == 0
     ev = query(sdb, "select * from evidence where causal_link_id = %s", link["id"])[0]
     assert ev["url"] is None and ev["is_sample"] is True
-    assert scalar(
-        sdb, "select count(*) from edge where src = %s and dst = 'org:kestrel-lines' and type = 'mentions'", sid
-    ) == 1
+    assert (
+        scalar(
+            sdb,
+            "select count(*) from edge where src = %s and dst = 'org:kestrel-lines' and type = 'mentions'",
+            sid,
+        )
+        == 1
+    )
 
 
 def test_save_analysis_live_story_ignores_sample_entities(sdb: psycopg.Connection) -> None:
     add_pending(sdb, "story:test-live", 50)
     save(sdb, [valid_item("story:test-live", entities=["org:kestrel-lines", "region:in"])])
-    mentions = {r["dst"] for r in query(sdb, "select dst from edge where src = 'story:test-live' and type = 'mentions'")}
+    mentions = {
+        r["dst"]
+        for r in query(sdb, "select dst from edge where src = 'story:test-live' and type = 'mentions'")
+    }
     assert "org:kestrel-lines" not in mentions and "region:in" in mentions
 
 
 def test_save_analysis_skipped(sdb: psycopg.Connection) -> None:
     add_pending(sdb, "story:test-noise", 50, mentions=("commodity:rice",))
+    add_article(sdb, "story:test-noise", "https://example.org/noise-1")
+    add_article(sdb, "story:test-noise", "https://example.org/noise-2")
     add_pending(sdb, "story:test-keep", 40)
     add_story(sdb, "story:test-done")
     result = save(
@@ -1335,15 +1532,28 @@ def test_save_analysis_skipped(sdb: psycopg.Connection) -> None:
     )
     assert result["saved"] == 0 and result["skipped"] == 1 and result["links_saved"] == 0
     assert [r["id"] for r in result["rejected"]] == ["story:test-done", "story:test-nope", ""]
-    row = query(sdb, "select * from story where node_id = 'story:test-noise'")[0]
-    assert row["analysis_status"] == "skipped"
-    assert row["analysis_engine"] == "artifact" and row["analysis_model"] == "test-model"
-    assert row["analysed_at"] is not None
+    # The story_skipped trigger (0009) deletes the story and its articles and
+    # remembers their URLs so the pipeline never ingests them again.
+    assert scalar(sdb, "select count(*) from node where id = 'story:test-noise'") == 0
+    assert scalar(sdb, "select count(*) from article where story_id = 'story:test-noise'") == 0
+    assert (
+        scalar(
+            sdb,
+            "select count(*) from skipped_url where url in ('https://example.org/noise-1', 'https://example.org/noise-2')",
+        )
+        == 2
+    )
+    assert scalar(sdb, "select analysis_status from story where node_id = 'story:test-done'") == "done"
+    # Skipping it again is refused: it no longer exists.
+    again = save(sdb, [], skipped=[{"id": "story:test-noise", "reason": "sports result"}])
+    assert again["skipped"] == 0 and [r["id"] for r in again["rejected"]] == ["story:test-noise"]
     # Skipped stories vanish from the lists; the queue keeps the rest.
     pending = call(sdb, "pending_analysis", {})
     assert pending["total_pending"] == 1 and ids(pending["items"]) == ["story:test-keep"]
     rice = profile(inputs=["commodity:rice"])
-    assert "story:test-noise" not in story_ids(call(sdb, "affects", {"profile": rice, "sample": False})["items"])
+    assert "story:test-noise" not in story_ids(
+        call(sdb, "affects", {"profile": rice, "sample": False})["items"]
+    )
     assert "story:test-noise" not in ids(call(sdb, "ask_context", {"q": "gujarat port berth"})["stories"])
 
 
@@ -1406,12 +1616,17 @@ TIMED_CALLS: list[tuple[str, dict[str, Any]]] = [
     ("affects", {"profile": PROFILE, "window": "30d"}),
     ("opportunities", {}),
     ("opportunities", {"profile": PROFILE}),
-    ("ask_context", {"q": "How will the Red Sea attacks affect Indian exporters and freight rates?", "limit": 25}),
+    (
+        "ask_context",
+        {"q": "How will the Red Sea attacks affect Indian exporters and freight rates?", "limit": 25},
+    ),
     ("pending_analysis", {}),
 ]
 
 
-@pytest.mark.parametrize(("name", "args"), TIMED_CALLS, ids=[f"{n}-{i}" for i, (n, _) in enumerate(TIMED_CALLS)])
+@pytest.mark.parametrize(
+    ("name", "args"), TIMED_CALLS, ids=[f"{n}-{i}" for i, (n, _) in enumerate(TIMED_CALLS)]
+)
 def test_timing(sdb: psycopg.Connection, name: str, args: dict[str, Any]) -> None:
     call(sdb, name, args)  # warm the caches
     data, ms = timed(sdb, name, args)
@@ -1434,9 +1649,17 @@ def test_save_analysis_timing(sdb: psycopg.Connection) -> None:
 
 def test_arguments_are_data_not_sql(sdb: psycopg.Connection) -> None:
     nasty = "region:in'); drop table node; --"
-    check("forecasts", call(sdb, "forecasts", {"regions": [nasty], "categories": [nasty], "sectors": [nasty]}))
-    check("affects", call(sdb, "affects", {"profile": profile(locations=[nasty], keywords=["%", "_", "\\", nasty])}))
-    check("opportunities", call(sdb, "opportunities", {"regions": [nasty], "profile": profile(keywords=[nasty])}))
+    check(
+        "forecasts", call(sdb, "forecasts", {"regions": [nasty], "categories": [nasty], "sectors": [nasty]})
+    )
+    check(
+        "affects",
+        call(sdb, "affects", {"profile": profile(locations=[nasty], keywords=["%", "_", "\\", nasty])}),
+    )
+    check(
+        "opportunities",
+        call(sdb, "opportunities", {"regions": [nasty], "profile": profile(keywords=[nasty])}),
+    )
     assert_not_found(sdb, "forecast", {"id": nasty})
     assert scalar(sdb, "select count(*) from node") > 1000
     # A keyword of '%' matches only text with a literal percent sign.
