@@ -73,7 +73,8 @@ export function ConnectionsGraph({ graph, focusId, regionName, onOpen, onSeeAll 
       >
         <svg aria-hidden viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full">
           {mini.links.map((link) => {
-            const on = lit ? lit.has(link.source.id) && lit.has(link.target.id) : false;
+            // Only the focused node's own links light up.
+            const on = active !== null && (link.source.id === active || link.target.id === active);
             return (
               <line
                 key={link.id}
