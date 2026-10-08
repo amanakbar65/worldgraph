@@ -11,7 +11,7 @@ app = typer.Typer(
 )
 db_app = typer.Typer(help="Database: migrations and status.", no_args_is_help=True)
 seed_app = typer.Typer(help="Sample data: check and load.", no_args_is_help=True)
-geo_app = typer.Typer(help="Geography: the Natural Earth gazetteer.", no_args_is_help=True)
+geo_app = typer.Typer(help="Geography: the Natural Earth gazetteer and map layers.", no_args_is_help=True)
 app.add_typer(db_app, name="db")
 app.add_typer(seed_app, name="seed")
 app.add_typer(geo_app, name="geo")
@@ -105,6 +105,39 @@ def geo_gazetteer() -> None:
     typer.secho("Gazetteer rebuilt.", fg=typer.colors.GREEN)
     for label, value in summary.items():
         typer.echo(f"  {label}: {value}")
+
+
+@geo_app.command("assets")
+def geo_assets(
+    check: bool = typer.Option(False, "--check", help="Only check the files already built."),
+) -> None:
+    """Build the map layers in frontend/public/geo/ (run with `uv run --group geo`)."""
+    from worldgraph.geo.assets_check import check_assets
+
+    if not check:
+        try:
+            from worldgraph.geo.assets import build_assets
+        except ImportError as exc:
+            typer.secho(
+                f"Missing geometry libraries ({exc.name}). Run: uv run --group geo wg geo assets",
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(1) from exc
+        summary = build_assets()
+        typer.secho(f"Map layers rebuilt in {summary['out']}", fg=typer.colors.GREEN)
+        for line in summary["details"]:
+            typer.echo(f"  {line}")
+
+    report = check_assets()
+    for name, size in report.sizes.items():
+        typer.echo(f"  {name}: {size / 1000:,.0f} KB")
+    for note in report.notes:
+        typer.echo(f"  note: {note}")
+    for problem in report.problems:
+        typer.secho(f"  problem: {problem}", fg=typer.colors.RED)
+    if not report.ok:
+        raise typer.Exit(1)
+    typer.secho("Map layers match the gazetteer.", fg=typer.colors.GREEN)
 
 
 @geo_app.command("fips")

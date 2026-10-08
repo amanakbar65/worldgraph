@@ -1,0 +1,89 @@
+{
+  "built": "2026-10-08T03:53:23Z",
+  "source": {
+    "name": "Natural Earth",
+    "version": "5.2.0-pre",
+    "license": "public domain",
+    "files": [
+      "ne_10m_admin_0_countries_ind.geojson",
+      "ne_10m_admin_1_states_provinces.geojson",
+      "ne_50m_admin_0_countries.geojson"
+    ]
+  },
+  "files": [
+    {
+      "name": "admin1-africa.json",
+      "bytes": 943844,
+      "features": 905,
+      "object": "admin1"
+    },
+    {
+      "name": "admin1-asia-in.json",
+      "bytes": 1582722,
+      "features": 1069,
+      "object": "admin1"
+    },
+    {
+      "name": "admin1-asia.json",
+      "bytes": 1585159,
+      "features": 1072,
+      "object": "admin1"
+    },
+    {
+      "name": "admin1-europe.json",
+      "bytes": 1569191,
+      "features": 1661,
+      "object": "admin1"
+    },
+    {
+      "name": "admin1-north-america.json",
+      "bytes": 954071,
+      "features": 431,
+      "object": "admin1"
+    },
+    {
+      "name": "admin1-oceania.json",
+      "bytes": 338711,
+      "features": 167,
+      "object": "admin1"
+    },
+    {
+      "name": "admin1-south-america.json",
+      "bytes": 605357,
+      "features": 243,
+      "object": "admin1"
+    },
+    {
+      "name": "countries-in.json",
+      "bytes": 431262,
+      "features": 243,
+      "object": "countries"
+    },
+    {
+      "name": "countries.json",
+      "bytes": 384556,
+      "features": 240,
+      "object": "countries"
+    },
+    {
+      "name": "places.json",
+      "bytes": 46885,
+      "places": 600
+    }
+  ],
+  "worldviews": {
+    "default": {
+      "countries": "countries.json",
+      "admin1": "admin1-<continent>.json"
+    },
+    "india": {
+      "countries": "countries-in.json",
+      "admin1": "admin1-asia-in.json for Asia, admin1-<continent>.json elsewhere",
+      "statesNotShown": [
+        "region:cn-ne1159315645",
+        "region:pk-gb",
+        "region:pk-jk"
+      ]
+    }
+  }
+}
