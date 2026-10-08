@@ -43,8 +43,7 @@ When all 7 are merged: run the frontend checks, then QA (below).
 
 1. **QA:** `orchestration/worldgraph-qa.js` (no args): an e2e test author plus 5 reviewers (correctness, accessibility and design, product and legal rules, artifact and security, polish). Each finding is reproduced before it's reported. Triage the findings by area, then run `orchestration/worldgraph-qa-fix.js` with `args.groups = [{label, owns: [paths], findings: [...]}]`, with areas that don't overlap.
 2. **Known follow-ups (from agent reports):**
-   - First frame inside claude.ai: give react-query `placeholderData` from the snapshot (StaticSource), so the first frame isn't skeletons for up to ~10 s while `use("mcp")` resolves (`src/api/client.ts`).
-   - Rebuild the snapshot right before publishing (`npm run snapshot` against a database with fresh sample data): times are frozen at build.
+   - Done: the test link's first frame now comes from the snapshot (react-query placeholders), and snapshot times move forward by the snapshot's age when it loads.
    - Website (later): raise the Netlify function timeout above 25 s for AI; set `DATABASE_CA_CERT` so TLS is verified.
 3. **Publish the test link:**
    - `npm run build:artifact`; the file list is in `dist-artifact/artifact-files.json`;

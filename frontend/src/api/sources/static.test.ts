@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DataError } from "../source";
-import { __testing, loadSnapshot, snapshotKey, StaticSource, useSnapshot } from "./static";
+import { __testing, loadSnapshot, shiftTimes, snapshotKey, StaticSource, useSnapshot } from "./static";
 
 const FILES = import.meta.glob<unknown>("../../../public/snapshot/*.json", { eager: true, import: "default" });
 const committed = (file: string): unknown => {
@@ -49,7 +49,8 @@ describe("snapshot", () => {
     });
     const source = new StaticSource();
 
-    await expect(source.call("meta", {})).resolves.toEqual(meta);
+    const served = await source.call("meta", {});
+    expect(served.data).toEqual((meta as { data: unknown }).data);
     await expect(source.call("brief", {})).rejects.toMatchObject({ kind: "bad_response" });
     const missing = source.call("globe", { window: "24h" });
     await expect(missing).rejects.toBeInstanceOf(DataError);
@@ -63,5 +64,33 @@ describe("snapshot", () => {
     await expect(source.call("meta", {})).rejects.toMatchObject({ kind: "offline" });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(useSnapshot.getState().data.size).toBe(0);
+  });
+
+  it("moves every time forward by the snapshot's age", async () => {
+    const meta = committed("meta.json") as { generated_at: string };
+    const globe = committed("globe-24h.json");
+    const age = Date.now() - Date.parse(meta.generated_at);
+    serve({
+      "snapshot/manifest.json": { [snapshotKey("meta", {})]: "meta.json", [snapshotKey("globe", {})]: "globe.json" },
+      "snapshot/meta.json": meta,
+      "snapshot/globe.json": globe,
+    });
+    const served = (await new StaticSource().call("meta", {})).generated_at;
+    expect(Math.abs(Date.parse(served) - Date.now())).toBeLessThan(5_000);
+    const shiftedGlobe = await new StaticSource().call("globe", {} as never);
+    expect(JSON.stringify(shiftedGlobe)).not.toEqual(JSON.stringify(globe));
+    expect(age).toBeGreaterThan(0);
+  });
+});
+
+describe("shiftTimes", () => {
+  it("moves ISO date-times only", () => {
+    const hour = 3_600_000;
+    expect(
+      shiftTimes(
+        { at: "2026-10-08T10:00:00+00:00", list: ["2026-10-08T10:00:00.5Z", "2026", "2026-10-08"], n: 3, x: null },
+        hour,
+      ),
+    ).toEqual({ at: "2026-10-08T11:00:00.000Z", list: ["2026-10-08T11:00:00.500Z", "2026", "2026-10-08"], n: 3, x: null });
   });
 });

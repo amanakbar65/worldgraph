@@ -72,7 +72,30 @@ async function readSnapshot(): Promise<Snapshot> {
     if (value === undefined) invalid.add(key);
     else data.set(key, value);
   }
+
+  // Like the database's sample clock: move every time forward by the
+  // snapshot's age, so "last 24 h" still means the last 24 hours.
+  const meta = data.get(snapshotKey("meta", {})) as { generated_at?: string } | undefined;
+  const built = Date.parse(meta?.generated_at ?? "");
+  const age = Number.isFinite(built) ? Date.now() - built : 0;
+  if (age > 0) for (const [key, value] of data) data.set(key, shiftTimes(value, age));
   return { data, invalid };
+}
+
+const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/;
+
+/** A copy of `value` with every ISO date-time string moved `ms` later. */
+export function shiftTimes(value: unknown, ms: number): unknown {
+  if (typeof value === "string") {
+    if (!ISO_TIME.test(value)) return value;
+    const time = Date.parse(value);
+    return Number.isFinite(time) ? new Date(time + ms).toISOString() : value;
+  }
+  if (Array.isArray(value)) return value.map((v) => shiftTimes(v, ms));
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, shiftTimes(v, ms)]));
+  }
+  return value;
 }
 
 async function fetchJson(url: string): Promise<unknown> {
