@@ -37,6 +37,9 @@ Environment
 - Screenshots: Playwright is installed (@playwright/test); launch Chromium with executablePath '/opt/pw-browsers/chromium'. Take screenshots of your screens at 1440×900 and 390×844, in dark and light themes (settings live in localStorage key worldgraph.settings.v1, e.g. {"theme":"light"}), LOOK at them with the Read tool, and fix what looks off: alignment, overflow, truncation, contrast, empty space, anything not sleek. Save them under frontend/test-results/<your label>/ (git-ignored) and list them in your report.
 - Other agents are building the other screens in parallel in their own worktrees. Create or edit ONLY the files your task gives you. Shared files you must NOT edit unless your task says so: frontend/src/api/**, frontend/src/components/**, frontend/src/lib/** (you may ADD new files in lib/ with a name prefixed by your feature, e.g. lib/globe-*.ts), frontend/src/styles/**, frontend/src/state/** (except files your task names), frontend/src/app/**, frontend/src/ai/engine.ts, frontend/src/ai/schemas.ts, frontend/src/platform/**, backend/**, prompts/**, package.json. If a shared file needs a change, describe it precisely in "concerns".
 
+Saving progress
+- Usage limits can stop you mid-task. Commit early and often in your worktree (after each working milestone, with a plain "<Area>: <what>" message); a background saver also pushes your worktree every 10 minutes. If you were given a RESUME note, start from that branch.
+
 Finishing
 1. Checks (all must pass): \`cd frontend && npx tsc -b --noEmit && npx eslint . && npx vitest run && npx vite build\`. Write vitest tests for your pure logic (data shaping, layout, filtering) and at least one render test per screen with mocked data (mock useRpc via vi.mock('@/api/client')).
 2. Stop your dev server. Commit in your worktree: \`git add -A && git commit -m "<Area>: <what changed>"\` (plain message, no trailers; never commit test-results/).
@@ -68,7 +71,8 @@ Tests: pure functions (hex binning, colour/size scales, arc filtering, the list 
     label: 'ai-artifact-web',
     port: 5202,
     prompt: `
-Task: AI ENGINES, ON-USE ANALYSIS, THE TEST-LINK BUILD, DEEP LINKS and NETLIFY FUNCTIONS. Files you own: frontend/src/ai/engines.ts and new files in frontend/src/ai/ (not engine.ts or schemas.ts except to ADD exports if truly needed: say so), frontend/src/app/StatusBar.tsx, frontend/src/app/Providers.tsx, frontend/src/state/nav.ts (deep-link sync only), frontend/scripts/**, the repo-root netlify.toml (with base = "frontend" so functions resolve frontend/node_modules), frontend/netlify/functions/**, frontend/server/** (add files), frontend/package.json "scripts" section only (you may add scripts, not dependencies), frontend/.gitignore. Also read frontend/src/platform/types/sample.d.ts, mcp.d.ts, db.d.ts, user.d.ts and claude.d.ts carefully (the claude.ai Artifact runtime), and backend/src/worldgraph/pipeline/analysis.py (the website's Python version of the analysis job).
+Task: AI ENGINES, ON-USE ANALYSIS, THE TEST-LINK BUILD, DEEP LINKS and NETLIFY FUNCTIONS. Files you own: frontend/src/ai/engines.ts, frontend/src/api/sources/connector.ts (see below) and new files in frontend/src/ai/ (not engine.ts or schemas.ts except to ADD exports if truly needed: say so), frontend/src/app/StatusBar.tsx, frontend/src/app/Providers.tsx, frontend/src/state/nav.ts (deep-link sync only), frontend/scripts/**, the repo-root netlify.toml (with base = "frontend" so functions resolve frontend/node_modules), frontend/netlify/functions/**, frontend/server/** (add files), frontend/package.json "scripts" section only (you may add scripts, not dependencies), frontend/.gitignore. Also read frontend/src/platform/types/sample.d.ts, mcp.d.ts, db.d.ts, user.d.ts and claude.d.ts carefully (the claude.ai Artifact runtime, contract 0.2.74), and backend/src/worldgraph/pipeline/analysis.py (the website's Python version of the analysis job). You also own frontend/src/api/sources/connector.ts for one change: handle the connector's \`approval_required\` code as the runtime docs describe (a "needs approval" state with a button that repeats the same call once via callTool; then render that result), instead of silently falling back to the snapshot; keep the snapshot fallback for connector_missing / not_granted / offline.
+The test link's capability declaration (for ARTIFACT.md and the publish step): mcp {servers: [{server: "Supabase", tools: ["execute_sql"]}]} (the Supabase connector's execute_sql takes {project_id, query}; its result text wraps the JSON rows in <untrusted-data-…> tags, already parsed by src/api/sql.ts), sample {} (no images), db {rules: [{path: "data/users/{self}", write: "interact"}]}, user {}.
 Build:
 1. Engines (frontend/src/ai/engines.ts → resolveEngine()):
    - Artifact (TARGET === "artifact" and capability("sample") resolves): complete(task, input) sends ONE user turn: PROMPTS[task] + "\n\n## Data\n\n" + JSON.stringify(input) and uses sample.json(...) (read sample.d.ts for options: pick the model tier per task: analysis "default", ask "default", projection "quick" if suitable), maps SampleError codes to AiError kinds (not_granted → declined, rate_limited, cancelled, unavailable…). Label "Your Claude account".
@@ -161,12 +165,18 @@ Tests: context compaction for Ask, citation filtering, search grouping, settings
   },
 ]
 
+// Resume support: args.resume maps a label to a branch holding an interrupted attempt.
+const RESUME_FROM = (args && args.resume) || {}
+const resumeNote = (label) => RESUME_FROM[label] ? `
+RESUME FIRST: a previous attempt at this exact task was interrupted. Its unreviewed work is on branch ${RESUME_FROM[label]}. Start with \`git fetch origin ${RESUME_FROM[label]} && git merge --no-edit FETCH_HEAD\`, then review it critically against the task below, finish what's missing, and make every check pass.
+` : ''
+
 phase('Build')
 const done = (args && args.done) || []
 const todo = tasks.filter(t => !done.includes(t.label))
 log('Launching ' + todo.length + ' agents in isolated worktrees (skipping ' + done.length + ')')
 const results = await parallel(todo.map(t => () =>
-  agent(COMMON + `\nYour label: ${t.label}. Your dev-server port: ${t.port}. Your database name: wg_dev_${t.label.replace(/-/g, '_')}.\n` + t.prompt, {
+  agent(COMMON + `\nYour label: ${t.label}. Your dev-server port: ${t.port}. Your database name: wg_dev_${t.label.replace(/-/g, '_')}.\n` + resumeNote(t.label) + t.prompt, {
     label: t.label,
     phase: 'Build',
     isolation: 'worktree',
