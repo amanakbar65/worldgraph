@@ -523,14 +523,16 @@ export function GlobeMap(props: GlobeMapProps) {
       draw(0.5);
       return;
     }
+    // The pulse follows one clock, so a change (a hover, new data) doesn't restart it.
+    const phase = (now: number) => (now % 2400) / 2400;
+    let last = performance.now();
+    draw(phase(last));
     let raf = 0;
-    let last = 0;
-    const start = performance.now();
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
       if (now - last < 50 || document.hidden) return; // ~20 fps is plenty for a slow pulse
       last = now;
-      draw(((now - start) % 2400) / 2400);
+      draw(phase(now));
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);

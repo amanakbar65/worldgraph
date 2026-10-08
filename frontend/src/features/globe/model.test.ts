@@ -8,7 +8,9 @@ import {
   arcPath,
   arcWidth,
   binEvents,
+  cameraForBounds,
   countryFill,
+  countryStats,
   countryName,
   declutterLabels,
   distanceMeters,
@@ -22,9 +24,13 @@ import {
   labelPoint,
   labelShowsAt,
   leaningImpact,
+  lensSummary,
   mainBounds,
   nextRow,
+  replayFrame,
+  replaySpan,
   ringStep,
+  sampleLabelling,
   screenRadius,
   sortEventsForList,
   unwrapRing,
@@ -34,6 +40,7 @@ import {
   type GlobeArc,
   type GlobeEvent,
   type LabelCandidate,
+  type LngLat,
 } from "./model";
 
 const c = (r: number, g: number, b: number): Rgba => [r, g, b, 255];
@@ -405,5 +412,110 @@ describe("labels", () => {
       3,
     ).map((l) => l.id);
     expect(out).toEqual(["a", "c"]);
+  });
+});
+
+describe("country activity", () => {
+  it("counts events per country with their balance, busiest first", () => {
+    const stats = countryStats([
+      event("a", { country_id: "region:in", impact: "risk" }),
+      event("b", { country_id: "region:in", impact: "opportunity" }),
+      event("c", { country_id: "region:in", impact: "opportunity" }),
+      event("d", { country_id: "region:de", impact: "risk" }),
+      event("e", { country_id: null }),
+    ]);
+    expect(stats).toEqual([
+      { id: "region:in", count: 3, risk: 1, opportunity: 2, neutral: 0, score: 0.333 },
+      { id: "region:de", count: 1, risk: 1, opportunity: 0, neutral: 0, score: -1 },
+    ]);
+  });
+
+  it("tints busy countries towards their leaning impact; quiet ones stay plain land", () => {
+    const busyRisk = countryFill(
+      { id: "region:de", count: 10, risk: 9, opportunity: 1, neutral: 0, score: -0.8 },
+      10,
+      palette,
+    );
+    const balanced = countryFill(
+      { id: "region:fr", count: 10, risk: 5, opportunity: 5, neutral: 0, score: 0 },
+      10,
+      palette,
+    );
+    expect(countryFill(undefined, 10, palette)).toEqual(palette.land);
+    // A balanced country is plain "active" land; a risky one leans to amber (more red).
+    expect(balanced).toEqual(palette.landActive);
+    expect(busyRisk[0]).toBeGreaterThan(balanced[0]);
+  });
+});
+
+describe("replay", () => {
+  const events = [
+    event("old", { first_seen: "2026-10-01T00:00:00Z" }),
+    event("mid", { first_seen: "2026-10-05T00:00:00Z" }),
+    event("new", { first_seen: "2026-10-08T09:00:00Z" }),
+  ];
+  const now = Date.parse("2026-10-08T12:00:00Z");
+  const week = 7 * 86_400_000;
+
+  it("runs from just before the first event to now, within the window", () => {
+    const span = replaySpan(events, now, week);
+    expect(span.to).toBe(now);
+    expect(span.from).toBe(now - week); // the oldest event is near the window's start
+    const short = replaySpan([events[2]], now, week);
+    expect(short.from).toBeLessThan(Date.parse("2026-10-08T09:00:00Z"));
+    expect(short.from).toBeGreaterThan(now - week);
+    expect(replaySpan([], now, 86_400_000).from).toBeLessThan(now);
+  });
+
+  it("shows the events seen so far and pulses those that just appeared", () => {
+    const at = Date.parse("2026-10-05T06:00:00Z");
+    const frame = replayFrame(events, at, 12 * 3_600_000);
+    expect(frame.shown.map((e) => e.id)).toEqual(["story:old", "story:mid"]);
+    expect(frame.appearing.map((e) => e.id)).toEqual(["story:mid"]);
+    expect(replayFrame(events, now, 1).shown).toHaveLength(3);
+  });
+});
+
+describe("camera", () => {
+  const libya: [LngLat, LngLat] = [
+    [9.3, 19.5],
+    [25.2, 33.2],
+  ];
+
+  it("frames bounds in the free space, further out when the space is small", () => {
+    const wide = cameraForBounds(libya, 1200, 800);
+    const narrow = cameraForBounds(libya, 480, 600);
+    expect(wide.center[0]).toBeCloseTo(17.25);
+    expect(wide.center[1]).toBeCloseTo(26.35);
+    expect(narrow.zoom).toBeLessThan(wide.zoom);
+    // 15.9° of longitude fit in 480 px at that zoom.
+    expect((15.9 * 512 * 2 ** narrow.zoom) / 360).toBeLessThanOrEqual(480.5);
+  });
+
+  it("brings a centre past the antimeridian back into range", () => {
+    const fiji = cameraForBounds(
+      [
+        [177, -19],
+        [184, -16],
+      ],
+      600,
+      600,
+    );
+    expect(fiji.center[0]).toBeCloseTo(-179.5);
+  });
+});
+
+describe("sample labels and the lens", () => {
+  it("marks sample data once for a list that is all sample", () => {
+    expect(sampleLabelling([])).toBe("none");
+    expect(sampleLabelling([{ is_sample: true }, { is_sample: true }])).toBe("all");
+    expect(sampleLabelling([{ is_sample: true }, { is_sample: false }])).toBe("some");
+    expect(sampleLabelling([{ is_sample: false }])).toBe("none");
+  });
+
+  it("says what the sector lens shows", () => {
+    expect(lensSummary([])).toBe("All sectors");
+    expect(lensSummary(["agri-food"])).toBe("Agri and food");
+    expect(lensSummary(["energy", "tech", "health"])).toBe("3 sectors");
   });
 });

@@ -27,6 +27,8 @@ export interface EventListProps {
   onFocusItem: (id: string | null) => void;
   /** What to show when there is nothing to list. */
   empty?: ReactNode;
+  /** The id of a visible heading that names the list; without one the list brings its own (for screen readers). */
+  labelledBy?: string;
 }
 
 /**
@@ -34,8 +36,9 @@ export interface EventListProps {
  * the same events, most important first. Tab or the arrow keys move between
  * rows (Home and End jump to the ends); Enter opens the story.
  */
-export function EventListBody({ events, window, sample, note, onOpen, onFocusItem, empty }: EventListProps) {
-  const headingId = useId();
+export function EventListBody({ events, window, sample, note, onOpen, onFocusItem, empty, labelledBy }: EventListProps) {
+  const ownHeadingId = useId();
+  const headingId = labelledBy ?? ownHeadingId;
   const sorted = useMemo(() => sortEventsForList(events), [events]);
   const [shown, setShown] = useState(LIST_PAGE);
   const list = useRef<HTMLUListElement>(null);
@@ -53,9 +56,11 @@ export function EventListBody({ events, window, sample, note, onOpen, onFocusIte
   return (
     <>
       <div className="flex min-h-8 shrink-0 items-center gap-2 px-4 pt-1">
-        <h2 id={headingId} className="sr-only">
-          All events
-        </h2>
+        {!labelledBy && (
+          <h2 id={headingId} className="sr-only">
+            All events
+          </h2>
+        )}
         <p className="min-w-0 flex-1 truncate text-label text-fg-muted tabular-nums">
           {formatCompact(sorted.length)} {sorted.length === 1 ? "event" : "events"} · {WINDOW_LABELS[window].long} · by
           importance
@@ -126,7 +131,7 @@ export function EventList({ onClose, className, ...props }: EventListProps & { o
         }
         className="shrink-0 pt-1 pr-1 pl-4"
       />
-      <EventListBody {...props} />
+      <EventListBody {...props} labelledBy={titleId} />
     </section>
   );
 }
