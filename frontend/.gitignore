@@ -6,3 +6,4 @@ dist-artifact
 test-results
 playwright-report
 .netlify
+.vite-cache

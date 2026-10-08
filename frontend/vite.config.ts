@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import { existsSync, realpathSync } from "node:fs";
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
 
@@ -15,6 +16,9 @@ import { rpcDevPlugin } from "./dev/rpc-dev-plugin";
  */
 export default defineConfig(({ mode }) => {
   const artifact = mode === "artifact";
+  // Agent worktrees symlink node_modules to the main checkout: let the dev
+  // server read files there (fonts) and keep each checkout's dep cache apart.
+  const modules = existsSync("node_modules") ? [realpathSync("node_modules")] : [];
   return {
     base: "./",
     plugins: [react(), tailwindcss(), rpcDevPlugin()],
@@ -31,8 +35,9 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 4000,
       sourcemap: false,
     },
+    cacheDir: ".vite-cache",
     // `..` lets the app import the shared prompts in ../prompts.
-    server: { port: 5173, host: "127.0.0.1", fs: { allow: [".."] } },
+    server: { port: 5173, host: "127.0.0.1", fs: { allow: ["..", ...modules] } },
     test: {
       environment: "jsdom",
       include: ["src/**/*.test.{ts,tsx}"],

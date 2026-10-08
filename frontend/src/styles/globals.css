@@ -56,7 +56,7 @@
     height: 100%;
   }
   * {
-    @apply border-line outline-ring/60;
+    @apply border-line outline-ring;
   }
   body {
     @apply bg-bg font-sans text-body text-fg antialiased;
