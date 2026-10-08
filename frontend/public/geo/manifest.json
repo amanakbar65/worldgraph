@@ -1,5 +1,5 @@
 {
-  "built": "2026-10-07T22:26:05Z",
+  "built": "2026-10-08T03:53:23Z",
   "source": {
     "name": "Natural Earth",
     "version": "5.2.0-pre",
@@ -13,55 +13,55 @@
   "files": [
     {
       "name": "admin1-africa.json",
-      "bytes": 943454,
+      "bytes": 943844,
       "features": 905,
       "object": "admin1"
     },
     {
       "name": "admin1-asia-in.json",
-      "bytes": 1581120,
+      "bytes": 1582722,
       "features": 1069,
       "object": "admin1"
     },
     {
       "name": "admin1-asia.json",
-      "bytes": 1583584,
+      "bytes": 1585159,
       "features": 1072,
       "object": "admin1"
     },
     {
       "name": "admin1-europe.json",
-      "bytes": 1567893,
+      "bytes": 1569191,
       "features": 1661,
       "object": "admin1"
     },
     {
       "name": "admin1-north-america.json",
-      "bytes": 952607,
+      "bytes": 954071,
       "features": 431,
       "object": "admin1"
     },
     {
       "name": "admin1-oceania.json",
-      "bytes": 337902,
+      "bytes": 338711,
       "features": 167,
       "object": "admin1"
     },
     {
       "name": "admin1-south-america.json",
-      "bytes": 604935,
+      "bytes": 605357,
       "features": 243,
       "object": "admin1"
     },
     {
       "name": "countries-in.json",
-      "bytes": 429143,
+      "bytes": 431262,
       "features": 243,
       "object": "countries"
     },
     {
       "name": "countries.json",
-      "bytes": 383103,
+      "bytes": 384556,
       "features": 240,
       "object": "countries"
     },

@@ -27,6 +27,16 @@ ADMIN1_BUDGET = 1_600_000
 GILGIT = (74.31, 35.92)
 AKSAI_CHIN = (79.5, 35.2)
 MUZAFFARABAD = (73.47, 34.37)
+SHAKSGAM = (76.5, 36.0)
+# Land India claims, with who administers it (the international default view).
+CLAIMED = {
+    "Gilgit": (GILGIT, "region:pk"),
+    "Muzaffarabad": (MUZAFFARABAD, "region:pk"),
+    "Aksai Chin": (AKSAI_CHIN, "region:cn"),
+    "the Shaksgam valley": (SHAKSGAM, "region:cn"),
+}
+JAMMU_KASHMIR = "region:in-jk"
+LADAKH = "region:in-la"
 
 
 # --------------------------------------------------------------------------
@@ -87,6 +97,39 @@ def _find(feats: list[dict[str, Any]], region: str) -> dict[str, Any] | None:
 
 def _contains(feature: dict[str, Any] | None, point: tuple[float, float]) -> bool:
     return feature is not None and geometry_contains(feature["geometry"], *point)
+
+
+def _label(feature: dict[str, Any]) -> str:
+    p = feature["properties"]
+    return p.get("id") or f"land without an id ({p.get('name')})"
+
+
+def _twice_area(ring: list[list[float]]) -> float:
+    """Signed area x2 (> 0 counterclockwise), measured from the first point to keep precision."""
+    ox, oy = ring[0]
+    pts = [(x - ox, y - oy) for x, y in ring]
+    return sum(x0 * y1 - x1 * y0 for (x0, y0), (x1, y1) in zip(pts, pts[1:], strict=False))
+
+
+def ring_problems(feats: list[dict[str, Any]]) -> list[str]:
+    """Rings that renderers may choke on: fewer than 4 points, no area, or wound the wrong way.
+
+    GeoJSON (RFC 7946) winding: outer rings counterclockwise, holes clockwise.
+    """
+    problems: list[str] = []
+    for f in feats:
+        g = f["geometry"]
+        polys = [g["coordinates"]] if g["type"] == "Polygon" else g["coordinates"]
+        if not polys:
+            problems.append(f"{_label(f)} has no polygon")
+        for rings in polys:
+            for i, ring in enumerate(rings):
+                area = _twice_area(ring) if len(ring) >= 4 else 0.0
+                if area == 0.0 or ring[0] != ring[-1]:
+                    problems.append(f"{_label(f)} has a collapsed or open ring")
+                elif (area > 0) != (i == 0):
+                    problems.append(f"{_label(f)} has a {'hole' if i else 'ring'} wound the wrong way")
+    return sorted(set(problems))
 
 
 # --------------------------------------------------------------------------
@@ -156,24 +199,27 @@ def check_assets(
         elif missing:
             notes.append(f"{name}: no separate shape in this worldview for {missing}")
 
-    in_view = _find(india, "region:in")
-    if not _contains(in_view, GILGIT):
-        problems.append("countries-in.json: India does not contain Gilgit")
-    if not _contains(in_view, AKSAI_CHIN):
-        problems.append("countries-in.json: India does not contain Aksai Chin")
-    if _contains(_find(default, "region:in"), GILGIT):
-        problems.append("countries.json: India contains Gilgit (should be the international default)")
-    if not _contains(_find(default, "region:pk"), GILGIT):
-        problems.append("countries.json: Pakistan does not contain Gilgit")
+    # India's view: India has all the land it claims, and no other shape covers it.
+    # The default view: that land is where it is administered.
+    for label, (point, administrator) in CLAIMED.items():
+        in_view = [_label(f) for f in india if _contains(f, point)] or "no shape"
+        if in_view != ["region:in"]:
+            problems.append(f"countries-in.json: {label} is in {in_view}, expected India only")
+        default_view = [_label(f) for f in default if _contains(f, point)] or "no shape"
+        if default_view != [administrator]:
+            problems.append(f"countries.json: {label} is in {default_view}, expected {administrator}")
+    for name, feats in (("countries.json", default), ("countries-in.json", india)):
+        for problem in ring_problems(feats):
+            problems.append(f"{name}: {problem}")
 
     # States, default worldview: exactly the gazetteer's, each in its continent's file.
+    admin1 = {key: load(geo_dir / f"admin1-{key}.json") for key in CONTINENT_FILES}
     seen: list[str] = []
-    for key in CONTINENT_FILES:
-        feats = load(geo_dir / f"admin1-{key}.json")
+    for key, feats in admin1.items():
         for f in feats:
             p = f["properties"]
-            seen.append(p["id"])
-            row = states.get(p["id"])
+            seen.append(str(p.get("id")))
+            row = states.get(p.get("id"))
             if row is None:
                 continue
             if p.get("country") != row["parent"]:
@@ -192,8 +238,17 @@ def check_assets(
         problems.append(f"gazetteer states without a shape {without_shape}")
 
     # States, India's worldview for Asia.
-    asia_default = load(geo_dir / "admin1-asia.json")
+    asia_default = admin1["asia"]
     asia_in = load(geo_dir / "admin1-asia-in.json")
+    layers = {
+        **{f"admin1-{key}.json": feats for key, feats in admin1.items()},
+        "admin1-asia-in.json": asia_in,
+    }
+    for name, feats in layers.items():
+        found = ring_problems(feats)
+        problems.extend(f"{name}: {problem}" for problem in found[:10])
+        if len(found) > 10:
+            problems.append(f"{name}: {len(found) - 10} more shapes with ring problems")
     manifest = json.loads((geo_dir / "manifest.json").read_text(encoding="utf-8"))
     hidden = set(manifest["worldviews"]["india"]["statesNotShown"])
     expected = set(_ids(asia_default)) - hidden
@@ -203,18 +258,12 @@ def check_assets(
     if not {"region:pk-gb", "region:pk-jk"} <= hidden:
         problems.append("admin1-asia-in.json: Gilgit-Baltistan and Azad Kashmir should not be shown")
     notes.append(f"admin1-asia-in.json leaves out {sorted(hidden)}")
-    for region, point, label in (
-        ("region:in-la", GILGIT, "Gilgit"),
-        ("region:in-la", AKSAI_CHIN, "Aksai Chin"),
-        ("region:in-jk", MUZAFFARABAD, "Muzaffarabad"),
-    ):
-        if not _contains(_find(asia_in, region), point):
-            problems.append(f"admin1-asia-in.json: {region} does not contain {label}")
-    for f in asia_in:
-        if f["properties"].get("country") in ("region:pk", "region:cn") and any(
-            _contains(f, pt) for pt in (GILGIT, AKSAI_CHIN, MUZAFFARABAD)
-        ):
-            problems.append(f"admin1-asia-in.json: {f['properties']['id']} covers land India claims")
+    # Claimed land: Azad Kashmir joins Jammu and Kashmir, the rest joins Ladakh.
+    for label, (point, _administrator) in CLAIMED.items():
+        state = JAMMU_KASHMIR if point == MUZAFFARABAD else LADAKH
+        holders = [_label(f) for f in asia_in if _contains(f, point)] or "no shape"
+        if holders != [state]:
+            problems.append(f"admin1-asia-in.json: {label} is in {holders}, expected {state} only")
     if not _contains(_find(asia_default, "region:pk-gb"), GILGIT):
         problems.append("admin1-asia.json: Gilgit-Baltistan does not contain Gilgit")
 

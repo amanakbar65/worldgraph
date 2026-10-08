@@ -1028,6 +1028,7 @@ dev = [
     { name = "ruff" },
 ]
 geo = [
+    { name = "numpy" },
     { name = "shapely" },
     { name = "simplification" },
     { name = "topojson" },
@@ -1058,6 +1059,7 @@ dev = [
     { name = "ruff", specifier = ">=0.16" },
 ]
 geo = [
+    { name = "numpy", specifier = ">=2.5.3" },
     { name = "shapely", specifier = ">=2.2.0" },
     { name = "simplification", specifier = ">=1.0.0" },
     { name = "topojson", specifier = ">=2.1" },

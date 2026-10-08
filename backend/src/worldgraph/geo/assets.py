@@ -32,7 +32,11 @@ Douglas-Peucker tolerance of each arc follows the size of the smallest shape
 that uses it (about two-thirds of a pixel when that shape fills the screen),
 so Liechtenstein keeps its detail while Siberia loses points nobody can see.
 If a file comes out over its size budget, the tolerances are raised step by
-step until it fits. Rings never collapse below a triangle.
+step until it fits. Simplification never takes a ring below a triangle; a
+ring that the output grid still collapses (the Vatican on the countries'
+grid of about 800 m) is dropped, and a shape left with nothing is kept as a
+one-cell triangle, so every gazetteer country still has a shape. Rings are
+wound the GeoJSON way: outer rings counterclockwise, holes clockwise.
 
 India's worldview for states and provinces (admin1-asia-in.json).
 Natural Earth publishes India's worldview for countries only, so the state
@@ -494,13 +498,83 @@ def _serialize(topology: _Topology, spec: LayerSpec, multiplier: float) -> str:
         )
         for i, arc in enumerate(t.arcs)
     ]
+    geometries, arcs = _repair(t.geometries, kept)
     result = {
         "type": "Topology",
         "transform": {"scale": [v * ratio for v in t.scale], "translate": t.translate},
-        "objects": {t.object_name: {"type": "GeometryCollection", "geometries": t.geometries}},
-        "arcs": [_delta(a) for a in kept],
+        "objects": {t.object_name: {"type": "GeometryCollection", "geometries": geometries}},
+        "arcs": [_delta(a) for a in arcs],
     }
     return json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+
+
+def _ring_points(refs: list[int], arcs: list[np.ndarray]) -> np.ndarray:
+    parts = [arcs[ref] if ref >= 0 else arcs[~ref][::-1] for ref in refs]
+    return np.concatenate([parts[0], *(p[1:] for p in parts[1:])])
+
+
+def _twice_area(points: np.ndarray) -> int:
+    """Signed area x2 on the integer grid: > 0 counterclockwise, 0 for a collapsed ring."""
+    x, y = points[:, 0], points[:, 1]
+    return int(np.sum(x[:-1] * y[1:] - x[1:] * y[:-1]))
+
+
+def _oriented(refs: list[int], arcs: list[np.ndarray], ccw: bool) -> list[int] | None:
+    """The ring turned to the wanted direction, or None if the grid collapsed it."""
+    points = _ring_points(refs, arcs)
+    area = _twice_area(points) if len(points) >= 4 else 0
+    if area == 0:
+        return None
+    return list(refs) if (area > 0) == ccw else [~ref for ref in reversed(refs)]
+
+
+def _repair(
+    geometries: list[dict[str, Any]], arcs: list[np.ndarray]
+) -> tuple[list[dict[str, Any]], list[np.ndarray]]:
+    """Make every ring valid and wound the GeoJSON way (RFC 7946).
+
+    Moving to the output grid can collapse a tiny ring to a point (the
+    Vatican, a reef). Such holes and parts are dropped; a shape left with
+    nothing becomes a one-cell triangle where it was, so it still exists.
+    Outer rings run counterclockwise and holes clockwise, by reversing the
+    order of arc references (shared arcs themselves never change).
+    """
+    arcs = list(arcs)
+    out: list[dict[str, Any]] = []
+    for g in geometries:
+        polys = [g["arcs"]] if g["type"] == "Polygon" else g["arcs"]
+        kept: list[list[list[int]]] = []
+        for rings in polys:
+            outer = _oriented(rings[0], arcs, ccw=True)
+            if outer is None:
+                continue
+            holes = [_oriented(r, arcs, ccw=False) for r in rings[1:]]
+            kept.append([outer, *(h for h in holes if h is not None)])
+        if not kept:
+            points = np.concatenate([_ring_points(rings[0], arcs) for rings in polys])
+            x, y = (int(v) for v in np.rint(points.mean(axis=0)))
+            arcs.append(np.array([[x, y], [x + 1, y], [x, y + 1], [x, y]], dtype=np.int64))
+            kept = [[[len(arcs) - 1]]]
+        shape_type, refs = ("Polygon", kept[0]) if len(kept) == 1 else ("MultiPolygon", kept)
+        out.append({"type": shape_type, "arcs": refs, "properties": g["properties"]})
+    return _drop_unused_arcs(out, arcs)
+
+
+def _drop_unused_arcs(
+    geometries: list[dict[str, Any]], arcs: list[np.ndarray]
+) -> tuple[list[dict[str, Any]], list[np.ndarray]]:
+    used = sorted({ref if ref >= 0 else ~ref for g in geometries for ring in _rings(g) for ref in ring})
+    index = {old: new for new, old in enumerate(used)}
+
+    def remap(ring: list[int]) -> list[int]:
+        return [index[ref] if ref >= 0 else ~index[~ref] for ref in ring]
+
+    for g in geometries:
+        if g["type"] == "Polygon":
+            g["arcs"] = [remap(r) for r in g["arcs"]]
+        else:
+            g["arcs"] = [[remap(r) for r in p] for p in g["arcs"]]
+    return geometries, [arcs[i] for i in used]
 
 
 def _coarsen(arc: np.ndarray, ratio: int) -> np.ndarray:
@@ -631,10 +705,8 @@ def build_assets(
 
     sizes = {name: _write(out_dir / name, enc.text) for name, enc in files.items()}
     sizes["places.json"] = _write(out_dir / "places.json", places_json(gazetteer))
-    _write(
-        continents_path,
-        json.dumps(dict(sorted(continent_of.items())), indent=0, separators=(",", ":")) + "\n",
-    )
+    # Formatted the way Prettier formats JSON, so `npm run format` leaves it alone.
+    _write(continents_path, json.dumps(dict(sorted(continent_of.items())), indent=2) + "\n")
 
     version = paths["version"].read_text(encoding="utf-8").strip()
     manifest = {

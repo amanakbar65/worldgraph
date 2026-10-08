@@ -25,6 +25,7 @@ dev = [
     "jsonschema>=4.25",
 ]
 geo = [
+    "numpy>=2.5.3",
     "shapely>=2.2.0",
     "simplification>=1.0.0",
     "topojson>=2.1",
