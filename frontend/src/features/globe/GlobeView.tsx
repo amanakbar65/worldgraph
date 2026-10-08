@@ -31,7 +31,14 @@ import {
   WindowControl,
   ZoomControls,
 } from "./GlobeControls";
-import { GlobeMap, type CameraMove, type CameraRequest, type Padding, type PickInfo, type ViewInfo } from "./GlobeMap";
+import {
+  GlobeMap,
+  type CameraMove,
+  type CameraRequest,
+  type Padding,
+  type PickInfo,
+  type ViewInfo,
+} from "./GlobeMap";
 import { useElementSize, useGlobePalette, useMinuteClock, usePageFont, useReplay } from "./hooks";
 import { makeRingAtlas, type LayerInput } from "./layers";
 import {
@@ -169,7 +176,8 @@ export default function GlobeView() {
 
   // --- States/provinces and cities, loaded when they matter -----------------
   const panelRegion = panel?.kind === "region" ? panel.id : null;
-  const statesFor = (panelRegion && countryIdOf(panelRegion)) || (view.zoom >= 3.4 ? view.centerCountry : null);
+  const statesFor =
+    (panelRegion && countryIdOf(panelRegion)) || (view.zoom >= 3.4 ? view.centerCountry : null);
   const states = useQuery({
     queryKey: ["geo", "admin1", statesFor, worldview],
     queryFn: () => loadAdmin1(statesFor!, worldview),
@@ -210,16 +218,25 @@ export default function GlobeView() {
 
   const resolution = hexResolutionForZoom(view.zoom);
   const allHexes = useMemo(() => binEvents(events, resolution), [events, resolution]);
-  const hexes = useMemo(() => (frame ? binEvents(frame.shown, resolution) : allHexes), [frame, resolution, allHexes]);
+  const hexes = useMemo(
+    () => (frame ? binEvents(frame.shown, resolution) : allHexes),
+    [frame, resolution, allHexes],
+  );
   // Scaled to the whole window, so a replay's heat builds up instead of starting at full strength.
   const maxHexWeight = useMemo(() => allHexes.reduce((m, h) => Math.max(m, h.weight), 0), [allHexes]);
   const paths = useMemo(() => new Map((data?.arcs ?? []).map((a) => [a.id, arcPath(a.src, a.dst)])), [data]);
-  const countryList = useMemo(() => (frame ? countryStats(frame.shown) : (data?.countries ?? [])), [frame, data]);
+  const countryList = useMemo(
+    () => (frame ? countryStats(frame.shown) : (data?.countries ?? [])),
+    [frame, data],
+  );
   const countriesById = useMemo(() => new Map((data?.countries ?? []).map((c) => [c.id, c])), [data]);
 
   const panelItem =
-    panel && (panel.kind === "story" || panel.kind === "forecast" || panel.kind === "cascade") ? panel.id : null;
-  const selectedItem = selected && (selected.kind === "event" || selected.kind === "forecast") ? selected.id : null;
+    panel && (panel.kind === "story" || panel.kind === "forecast" || panel.kind === "cascade")
+      ? panel.id
+      : null;
+  const selectedItem =
+    selected && (selected.kind === "event" || selected.kind === "forecast") ? selected.id : null;
   const focusId = hoverItem ?? itemFocus ?? selectedItem ?? panelItem;
   const focusStory = focusId && eventsById.has(focusId) ? focusId : null;
 
@@ -228,7 +245,9 @@ export default function GlobeView() {
     if (frame) {
       // In a replay, a link shows once its effect (and its cause, when that is in the window) has appeared.
       const shown = new Set(frame.shown.map((e) => e.id));
-      list = list.filter((a) => shown.has(a.dst_story) && (!eventsById.has(a.src_story) || shown.has(a.src_story)));
+      list = list.filter(
+        (a) => shown.has(a.dst_story) && (!eventsById.has(a.src_story) || shown.has(a.src_story)),
+      );
     }
     return filterArcs(list, { focusId: focusStory, max: 28, minConfidence: 0.5 }).map((a) => ({
       ...a,
@@ -273,7 +292,10 @@ export default function GlobeView() {
       })),
     [places.data],
   );
-  const labels = useMemo(() => (font ? [...countryLabels, ...cityLabels] : []), [font, countryLabels, cityLabels]);
+  const labels = useMemo(
+    () => (font ? [...countryLabels, ...cityLabels] : []),
+    [font, countryLabels, cityLabels],
+  );
 
   const layerInput = useMemo<Omit<LayerInput, "pulse" | "labels">>(
     () => ({
@@ -330,7 +352,10 @@ export default function GlobeView() {
   const hStep = Math.round(freeH / 40);
   const mapHeight = size.height;
   const home = useMemo(
-    () => ({ center: HOME_CENTER, zoom: mapHeight > 0 ? homeZoom(wStep * 40, hStep * 40, mapHeight, HOME_CENTER[1]) : 1.6 }),
+    () => ({
+      center: HOME_CENTER,
+      zoom: mapHeight > 0 ? homeZoom(wStep * 40, hStep * 40, mapHeight, HOME_CENTER[1]) : 1.6,
+    }),
     [wStep, hStep, mapHeight],
   );
 
@@ -358,7 +383,11 @@ export default function GlobeView() {
           openPanel({ kind: "cascade", id: info.arc.dst_story });
           break;
         case "hex":
-          fly({ kind: "point", center: [info.hex.lon, info.hex.lat], zoom: Math.min(6, Math.max(view.zoom + 2, 3)) });
+          fly({
+            kind: "point",
+            center: [info.hex.lon, info.hex.lat],
+            zoom: Math.min(6, Math.max(view.zoom + 2, 3)),
+          });
           break;
         case "country":
           openPanel({ kind: "region", id: info.id });
@@ -403,7 +432,8 @@ export default function GlobeView() {
   const openForecast = useCallback(
     (f: ForecastSummary) => {
       openPanel({ kind: "forecast", id: f.id });
-      if (f.lon !== null && f.lat !== null) fly({ kind: "point", center: [f.lon, f.lat], zoom: Math.max(view.zoom, 2.6) });
+      if (f.lon !== null && f.lat !== null)
+        fly({ kind: "point", center: [f.lon, f.lat], zoom: Math.max(view.zoom, 2.6) });
     },
     [fly, openPanel, view.zoom],
   );
@@ -544,7 +574,7 @@ export default function GlobeView() {
   return (
     <div
       ref={rootRef}
-      className="relative h-full w-full overflow-hidden"
+      className="relative isolate h-full w-full overflow-hidden"
       style={SPACE}
       aria-busy={globe.isFetching || undefined}
     >
@@ -554,36 +584,8 @@ export default function GlobeView() {
         style={{ backgroundImage: STARS }}
       />
 
-      {!mapError && (
-        <GlobeMap
-          layerInput={layerInput}
-          labels={labels}
-          animate={!calm && (fresh.length > 0 || forecasts.some((f) => !f.thin && Math.abs(f.change_24h ?? 0) >= 0.05))}
-          countries={countries.data ?? null}
-          states={statesFor ? (states.data ?? null) : null}
-          countryFills={countryFills}
-          selectedRegionId={
-            panelRegion ?? (selected?.kind === "country" || selected?.kind === "state" ? selected.id : null)
-          }
-          padding={padding}
-          home={home}
-          camera={camera}
-          calm={calm}
-          autoRotate={!interacted && panel === null && !listOpen && !hovering && selected === null}
-          onHover={onHover}
-          onPick={onPick}
-          onView={setView}
-          onInteract={onInteract}
-          onError={onMapError}
-          ariaLabel="Globe of world events. Drag to turn it, scroll or pinch to zoom. The list shows the same events as text."
-        />
-      )}
-
-      {isDesktop && !mapError && (
-        <HoverCard context={pickContext} bounds={{ width: size.width - rightSpace, height: size.height }} />
-      )}
-
-      <div className="pointer-events-none absolute inset-0">
+      {/* Controls come first, so Tab reaches them before the map itself. */}
+      <div className="pointer-events-none absolute inset-0 z-10">
         {isDesktop ? (
           <>
             <div
@@ -640,14 +642,21 @@ export default function GlobeView() {
                   <MapKey />
                 </div>
                 <LayersButton toggles={toggles} onToggle={setToggle} />
-                <ZoomControls onZoom={(delta) => fly({ kind: "zoom", delta })} onReset={() => fly({ kind: "reset" })} />
+                <ZoomControls
+                  onZoom={(delta) => fly({ kind: "zoom", delta })}
+                  onReset={() => fly({ kind: "reset" })}
+                />
               </div>
             )}
           </>
         ) : (
           <>
             <div className="pointer-events-auto absolute top-3 right-3 left-3 flex items-center gap-2">
-              <WindowControl value={timeWindow} onChange={setWindow} className="min-w-0 flex-1 [&>*]:flex-1" />
+              <WindowControl
+                value={timeWindow}
+                onChange={setWindow}
+                className="min-w-0 flex-1 [&>*]:flex-1"
+              />
               {!mapError && replayButton}
               <SectorLensButton selected={sectors} onToggle={toggleSector} onClear={clearSectors} />
               {!mapError && <LayersButton toggles={toggles} onToggle={setToggle} compact />}
@@ -661,7 +670,10 @@ export default function GlobeView() {
             )}
 
             {listOpen || mapError ? (
-              <div className="pointer-events-auto absolute right-3 bottom-12 left-3 flex flex-col" style={{ top: PHONE_TOP }}>
+              <div
+                className="pointer-events-auto absolute right-3 bottom-12 left-3 flex flex-col"
+                style={{ top: PHONE_TOP }}
+              >
                 <EventList {...listProps} onClose={mapError ? undefined : () => setListOpen(false)} />
               </div>
             ) : (
@@ -685,6 +697,37 @@ export default function GlobeView() {
           </>
         )}
       </div>
+      {!mapError && (
+        <GlobeMap
+          layerInput={layerInput}
+          labels={labels}
+          animate={
+            !calm &&
+            (fresh.length > 0 || forecasts.some((f) => !f.thin && Math.abs(f.change_24h ?? 0) >= 0.05))
+          }
+          countries={countries.data ?? null}
+          states={statesFor ? (states.data ?? null) : null}
+          countryFills={countryFills}
+          selectedRegionId={
+            panelRegion ?? (selected?.kind === "country" || selected?.kind === "state" ? selected.id : null)
+          }
+          padding={padding}
+          home={home}
+          camera={camera}
+          calm={calm}
+          autoRotate={!interacted && panel === null && !listOpen && !hovering && selected === null}
+          onHover={onHover}
+          onPick={onPick}
+          onView={setView}
+          onInteract={onInteract}
+          onError={onMapError}
+          ariaLabel="Globe of world events. Drag to turn it, scroll or pinch to zoom. The list shows the same events as text."
+        />
+      )}
+
+      {isDesktop && !mapError && (
+        <HoverCard context={pickContext} bounds={{ width: size.width - rightSpace, height: size.height }} />
+      )}
     </div>
   );
 }

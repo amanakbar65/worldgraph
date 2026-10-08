@@ -1,6 +1,14 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { mix, oklchToRgb, paletteKey, parseCssColor, readGlobePalette, toCss, withAlpha } from "./globe-color";
+import {
+  mix,
+  oklchToRgb,
+  paletteKey,
+  parseCssColor,
+  readGlobePalette,
+  toCss,
+  withAlpha,
+} from "./globe-color";
 
 describe("parseCssColor", () => {
   it("reads hex colours, short and long, with alpha", () => {

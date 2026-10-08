@@ -47,7 +47,8 @@ vi.mock("@/api/client", () => ({
       refetch: vi.fn(() => Promise.resolve()),
     };
   },
-  useConnection: <T,>(select: (s: { state: { status: string } }) => T) => select({ state: { status: "live" } }),
+  useConnection: <T,>(select: (s: { state: { status: string } }) => T) =>
+    select({ state: { status: "live" } }),
 }));
 
 vi.mock("maplibre-gl", () => {
@@ -257,9 +258,13 @@ describe("GlobeView on a desktop", () => {
   it("shows the Top 5 and the crowd forecasts that moved, marked once as sample data", () => {
     renderGlobe();
     expect(screen.getByRole("heading", { name: "Top 5 now" })).toBeTruthy();
-    expect(screen.getByText("Attacks near Bab-el-Mandeb push container lines onto the Cape route")).toBeTruthy();
+    expect(
+      screen.getByText("Attacks near Bab-el-Mandeb push container lines onto the Cape route"),
+    ).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Crowd forecasts that moved" })).toBeTruthy();
-    const mover = screen.getByRole("button", { name: /Suez transits recover within six months, crowd forecast/ });
+    const mover = screen.getByRole("button", {
+      name: /Suez transits recover within six months, crowd forecast/,
+    });
     const row = mover.closest("article")!;
     expect(within(row).getByText("Source: Sample forecast")).toBeTruthy();
     expect(within(row).getByText(/MANA volume/)).toBeTruthy();
@@ -335,7 +340,11 @@ describe("GlobeView on a desktop", () => {
   });
 
   it("suggests a longer window when nothing happened", () => {
-    mocks.responses = { globe: { ...GLOBE, events: [], arcs: [], forecasts: [] }, top: { stories: [], movers: [] }, meta: META };
+    mocks.responses = {
+      globe: { ...GLOBE, events: [], arcs: [], forecasts: [] },
+      top: { stories: [], movers: [] },
+      meta: META,
+    };
     renderGlobe();
     expect(screen.getByText("Nothing in the last 7 days")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Show 30 days" }));
@@ -372,7 +381,9 @@ describe("GlobeView on a phone", () => {
     expect(screen.getByRole("heading", { name: "Top 5 now" })).toBeTruthy();
     const toggle = screen.getByRole("button", { name: "Hide the top stories" });
     fireEvent.click(toggle);
-    expect(screen.getByRole("button", { name: "Show the top stories" }).getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByRole("button", { name: "Show the top stories" }).getAttribute("aria-expanded")).toBe(
+      "false",
+    );
   });
 
   it("opens the list from the bar and closes it again", () => {

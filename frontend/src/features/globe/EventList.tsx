@@ -36,7 +36,16 @@ export interface EventListProps {
  * the same events, most important first. Tab or the arrow keys move between
  * rows (Home and End jump to the ends); Enter opens the story.
  */
-export function EventListBody({ events, window, sample, note, onOpen, onFocusItem, empty, labelledBy }: EventListProps) {
+export function EventListBody({
+  events,
+  window,
+  sample,
+  note,
+  onOpen,
+  onFocusItem,
+  empty,
+  labelledBy,
+}: EventListProps) {
   const ownHeadingId = useId();
   const headingId = labelledBy ?? ownHeadingId;
   const sorted = useMemo(() => sortEventsForList(events), [events]);
@@ -45,7 +54,9 @@ export function EventListBody({ events, window, sample, note, onOpen, onFocusIte
   const visible = sorted.slice(0, shown);
 
   const onKeyDown = (e: KeyboardEvent<HTMLUListElement>) => {
-    const buttons = Array.from(list.current?.querySelectorAll<HTMLButtonElement>(":scope > li > button") ?? []);
+    const buttons = Array.from(
+      list.current?.querySelectorAll<HTMLButtonElement>(":scope > li > button") ?? [],
+    );
     const current = buttons.findIndex((b) => b === document.activeElement);
     const next = nextRow(e.key, Math.max(0, current), buttons.length);
     if (next === null) return;
@@ -62,8 +73,7 @@ export function EventListBody({ events, window, sample, note, onOpen, onFocusIte
           </h2>
         )}
         <p className="min-w-0 flex-1 truncate text-label text-fg-muted tabular-nums">
-          {formatCompact(sorted.length)} {sorted.length === 1 ? "event" : "events"} · {WINDOW_LABELS[window].long} · by
-          importance
+          {formatCompact(sorted.length)} {sorted.length === 1 ? "event" : "events"} · by importance
         </p>
         {sample === "all" && <SampleBadge />}
         {sample === "some" && (
@@ -75,7 +85,14 @@ export function EventListBody({ events, window, sample, note, onOpen, onFocusIte
       {note}
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2">
         {sorted.length === 0 ? (
-          (empty ?? <EmptyState compact icon={ListX} title="No events to list" description="Try a longer window." />)
+          (empty ?? (
+            <EmptyState
+              compact
+              icon={ListX}
+              title={`No events in the ${WINDOW_LABELS[window].long.toLowerCase()}`}
+              description="Try a longer window or all sectors."
+            />
+          ))
         ) : (
           <>
             <ul ref={list} aria-labelledby={headingId} onKeyDown={onKeyDown} className="flex flex-col">
@@ -112,7 +129,11 @@ export function EventListBody({ events, window, sample, note, onOpen, onFocusIte
 }
 
 /** Phones: the list as its own card, with a close button. */
-export function EventList({ onClose, className, ...props }: EventListProps & { onClose?: () => void; className?: string }) {
+export function EventList({
+  onClose,
+  className,
+  ...props
+}: EventListProps & { onClose?: () => void; className?: string }) {
   const titleId = useId();
   return (
     <section

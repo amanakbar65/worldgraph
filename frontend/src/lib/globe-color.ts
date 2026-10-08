@@ -87,7 +87,12 @@ export function parseCssColor(input: string | null | undefined): Rgba | null {
 
   const rgb = [x, y, z].map((t) => (t.endsWith("%") ? (parseFloat(t) / 100) * 255 : parseFloat(t)));
   if (!rgb.every(Number.isFinite)) return null;
-  return [Math.round(clamp(rgb[0], 0, 255)), Math.round(clamp(rgb[1], 0, 255)), Math.round(clamp(rgb[2], 0, 255)), a];
+  return [
+    Math.round(clamp(rgb[0], 0, 255)),
+    Math.round(clamp(rgb[1], 0, 255)),
+    Math.round(clamp(rgb[2], 0, 255)),
+    a,
+  ];
 }
 
 /** Ask the browser to convert any CSS colour (a fallback for formats we don't parse). */

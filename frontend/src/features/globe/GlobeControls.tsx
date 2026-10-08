@@ -1,4 +1,16 @@
-import { History, Home, Layers, List, Map as MapIcon, Minus, Play, Plus, SlidersHorizontal, Square, Users } from "lucide-react";
+import {
+  History,
+  Home,
+  Layers,
+  List,
+  Map as MapIcon,
+  Minus,
+  Play,
+  Plus,
+  SlidersHorizontal,
+  Square,
+  Users,
+} from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { SECTOR_IDS, type SectorId, type TimeWindow } from "@/api/contract";
@@ -38,7 +50,11 @@ export function WindowControl({
       aria-label="Time window"
       value={value}
       onValueChange={onChange}
-      options={TIME_WINDOWS.map((w) => ({ value: w, label: WINDOW_LABELS[w].short, ariaLabel: WINDOW_LABELS[w].long }))}
+      options={TIME_WINDOWS.map((w) => ({
+        value: w,
+        label: WINDOW_LABELS[w].short,
+        ariaLabel: WINDOW_LABELS[w].long,
+      }))}
       className={cn(GLASS, "rounded-lg", className)}
     />
   );
@@ -103,11 +119,15 @@ export function ReplayBar({
   onStop: () => void;
   className?: string;
 }) {
-  const progress = Math.round(Math.max(0, Math.min(1, (at - span.from) / Math.max(1, span.to - span.from))) * 100);
+  const progress = Math.round(
+    Math.max(0, Math.min(1, (at - span.from) / Math.max(1, span.to - span.from))) * 100,
+  );
   return (
-    <div className={cn(GLASS, "flex h-10 items-center gap-3 rounded-full pr-1 pl-3.5", className)}>
+    <div className={cn(GLASS, "flex h-10 items-center gap-3 rounded-full pl-3.5", className)}>
       <History aria-hidden className="size-4 shrink-0 text-fg-muted" />
-      <span className="text-body font-medium whitespace-nowrap text-fg tabular-nums">{replayLabel(at, window)}</span>
+      <span className="text-body font-medium whitespace-nowrap text-fg tabular-nums">
+        {replayLabel(at, window)}
+      </span>
       <span
         role="progressbar"
         aria-label="Replay progress"
@@ -116,12 +136,21 @@ export function ReplayBar({
         aria-valuenow={progress}
         className="relative h-1 w-24 shrink-0 overflow-hidden rounded-full bg-line-strong sm:w-32"
       >
-        <span className="absolute inset-y-0 left-0 rounded-full bg-fg-muted" style={{ width: `${progress}%` }} />
+        <span
+          className="absolute inset-y-0 left-0 rounded-full bg-fg-muted"
+          style={{ width: `${progress}%` }}
+        />
       </span>
       <span className="text-label whitespace-nowrap text-fg-muted tabular-nums">
         {shown} {shown === 1 ? "event" : "events"}
       </span>
-      <Button variant="ghost" size="icon" className="size-8 rounded-full" onClick={onStop} aria-label="Stop the replay">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-10 rounded-full"
+        onClick={onStop}
+        aria-label="Stop the replay"
+      >
         <Square aria-hidden className="size-3.5 fill-current" />
       </Button>
     </div>
@@ -166,7 +195,10 @@ export function SectorLens({ selected, onToggle, onClear, layout }: SectorLensPr
 }
 
 /** The lens behind one button that says what is on (phones, and narrow desktops). */
-export function SectorLensButton({ labelled = false, ...props }: Omit<SectorLensProps, "layout"> & { labelled?: boolean }) {
+export function SectorLensButton({
+  labelled = false,
+  ...props
+}: Omit<SectorLensProps, "layout"> & { labelled?: boolean }) {
   const count = props.selected.length;
   const only = count === 1 ? SECTORS[props.selected[0]] : null;
   const summary = lensSummary(props.selected);
@@ -313,7 +345,10 @@ export function MapKey({ detailed = false, className }: { detailed?: boolean; cl
   return (
     <div className={cn("flex flex-col gap-2 text-label text-fg-muted", className)}>
       {detailed && <p className="font-medium">Key</p>}
-      <ul aria-label="Map key" className={cn("flex gap-x-3 gap-y-1.5", detailed ? "flex-col" : "flex-wrap items-center")}>
+      <ul
+        aria-label="Map key"
+        className={cn("flex gap-x-3 gap-y-1.5", detailed ? "flex-col" : "flex-wrap items-center")}
+      >
         {(["risk", "opportunity", "neutral"] as const).map((impact) => {
           const Icon = IMPACT_ICONS[impact].icon;
           const tone = IMPACT_TONES[impact];
@@ -323,7 +358,9 @@ export function MapKey({ detailed = false, className }: { detailed?: boolean; cl
               <Icon aria-hidden className={cn("size-3.5", tone.text)} />
               <span className="whitespace-nowrap">
                 {tone.label}
-                {detailed && impact !== "neutral" && <span className="text-fg-subtle"> · countries lean this way</span>}
+                {detailed && impact !== "neutral" && (
+                  <span className="text-fg-subtle"> · countries lean this way</span>
+                )}
               </span>
             </KeyItem>
           );
@@ -391,7 +428,11 @@ export function ZoomControls({
 }) {
   const btn = "size-10 rounded-none first:rounded-t-lg last:rounded-b-lg text-fg";
   return (
-    <div role="group" aria-label="Zoom" className={cn(GLASS, "flex flex-col overflow-hidden rounded-lg", className)}>
+    <div
+      role="group"
+      aria-label="Zoom"
+      className={cn(GLASS, "flex flex-col overflow-hidden rounded-lg", className)}
+    >
       <Button variant="ghost" size="icon" className={btn} onClick={() => onZoom(1)} aria-label="Zoom in">
         <Plus aria-hidden />
       </Button>

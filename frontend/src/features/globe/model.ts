@@ -177,7 +177,8 @@ const EARTH_RADIUS_M = 6_371_000;
 export function distanceMeters(a: LngLat, b: LngLat): number {
   const [lon1, lat1] = a.map((v) => v * RAD);
   const [lon2, lat2] = b.map((v) => v * RAD);
-  const h = Math.sin((lat2 - lat1) / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin((lon2 - lon1) / 2) ** 2;
+  const h =
+    Math.sin((lat2 - lat1) / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin((lon2 - lon1) / 2) ** 2;
   return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
@@ -260,7 +261,11 @@ export function ringStep(probability: number): number {
  * tinted towards risk (amber) or opportunity (teal) by its balance, more so
  * where more is happening. Subtle on purpose: the points carry the detail.
  */
-export function countryFill(country: GlobeCountry | undefined, maxCount: number, palette: GlobePalette): Rgba {
+export function countryFill(
+  country: GlobeCountry | undefined,
+  maxCount: number,
+  palette: GlobePalette,
+): Rgba {
   if (!country || country.count === 0) return palette.land;
   const activity = maxCount > 0 ? Math.log1p(country.count) / Math.log1p(maxCount) : 0;
   const base = mix(palette.land, palette.landActive, 0.35 + 0.65 * activity);
@@ -510,7 +515,7 @@ export function shapeSize(geometry: { type: string; coordinates: unknown }): num
 
 /** Angle in degrees between two points on the sphere. */
 export function angularDistance(a: LngLat, b: LngLat): number {
-  return (distanceMeters(a, b) / EARTH_RADIUS_M) / RAD;
+  return distanceMeters(a, b) / EARTH_RADIUS_M / RAD;
 }
 
 /** MapLibre's default vertical field of view, in degrees. */

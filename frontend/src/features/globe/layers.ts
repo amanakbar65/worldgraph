@@ -142,10 +142,11 @@ const SURFACE = { depthCompare: "always", cullMode: "back" } as const;
  * and no face culling: the globe view culls back faces by default, which
  * drops icon and text quads entirely.
  */
-const BILLBOARD: { parameters: { depthCompare: "always"; cullMode: "none" }; extensions: LayerExtension[] } = {
-  parameters: { depthCompare: "always", cullMode: "none" },
-  extensions: [horizon],
-};
+const BILLBOARD: { parameters: { depthCompare: "always"; cullMode: "none" }; extensions: LayerExtension[] } =
+  {
+    parameters: { depthCompare: "always", cullMode: "none" },
+    extensions: [horizon],
+  };
 
 export function buildLayers(input: LayerInput): Layer[] {
   const { palette, paletteKey, toggles, zoom } = input;

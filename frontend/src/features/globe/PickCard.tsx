@@ -24,7 +24,15 @@ export interface PickContext {
 }
 
 /** Risk / opportunity / neutral counts, each with its icon. */
-export function ImpactCounts({ risk, opportunity, neutral }: { risk: number; opportunity: number; neutral: number }) {
+export function ImpactCounts({
+  risk,
+  opportunity,
+  neutral,
+}: {
+  risk: number;
+  opportunity: number;
+  neutral: number;
+}) {
   const parts = (
     [
       ["risk", risk],
@@ -58,7 +66,15 @@ function Hint({ icon: Icon, children }: { icon: typeof ArrowRight; children: Rea
 }
 
 /** What a picked thing is, as a small card built from the UI kit. */
-export function PickContent({ info, context, hint = true }: { info: PickInfo; context: PickContext; hint?: boolean }) {
+export function PickContent({
+  info,
+  context,
+  hint = true,
+}: {
+  info: PickInfo;
+  context: PickContext;
+  hint?: boolean;
+}) {
   switch (info.kind) {
     case "event":
       return (
@@ -91,7 +107,9 @@ export function PickContent({ info, context, hint = true }: { info: PickInfo; co
             </div>
             <ol className="flex flex-col gap-1 text-body">
               <li className="flex min-w-0 flex-col">
-                <span className="text-label text-fg-subtle">Cause · {countryName(arc.src_country) ?? "Elsewhere"}</span>
+                <span className="text-label text-fg-subtle">
+                  Cause · {countryName(arc.src_country) ?? "Elsewhere"}
+                </span>
                 <span className="line-clamp-2 text-fg">{src?.headline ?? "An earlier story"}</span>
               </li>
               <li aria-hidden className="text-fg-subtle">
@@ -159,7 +177,13 @@ export function PickContent({ info, context, hint = true }: { info: PickInfo; co
  * and never takes the pointer itself. The list view is the keyboard and
  * screen-reader route to the same information.
  */
-export function HoverCard({ context, bounds }: { context: PickContext; bounds: { width: number; height: number } }) {
+export function HoverCard({
+  context,
+  bounds,
+}: {
+  context: PickContext;
+  bounds: { width: number; height: number };
+}) {
   const info = useGlobeHover((s) => s.hover);
   return info ? <HoverCardAt info={info} context={context} bounds={bounds} /> : null;
 }
@@ -214,9 +238,18 @@ export function SelectionCard({
   className?: string;
 }) {
   const openLabel =
-    info.kind === "hex" ? "Zoom in" : info.kind === "arc" ? "See the cascade" : info.kind === "forecast" ? "Details" : "Open";
+    info.kind === "hex"
+      ? "Zoom in"
+      : info.kind === "arc"
+        ? "See the cascade"
+        : info.kind === "forecast"
+          ? "Details"
+          : "Open";
   return (
-    <section aria-label="Selected on the globe" className={cn(GLASS, "overflow-hidden rounded-xl", className)}>
+    <section
+      aria-label="Selected on the globe"
+      className={cn(GLASS, "overflow-hidden rounded-xl", className)}
+    >
       <div className="relative pr-10">
         <PickContent info={info} context={context} hint={false} />
         <Button

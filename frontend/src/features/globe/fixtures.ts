@@ -116,7 +116,10 @@ function story(overrides: Partial<StorySummary> & Pick<StorySummary, "id" | "hea
 
 export const TOP: TopResponse = {
   stories: [
-    story({ id: "story:red-sea-attacks", headline: "Attacks near Bab-el-Mandeb push container lines onto the Cape route" }),
+    story({
+      id: "story:red-sea-attacks",
+      headline: "Attacks near Bab-el-Mandeb push container lines onto the Cape route",
+    }),
     story({
       id: "story:india-solar-auction",
       headline: "India's solar auction clears at a record low tariff",
@@ -132,7 +135,11 @@ export const TOP: TopResponse = {
 /** Live data: one analysed story and one draft from the news pipeline. */
 export const TOP_LIVE: TopResponse = {
   stories: [
-    story({ id: "story:live-port-strike", headline: "Port workers in Antwerp vote to strike next week", is_sample: false }),
+    story({
+      id: "story:live-port-strike",
+      headline: "Port workers in Antwerp vote to strike next week",
+      is_sample: false,
+    }),
     story({
       id: "story:live-draft",
       headline: "Copper smelter halts output after power cut - Reuters",

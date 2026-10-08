@@ -95,7 +95,8 @@ export interface GlobeMapProps {
 const EMPTY: FeatureCollection = { type: "FeatureCollection", features: [] };
 
 /** The atmosphere glow; GlobeMap sets --rim-x, --rim-y (the globe's centre) and --rim-r (its outline). */
-const atmosphere = (percent: number) => `color-mix(in oklch, var(--globe-atmosphere) ${percent}%, transparent)`;
+const atmosphere = (percent: number) =>
+  `color-mix(in oklch, var(--globe-atmosphere) ${percent}%, transparent)`;
 const RIM_STYLE: CSSProperties = {
   backgroundImage: `radial-gradient(circle at var(--rim-x, 50%) var(--rim-y, 50%), transparent calc(var(--rim-r, 0px) - 3px), ${atmosphere(
     46,
@@ -267,7 +268,13 @@ export function GlobeMap(props: GlobeMapProps) {
     };
 
     const pickDeck = (x: number, y: number): PickInfo | null => {
-      const picks = overlay.pickMultipleObjects({ x, y, radius: 6, depth: 8, layerIds: [...PICKABLE_LAYERS] });
+      const picks = overlay.pickMultipleObjects({
+        x,
+        y,
+        radius: 6,
+        depth: 8,
+        layerIds: [...PICKABLE_LAYERS],
+      });
       const visible = (layer: string, object: unknown, coordinate?: number[]) => {
         if (layer === "events") return isVisible((object as GlobeEvent).lon, (object as GlobeEvent).lat);
         if (layer === "forecasts") {
@@ -286,7 +293,13 @@ export function GlobeMap(props: GlobeMapProps) {
         case "events":
           return { kind: "event", id: (object as GlobeEvent).id, x, y, event: object as GlobeEvent };
         case "forecasts":
-          return { kind: "forecast", id: (object as ForecastSummary).id, x, y, forecast: object as ForecastSummary };
+          return {
+            kind: "forecast",
+            id: (object as ForecastSummary).id,
+            x,
+            y,
+            forecast: object as ForecastSummary,
+          };
         case "arcs":
           return { kind: "arc", id: String((object as ArcDatum).id), x, y, arc: object as ArcDatum };
         case "hex":
@@ -308,10 +321,17 @@ export function GlobeMap(props: GlobeMapProps) {
         layers: ["states-fill", "countries-fill"],
       });
       const state = features.find((f) => f.layer.id === "states-fill" && f.properties?.id);
-      if (state) return { kind: "state", id: String(state.properties.id), x, y, name: String(state.properties.name) };
+      if (state)
+        return { kind: "state", id: String(state.properties.id), x, y, name: String(state.properties.name) };
       const country = features.find((f) => f.layer.id === "countries-fill" && f.properties?.id);
       if (country) {
-        return { kind: "country", id: String(country.properties.id), x, y, name: String(country.properties.name) };
+        return {
+          kind: "country",
+          id: String(country.properties.id),
+          x,
+          y,
+          name: String(country.properties.name),
+        };
       }
       return null;
     };
@@ -583,7 +603,12 @@ export function GlobeMap(props: GlobeMapProps) {
         break;
       }
       case "point":
-        map.flyTo({ center: camera.center, zoom: camera.zoom ?? Math.max(map.getZoom(), 4), duration, essential: false });
+        map.flyTo({
+          center: camera.center,
+          zoom: camera.zoom ?? Math.max(map.getZoom(), 4),
+          duration,
+          essential: false,
+        });
         break;
       case "zoom":
         interacted.current = true;

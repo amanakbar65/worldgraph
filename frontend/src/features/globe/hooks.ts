@@ -22,7 +22,10 @@ export function useGlobePalette(): { palette: GlobePalette; key: string } {
     };
     reread();
     const observer = new MutationObserver(reread);
-    observer.observe(root, { attributes: true, attributeFilter: ["data-wg-theme", "data-theme", "style", "class"] });
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ["data-wg-theme", "data-theme", "style", "class"],
+    });
     return () => observer.disconnect();
   }, []);
   return state;
@@ -116,7 +119,10 @@ export function useReplay(calm: boolean) {
 }
 
 /** The size of an element, kept up to date. */
-export function useElementSize<T extends HTMLElement>(): [(el: T | null) => void, { width: number; height: number }] {
+export function useElementSize<T extends HTMLElement>(): [
+  (el: T | null) => void,
+  { width: number; height: number },
+] {
   const [el, setEl] = useState<T | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   useEffect(() => {

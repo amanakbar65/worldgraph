@@ -50,7 +50,15 @@ function useRows(data: TopResponse | undefined) {
   };
 }
 
-function StoryRows({ stories, props, carousel }: { stories: StorySummary[]; props: TopNowProps; carousel?: boolean }) {
+function StoryRows({
+  stories,
+  props,
+  carousel,
+}: {
+  stories: StorySummary[];
+  props: TopNowProps;
+  carousel?: boolean;
+}) {
   return (
     <>
       {stories.map((story, i) => (
@@ -64,14 +72,22 @@ function StoryRows({ stories, props, carousel }: { stories: StorySummary[]; prop
         >
           <StoryCard story={story} variant="compact" rank={i + 1} onOpen={props.onOpenStory} />
           {/* Lined up under the headline: card padding, rank, icon and gaps. */}
-          {!story.analysed && <DraftNote className="-mt-1.5 pb-2 pl-[5.5rem]" />}
+          {!story.analysed && <DraftNote className="-mt-1.5 pb-2 pl-20" />}
         </li>
       ))}
     </>
   );
 }
 
-function MoverRows({ movers, props, carousel }: { movers: ForecastSummary[]; props: TopNowProps; carousel?: boolean }) {
+function MoverRows({
+  movers,
+  props,
+  carousel,
+}: {
+  movers: ForecastSummary[];
+  props: TopNowProps;
+  carousel?: boolean;
+}) {
   return (
     <>
       {movers.map((forecast) => (
@@ -123,7 +139,11 @@ function Empty({ props }: { props: TopNowProps }) {
             ? { label: "Show 30 days", onClick: props.onWiderWindow }
             : undefined
       }
-      secondaryAction={props.lensOn && props.onWiderWindow ? { label: "Show 30 days", onClick: props.onWiderWindow } : undefined}
+      secondaryAction={
+        props.lensOn && props.onWiderWindow
+          ? { label: "Show 30 days", onClick: props.onWiderWindow }
+          : undefined
+      }
     />
   );
 }
@@ -186,7 +206,9 @@ export function TopNowBody(props: TopNowProps) {
 }
 
 /** Phones: a bar at the bottom that opens into a row of cards you swipe through. */
-export function TopNowStrip(props: TopNowProps & { collapsed: boolean; onCollapsedChange: (c: boolean) => void }) {
+export function TopNowStrip(
+  props: TopNowProps & { collapsed: boolean; onCollapsedChange: (c: boolean) => void },
+) {
   const headingId = useId();
   const listId = useId();
   const { data, error, loading, collapsed } = props;
@@ -195,7 +217,8 @@ export function TopNowStrip(props: TopNowProps & { collapsed: boolean; onCollaps
 
   let body: ReactNode = null;
   if (!collapsed) {
-    if (error && !data) body = <ErrorState error={error} onRetry={props.onRetry} compact className={cn(GLASS, "rounded-xl")} />;
+    if (error && !data)
+      body = <ErrorState error={error} onRetry={props.onRetry} compact className={cn(GLASS, "rounded-xl")} />;
     else if (loading && !data)
       body = (
         <div className={cn(GLASS, "rounded-xl")}>
@@ -212,7 +235,7 @@ export function TopNowStrip(props: TopNowProps & { collapsed: boolean; onCollaps
       body = (
         <ul
           aria-label="Top stories and crowd moves, swipe for more"
-          className="-mx-3 flex snap-x snap-mandatory scroll-px-3 items-start gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="-mx-3 flex snap-x snap-mandatory scroll-px-3 [scrollbar-width:none] items-start gap-2 overflow-x-auto px-3 pb-1 [&::-webkit-scrollbar]:hidden"
         >
           <StoryRows stories={stories} props={props} carousel />
           <MoverRows movers={movers} props={props} carousel />
@@ -222,17 +245,19 @@ export function TopNowStrip(props: TopNowProps & { collapsed: boolean; onCollaps
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
-      <div className={cn(GLASS, "flex h-10 max-w-full items-center gap-2 self-start rounded-full pr-1 pl-3")}>
+      <div className={cn(GLASS, "flex h-10 max-w-full items-center gap-2 self-start rounded-full pl-3")}>
         <h2 id={headingId} className="flex shrink-0 items-center gap-1.5 text-body font-semibold text-fg">
           <Flame aria-hidden className="size-4 text-fg-muted" />
           Top 5 now
         </h2>
         {allSample && <SampleBadge compact />}
-        {collapsed && lead && <span className="min-w-0 truncate text-label text-fg-muted">{lead.headline}</span>}
+        {collapsed && lead && (
+          <span className="min-w-0 truncate text-label text-fg-muted">{lead.headline}</span>
+        )}
         <Button
           variant="ghost"
           size="icon"
-          className="size-9 shrink-0 rounded-full"
+          className="size-10 shrink-0 rounded-full"
           aria-expanded={!collapsed}
           aria-controls={listId}
           aria-label={collapsed ? "Show the top stories" : "Hide the top stories"}

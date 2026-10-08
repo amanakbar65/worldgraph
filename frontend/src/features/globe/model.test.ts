@@ -188,7 +188,11 @@ describe("arcs", () => {
 
   it("drops weak and degenerate arcs, but never the one in focus", () => {
     const out = filterArcs(
-      [arc(1, { confidence: 0.2 }), arc(2, { confidence: 0.3, dst_story: "story:focus" }), arc(3, { src: [72, 19] })],
+      [
+        arc(1, { confidence: 0.2 }),
+        arc(2, { confidence: 0.3, dst_story: "story:focus" }),
+        arc(3, { src: [72, 19] }),
+      ],
       { focusId: "story:focus", minConfidence: 0.5 },
     );
     expect(out.map((a) => [a.id, a.focus])).toEqual([[2, true]]);
@@ -197,7 +201,10 @@ describe("arcs", () => {
   it("caps the count and can show only the arcs in focus", () => {
     const many = Array.from({ length: 30 }, (_, i) => arc(i + 1));
     expect(filterArcs(many, { max: 10 })).toHaveLength(10);
-    const focusOnly = filterArcs([...many, arc(99, { src_story: "story:f" })], { focusId: "story:f", onlyFocus: true });
+    const focusOnly = filterArcs([...many, arc(99, { src_story: "story:f" })], {
+      focusId: "story:f",
+      onlyFocus: true,
+    });
     expect(focusOnly.map((a) => a.id)).toEqual([99]);
   });
 
@@ -312,18 +319,50 @@ describe("the list view", () => {
     const story = eventAsStory(event("a"), { isSample: true });
     expect(story.so_what).toBeNull();
     expect(story.is_sample).toBe(true);
-    expect(story.region).toEqual({ id: "region:in", name: "India", subtype: "country", country_id: "region:in" });
+    expect(story.region).toEqual({
+      id: "region:in",
+      name: "India",
+      subtype: "country",
+      country_id: "region:in",
+    });
     expect(eventAsStory(event("b", { country_id: null }), { isSample: false }).region).toBeNull();
   });
 });
 
 describe("geometry", () => {
-  const square = { type: "Polygon", coordinates: [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]] };
+  const square = {
+    type: "Polygon",
+    coordinates: [
+      [
+        [0, 0],
+        [10, 0],
+        [10, 10],
+        [0, 10],
+        [0, 0],
+      ],
+    ],
+  };
   const multi = {
     type: "MultiPolygon",
     coordinates: [
-      [[[50, 50], [51, 50], [51, 51], [50, 51], [50, 50]]],
-      [[[0, 0], [20, 0], [20, 20], [0, 20], [0, 0]]],
+      [
+        [
+          [50, 50],
+          [51, 50],
+          [51, 51],
+          [50, 51],
+          [50, 50],
+        ],
+      ],
+      [
+        [
+          [0, 0],
+          [20, 0],
+          [20, 20],
+          [0, 20],
+          [0, 0],
+        ],
+      ],
     ],
   };
 
