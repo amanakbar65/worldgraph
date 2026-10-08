@@ -170,6 +170,32 @@ function round(v: number): number {
   return Math.round(v * 10_000) / 10_000;
 }
 
+export interface CausalNote {
+  other: PlacedNode;
+  kind: LinkType;
+  confidence: number | null;
+  /** "leads to" when this node is the cause, "follows from" when it is the effect. */
+  role: "cause" | "effect";
+}
+
+/** The cause-and-effect links a node takes part in, for captions and labels. */
+export function causalNotes(graph: MiniGraph, id: string): CausalNote[] {
+  const notes: CausalNote[] = [];
+  for (const link of graph.links) {
+    if (link.kind === "structure") continue;
+    if (link.source.id === id) notes.push({ other: link.target, kind: link.kind, confidence: link.confidence, role: "cause" });
+    else if (link.target.id === id) notes.push({ other: link.source, kind: link.kind, confidence: link.confidence, role: "effect" });
+  }
+  return notes;
+}
+
+/** "inferred link: leads to Rice curbs (55% confidence)". */
+export function describeCausalNote(note: CausalNote): string {
+  const how = note.role === "cause" ? "leads to" : "follows from";
+  const sure = note.confidence === null ? "" : ` (${Math.round(note.confidence * 100)}% confidence)`;
+  return `${note.kind} link: ${how} ${note.other.name}${sure}`;
+}
+
 /** The ids linked to a node in the drawing (for hover and focus highlighting). */
 export function neighbours(graph: MiniGraph, id: string): Set<string> {
   const out = new Set<string>([id]);

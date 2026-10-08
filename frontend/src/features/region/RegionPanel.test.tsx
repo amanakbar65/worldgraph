@@ -116,7 +116,15 @@ describe("RegionPanel (a country)", () => {
     const graph = screen.getByRole("group", { name: "Connections of India: 6 of 6 shown" });
     fireEvent.click(within(graph).getByRole("button", { name: "Rice, commodity" }));
     expect(top()).toEqual({ kind: "entity", id: "commodity:rice" });
-    fireEvent.click(within(graph).getByRole("button", { name: "India signals rice export curbs, story, risk, sample data" }));
+    const curbs = within(graph).getByRole("button", {
+      name: "India signals rice export curbs, story, risk, sample data; inferred link: follows from US–India trade deal is close (55% confidence)",
+    });
+    // Hovering a story shows how sure we are about its cause-and-effect links.
+    fireEvent.mouseEnter(curbs);
+    expect(screen.getByText("Follows from")).toBeTruthy();
+    expect(screen.getByText("55%")).toBeTruthy();
+    expect(screen.getAllByText("Inferred")).toHaveLength(2); // the caption and the key
+    fireEvent.click(curbs);
     expect(top()).toEqual({ kind: "story", id: "story:rice-curbs" });
     fireEvent.click(within(graph).getByRole("button", { name: "Will the RBI cut the repo rate?, crowd forecast, sample data" }));
     expect(top()).toEqual({ kind: "forecast", id: "forecast:rbi-cut" });

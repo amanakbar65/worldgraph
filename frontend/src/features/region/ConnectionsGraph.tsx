@@ -2,14 +2,14 @@ import { Network } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { EntityType, GraphData, LinkType } from "@/api/contract";
-import { LinkTypeLabel } from "@/components/ConfidenceMeter";
+import { ConfidenceMeter, LinkTypeLabel } from "@/components/ConfidenceMeter";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { ENTITY_TYPE_ICONS, IMPACT_ICONS } from "@/lib/icons";
 import { LINK_TYPES, entityTypeTone, impactTone, type Tone } from "@/lib/meaning";
 import { cn } from "@/lib/utils";
 
-import { layoutMiniGraph, neighbours, type PlacedNode } from "./region-graph";
+import { causalNotes, describeCausalNote, layoutMiniGraph, neighbours, type CausalNote, type PlacedNode } from "./region-graph";
 
 export interface ConnectionsGraphProps {
   graph: GraphData;
@@ -56,6 +56,8 @@ export function ConnectionsGraph({ graph, focusId, regionName, onOpen, onSeeAll 
 
   const linkTypes = [...new Set(mini.links.map((l) => l.kind))].filter((k): k is LinkType => k !== "structure");
   const total = mini.nodes.length + mini.hidden;
+  const activeNode = active ? [mini.center, ...mini.nodes].find((n) => n.id === active) : undefined;
+  const activeNotes = active ? causalNotes(mini, active) : [];
 
   return (
     <div className="flex flex-col gap-3">
@@ -92,16 +94,31 @@ export function ConnectionsGraph({ graph, focusId, regionName, onOpen, onSeeAll 
             );
           })}
         </svg>
-        <GraphNodeButton
-          node={mini.center}
-          dim={!!lit && !lit.has(mini.center.id)}
-          onActive={setActive}
-          onOpen={onOpen}
-        />
-        {mini.nodes.map((node) => (
-          <GraphNodeButton key={node.id} node={node} dim={!!lit && !lit.has(node.id)} onActive={setActive} onOpen={onOpen} />
+        {[mini.center, ...mini.nodes].map((node) => (
+          <GraphNodeButton
+            key={node.id}
+            node={node}
+            notes={causalNotes(mini, node.id)}
+            dim={!!lit && !lit.has(node.id)}
+            onActive={setActive}
+            onOpen={onOpen}
+          />
         ))}
       </div>
+
+      {/* How sure we are about each cause-and-effect link of the story in focus. */}
+      {activeNode && activeNotes.length > 0 && (
+        <ul aria-hidden className="flex flex-col gap-1 rounded-lg border border-line bg-surface-2/40 px-3 py-2">
+          {activeNotes.map((note) => (
+            <li key={`${note.other.id}-${note.role}`} className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-label">
+              <span className="min-w-0 truncate text-fg-muted">
+                {note.role === "cause" ? "Leads to" : "Follows from"} <span className="text-fg">{note.other.name}</span>
+              </span>
+              {note.confidence !== null && <ConfidenceMeter confidence={note.confidence} linkType={note.kind} />}
+            </li>
+          ))}
+        </ul>
+      )}
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <ul aria-label="Key" className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -126,11 +143,14 @@ export function ConnectionsGraph({ graph, focusId, regionName, onOpen, onSeeAll 
 
 function GraphNodeButton({
   node,
+  notes,
   dim,
   onActive,
   onOpen,
 }: {
   node: PlacedNode;
+  /** Its cause-and-effect links, read out with the node. */
+  notes: CausalNote[];
   dim: boolean;
   onActive: (id: string | null) => void;
   onOpen: ConnectionsGraphProps["onOpen"];
@@ -145,7 +165,7 @@ function GraphNodeButton({
       onMouseEnter={() => onActive(node.id)}
       onFocus={() => onActive(node.id)}
       onBlur={() => onActive(null)}
-      aria-label={`${node.name}, ${kind}${node.is_sample ? ", sample data" : ""}`}
+      aria-label={`${node.name}, ${kind}${node.is_sample ? ", sample data" : ""}${notes.map((n) => `; ${describeCausalNote(n)}`).join("")}`}
       title={node.name}
       className={cn(
         "group absolute flex w-24 cursor-pointer flex-col items-center gap-1 rounded-lg transition-opacity focus-visible:z-10",

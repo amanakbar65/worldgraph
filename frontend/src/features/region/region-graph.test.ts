@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { GraphData, GraphNode } from "@/api/contract";
 
 import { REGION_INDIA } from "./fixtures";
-import { layoutMiniGraph, neighbours, pickNodes } from "./region-graph";
+import { causalNotes, describeCausalNote, layoutMiniGraph, neighbours, pickNodes } from "./region-graph";
 
 function node(id: string, type: GraphNode["type"], degree = 1, extra: Partial<GraphNode> = {}): GraphNode {
   return { id, type, subtype: null, name: id.split(":")[1], degree, impact: null, created_at: null, is_sample: false, ...extra };
@@ -89,6 +89,15 @@ describe("layoutMiniGraph", () => {
     const result = layoutMiniGraph({ nodes: [], links: [] }, "region:in");
     expect(result.center).toBeNull();
     expect(result.nodes).toEqual([]);
+  });
+
+  it("describes each cause-and-effect link with its type and confidence", () => {
+    const cause = causalNotes(mini, "story:trade-deal");
+    expect(cause).toHaveLength(1);
+    expect(describeCausalNote(cause[0])).toBe("inferred link: leads to India signals rice export curbs (55% confidence)");
+    const effect = causalNotes(mini, "story:rice-curbs");
+    expect(describeCausalNote(effect[0])).toBe("inferred link: follows from US–India trade deal is close (55% confidence)");
+    expect(causalNotes(mini, "commodity:rice")).toEqual([]);
   });
 
   it("finds a node's neighbours for highlighting", () => {
