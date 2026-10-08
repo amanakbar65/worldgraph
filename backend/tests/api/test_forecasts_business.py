@@ -988,6 +988,36 @@ def test_affects_conditional_links_follow_visible_forecasts_only(sdb: psycopg.Co
     assert story_ids(items) == ["story:test-rice", "story:test-if-yes"]
 
 
+def test_affects_bloc_market_reaches_member_countries(sdb: psycopg.Connection) -> None:
+    eu = profile(markets=["region:eu"])
+    # Located in a member country (Germany), or mentioning the bloc itself.
+    add_story(sdb, "story:test-de", country="region:de", admin1=None, region="region:de", confidence=0.6)
+    add_story(
+        sdb, "story:test-gb", country="region:gb", admin1=None, region="region:gb", mentions=("region:eu",)
+    )
+    add_story(sdb, "story:test-us", country="region:us", admin1=None, region="region:us")
+    data = check("affects", call(sdb, "affects", {"profile": eu, "sample": False}))
+    by_id = {i["story"]["id"]: i for i in data["items"]}
+    assert set(by_id) == {"story:test-de", "story:test-gb"}
+    assert by_id["story:test-de"]["relevance"] == pytest.approx(round(0.8 * 0.8 * 0.75, 3))
+    assert by_id["story:test-gb"]["relevance"] == pytest.approx(round(0.8 * 0.9 * 0.75, 3))
+    for item in by_id.values():
+        assert [m["id"] for m in item["matched"]] == ["region:eu"]
+        assert item["path"] == [item["story"]["id"]]
+
+
+def test_affects_pending_drafts_and_sector_weight(sdb: psycopg.Connection) -> None:
+    # A pending draft (no so-what, no confidence) matched only by sector overlap.
+    add_pending(sdb, "story:test-draft", 60, sectors=("energy", "finance"))
+    data = check("affects", call(sdb, "affects", {"profile": profile(sectors=["energy"]), "sample": False}))
+    assert story_ids(data["items"]) == ["story:test-draft"]
+    item = data["items"][0]
+    assert item["story"]["analysed"] is False and item["story"]["so_what"] is None
+    assert item["relevance"] == pytest.approx(round(0.35 * 0.75 * 0.8, 3))
+    assert [m["id"] for m in item["matched"]] == ["sector:energy"]
+    assert item["actions"] == []
+
+
 # ---------------------------------------------------------------------------
 # api.opportunities
 # ---------------------------------------------------------------------------
@@ -1135,6 +1165,29 @@ def test_opportunities_forecast_visibility(sdb: psycopg.Connection) -> None:
     )
 
 
+def test_opportunities_projected_from_events_in_window(sdb: psycopg.Connection) -> None:
+    # A risk event in the window can lead to a projected opportunity.
+    add_story(sdb, "story:test-risk-event", impact="risk", hours_ago=10, sources=10)
+    add_story(sdb, "story:test-old-event", impact="risk", hours_ago=24 * 40, sources=10)
+    add_story(sdb, "story:test-proj-opp", kind="projected", impact="opportunity", importance=40)
+    add_story(sdb, "story:test-proj-old", kind="projected", impact="opportunity", importance=40)
+    add_story(sdb, "story:test-proj-risk", kind="projected", impact="risk")
+    add_link(sdb, "story:test-risk-event", "story:test-proj-opp", "projected")
+    add_link(sdb, "story:test-old-event", "story:test-proj-old", "projected")
+    add_link(sdb, "story:test-risk-event", "story:test-proj-risk", "projected")
+    items = check("opportunities", call(sdb, "opportunities", {"sample": False}))["items"]
+    assert story_ids(items) == ["story:test-proj-opp"]
+    item = items[0]
+    want = 0.6 * math.exp(-10 / 72) + 0.4 * min(1, 10 * 0.5 / 20)
+    assert item["momentum"] == pytest.approx(want, abs=0.002)
+    assert item["relevance"] == pytest.approx(0.4)
+    assert item["why_now"] == "A short test so-what."
+    assert item["story"]["kind"] == "projected" and item["forecast"] is None
+    # Projections of events older than the longest window (30 days) never appear.
+    month = call(sdb, "opportunities", {"sample": False, "window": "30d"})["items"]
+    assert story_ids(month) == ["story:test-proj-opp"]
+
+
 # ---------------------------------------------------------------------------
 # api.ask_context
 # ---------------------------------------------------------------------------
@@ -1228,6 +1281,30 @@ def test_ask_context_real_money_hidden(sdb: psycopg.Connection, viewer: dict[str
     data = call(sdb, "ask_context", {"q": "rice prices", **viewer})
     assert REAL_MONEY not in forecast_ids(data)
     assert REAL_MONEY in forecast_ids(call(sdb, "ask_context", {"q": "rice prices", **US}))
+
+
+def test_ask_context_pending_drafts_and_word_forms(sdb: psycopg.Connection) -> None:
+    # A pending draft (long source title, no so-what) is found like any story,
+    # and word forms match: "shortage" ↔ "shortages", "exporters" ↔ "Exporter".
+    add_pending(
+        sdb,
+        "story:test-draft",
+        30,
+        headline="Exporter groups warn of container shortages at western ports as rates climb",
+        country="region:br",
+        admin1=None,
+        region="region:br",
+    )
+    add_article(sdb, "story:test-draft", "https://example.org/d1", title="Exporters warn of box shortage")
+    add_story(sdb, "story:test-one-word", headline="Container lessors report steady demand", importance=90)
+    data = check(
+        "ask_context", call(sdb, "ask_context", {"q": "container shortage exporters", "sample": False})
+    )
+    assert ids(data["stories"]) == ["story:test-draft", "story:test-one-word"]  # 3 words beat 1 + 0.9
+    draft = data["stories"][0]
+    assert draft["analysed"] is False and draft["so_what"] is None
+    assert draft["sources"][0]["url"] == "https://example.org/d1"
+    assert draft["actions"] == []
 
 
 # ---------------------------------------------------------------------------
@@ -1514,6 +1591,22 @@ def test_save_analysis_live_story_ignores_sample_entities(sdb: psycopg.Connectio
     assert "org:kestrel-lines" not in mentions and "region:in" in mentions
 
 
+def test_save_analysis_replaces_guessed_sector_mentions(sdb: psycopg.Connection) -> None:
+    # The pipeline guessed "energy"; the analysis says logistics and manufacturing.
+    add_pending(sdb, "story:test-guess", 50, sectors=("energy",), mentions=("sector:energy", "region:in-gj"))
+    item = valid_item("story:test-guess", sectors=["logistics-trade", "manufacturing"], entities=[])
+    assert save(sdb, [item])["saved"] == 1
+    mentions = {
+        r["dst"]
+        for r in query(sdb, "select dst from edge where src = 'story:test-guess' and type = 'mentions'")
+    }
+    assert mentions == {"region:in-gj", "sector:logistics-trade", "sector:manufacturing"}
+    assert scalar(sdb, "select sectors from story where node_id = 'story:test-guess'") == [
+        "logistics-trade",
+        "manufacturing",
+    ]
+
+
 def test_save_analysis_skipped(sdb: psycopg.Connection) -> None:
     add_pending(sdb, "story:test-noise", 50, mentions=("commodity:rice",))
     add_article(sdb, "story:test-noise", "https://example.org/noise-1")
@@ -1645,6 +1738,125 @@ def test_save_analysis_timing(sdb: psycopg.Connection) -> None:
     ms = (time.perf_counter() - start) * 1000
     assert result["saved"] == 30 and result["links_saved"] == 30
     assert ms < 500, f"api.save_analysis took {ms:.0f} ms"
+
+
+# Live-like volume: 4,000 stories over 30 days (a fifth of them pending
+# drafts), each mentioning its country, a commodity and its sectors, with two
+# articles each, cascades between them, and 100 forecasts with hourly
+# snapshots. Statistics are not refreshed, so plans must hold up with stale
+# estimates too.
+LIVE_VOLUME_SQL = [
+    """
+    insert into node (id, type, subtype, name)
+    select 'story:test-vol-' || g, 'story', 'event', 'Live story ' || g from generate_series(1, 4000) g
+    """,
+    """
+    insert into story (node_id, kind, headline, so_what, event_type, impact, confidence, importance,
+                       sectors, primary_region, country_id, first_seen, last_seen, source_count,
+                       analysis_status, actions)
+    select 'story:test-vol-' || g, 'event',
+           case when g % 5 = 0
+                then 'Draft source title ' || g
+                     || ' on freight rates for exporters at container ports in Asia'
+                else 'Story ' || g || ' moves freight rates for exporters' end,
+           case when g % 5 = 0 then null else 'Exporters may face higher shipping costs.' end,
+           'market-shift', (array['risk', 'opportunity', 'neutral'])[1 + g % 3],
+           case when g % 5 = 0 then null else 0.7 end, g % 100,
+           array[(array['energy', 'agri-food', 'manufacturing', 'logistics-trade', 'finance', 'tech',
+                        'health', 'real-estate', 'consumer'])[1 + g % 9]],
+           c.id, c.id, now() - (g % 700) * interval '1 hour' - (g % 13) * interval '1 minute',
+           now() - (g % 700) * interval '1 hour', 1 + g % 30,
+           case when g % 5 = 0 then 'pending' else 'done' end,
+           case when g % 5 = 0 then '{}'::text[] else array['Review supplier contracts'] end
+    from generate_series(1, 4000) g
+    cross join lateral (
+        select (array['region:in', 'region:cn', 'region:us', 'region:de', 'region:br', 'region:th',
+                      'region:vn', 'region:ng'])[1 + g % 8] as id
+    ) c
+    """,
+    """
+    insert into edge (src, dst, type)
+    select s.node_id, x.dst, 'mentions'
+    from story s
+    cross join lateral (
+        select s.country_id as dst
+        union
+        select (array['commodity:crude-oil', 'commodity:rice', 'commodity:copper', 'commodity:coffee'])
+               [1 + abs(hashtext(s.node_id)) % 4]
+        union
+        select 'sector:' || unnest(s.sectors)
+    ) x
+    where s.node_id like 'story:test-vol-%'
+    """,
+    """
+    insert into article (story_id, url, source_name, title, published_at, snippet)
+    select s.node_id, 'https://example.org/vol/' || s.node_id || '/' || a, 'Outlet ' || a,
+           'Source title ' || a || ' for ' || s.node_id, s.first_seen + a * interval '5 minutes',
+           'A one sentence snippet.'
+    from story s cross join generate_series(1, 2) a
+    where s.node_id like 'story:test-vol-%'
+    """,
+    """
+    insert into causal_link (src_story, dst_story, link_type, mechanism, direction, confidence, method)
+    select 'story:test-vol-' || (g + 8), 'story:test-vol-' || g, 'inferred', 'raises shipping costs', 'up',
+           0.6, 'test'
+    from generate_series(1, 3990, 3) g
+    """,
+    """
+    insert into node (id, type, subtype, name)
+    select 'forecast:test-vol-' || g, 'forecast', 'binary', 'Volume question ' || g
+    from generate_series(1, 100) g
+    """,
+    """
+    insert into forecast (node_id, provider, provider_ref, question, short_title, category, end_date)
+    select 'forecast:test-vol-' || g, 'manifold', 'vol-' || g,
+           'Will volume question ' || g || ' about rates pass?', 'Volume question ' || g,
+           (array['trade', 'energy', 'economy', 'commodities'])[1 + g % 4], now() + g * interval '1 day'
+    from generate_series(1, 100) g
+    """,
+    """
+    insert into forecast_snapshot (forecast_id, ts, probability, volume, liquidity)
+    select 'forecast:test-vol-' || g, date_trunc('hour', now()) - h * interval '1 hour',
+           0.3 + 0.002 * ((g + h) % 200), 20000 + g, 2000
+    from generate_series(1, 100) g cross join generate_series(0, 719) h
+    """,
+    """
+    insert into edge (src, dst, type)
+    select 'forecast:test-vol-' || g,
+           (array['region:in', 'region:cn', 'region:us', 'commodity:rice', 'commodity:crude-oil'])[1 + g % 5],
+           'about'
+    from generate_series(1, 100) g
+    """,
+]
+
+LIVE_VOLUME_CALLS: list[tuple[str, dict[str, Any]]] = [
+    ("forecasts", {}),
+    ("forecasts", {"profile": PROFILE, "regions": ["region:in"], "sort": "relevance"}),
+    ("forecast", {"id": "forecast:test-vol-7"}),
+    ("affects", {"profile": PROFILE}),
+    ("affects", {"profile": PROFILE, "window": "30d"}),
+    ("opportunities", {}),
+    ("opportunities", {"profile": PROFILE, "sectors": ["logistics-trade", "energy"]}),
+    ("ask_context", {"q": "How are freight rates for Indian rice exporters moving?", "limit": 25}),
+    ("ask_context", {"q": "crude oil copper china"}),
+    ("pending_analysis", {"limit": 30}),
+]
+
+
+def test_timing_with_live_volume(sdb: psycopg.Connection) -> None:
+    for sql in LIVE_VOLUME_SQL:
+        sdb.execute(sql)
+    assert call(sdb, "pending_analysis", {})["total_pending"] == 800
+    for name, args in LIVE_VOLUME_CALLS:
+        call(sdb, name, args)  # warm the caches
+        data, ms = timed(sdb, name, args)
+        check(name, data)
+        assert ms < 500, f"api.{name}({json.dumps(args)[:60]}) took {ms:.0f} ms with live volume"
+    # Live data exists, so sample rows are off by default and the lists are full of live stories.
+    affects = call(sdb, "affects", {"profile": PROFILE, "window": "30d"})["items"]
+    assert len(affects) == 30 and not any(i["story"]["is_sample"] for i in affects)
+    assert len(call(sdb, "opportunities", {})["items"]) == 40
+    assert len(call(sdb, "pending_analysis", {"limit": 30})["items"]) == 30
 
 
 def test_arguments_are_data_not_sql(sdb: psycopg.Connection) -> None:

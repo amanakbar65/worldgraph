@@ -656,7 +656,7 @@ begin
     into v_history
     from s
     where s.n <= 240
-       or round(round(s.k * 239.0 / (s.n - 1)) * (s.n - 1) / 239.0) = s.k;
+       or round(round(s.k * 239.0 / nullif(s.n - 1, 0)) * (s.n - 1) / 239.0) = s.k;
 
     -- Entities the forecast is about.
     select api._c_entity_refs(coalesce(array_agg(distinct n.id), '{}')) into v_entities
