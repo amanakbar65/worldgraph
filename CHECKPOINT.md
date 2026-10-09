@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 8 Oct 2026, 19:40 UTC.
+**Last updated:** 9 Oct 2026, 01:05 UTC.
 
 ## How to resume (any new session)
 
@@ -31,13 +31,18 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 
 ## In flight
 
-**Screens:** run `wf_746a0799-b34`, launched 19:34 UTC with args `{"done": ["ai-artifact-web", "story-cascade"], "resume": {"globe": "wip/wf_3516be8d-024-1"}}`. The story-cascade screen is merged (255 frontend tests pass). The other 6 run two at a time: globe (resuming its saved work), region, forecasts, business, graph-entity, ask-brief-search-settings. Their worktrees are `.claude/worktrees/wf_746a0799-b34-<n>`, saved to `wip/wf_746a0799-b34-<n>`. The old globe worktree `wf_3516be8d-024-1` is kept until the new globe agent merges (its work is on `wip/wf_3516be8d-024-1`).
+**Screens:** run `wf_6bd5ecea-85a`, launched 01:04 UTC on 9 Oct with args `{"done": ["ai-artifact-web", "story-cascade", "region"], "resume": {"globe": "wip/wf_746a0799-b34-1"}}`.
+- **Merged:** story-cascade and region (333 frontend tests pass).
+- **Running, two at a time:** globe (resuming 4 commits of saved work, which already include the first globe attempt), forecasts, business, graph-entity, ask-brief-search-settings.
+- **Worktrees:** `.claude/worktrees/wf_6bd5ecea-85a-<n>`, saved to `wip/wf_6bd5ecea-85a-<n>`.
 
 **If interrupted:**
 1. `cd /home/user/worldgraph`, then `git worktree list`.
 2. Merge finished branches after the checks.
-3. Relaunch with `done` = merged labels plus "ai-artifact-web" and "story-cascade", and `resume` = `{label: "wip/wf_746a0799-b34-<n>"}` for unfinished ones.
+3. Relaunch with `done` = merged labels plus "ai-artifact-web", "story-cascade" and "region", and `resume` = `{label: "wip/wf_6bd5ecea-85a-<n>"}` for unfinished ones (the globe falls back to `wip/wf_746a0799-b34-1`).
 4. Restart `orchestration/checkpoint.sh 600`.
+
+Session limits have stopped agents three times (11:12, 15:10, 20:20 UTC). Each time the saver kept the work.
 
 **Live data is on** (the owner added `DATABASE_URL` at about 15:00). Runs succeeded at 15:03 and 16:12: 411 live stories (all pending analysis), 859 articles and 73 Manifold forecasts. A news run takes about 7 minutes.
 
