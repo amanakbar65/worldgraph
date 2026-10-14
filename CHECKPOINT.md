@@ -32,8 +32,7 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 ## In flight
 
 **Screens:** run `wf_bd379cc1-4a0`, launched 12:58 UTC on 14 Oct (after the weekly limit reset), with args `{"done": ["ai-artifact-web", "story-cascade", "region"], "resume": {"globe": "wip/wf_6bd5ecea-85a-1", "forecasts": "wip/wf_6bd5ecea-85a-2"}}`.
-- **Merged:** story-cascade and region (333 frontend tests pass).
-- **Finished, not yet merged:** globe (`worktree-wf_bd379cc1-4a0-1` at `f841ca6`, 410 tests pass) and forecasts (`worktree-wf_bd379cc1-4a0-2` at `01794f5`, checks pass). Both are also on `wip/wf_bd379cc1-4a0-1` and `-2`. **Next step: merge both** (`git merge --no-edit <branch>`, then run the frontend checks).
+- **Merged:** story-cascade, region, globe and forecasts (497 frontend tests pass, 14 Oct 13:45).
 - **Running at 13:40 UTC:** business (`-3`) and graph-entity (`-4`). ask-brief-search-settings comes after them. All work was force-saved to `wip/wf_bd379cc1-4a0-<n>` at 13:40.
 - **Worktrees:** `.claude/worktrees/wf_bd379cc1-4a0-<n>`, saved to `wip/wf_bd379cc1-4a0-<n>`. Older worktrees `wf_6bd5ecea-85a-1/2` hold the same work; remove them once their labels merge.
 - The 9 Oct run stopped at the **weekly** limit, which reset on 14 Oct at 12:00 UTC.
@@ -41,7 +40,7 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 **If interrupted:**
 1. `cd /home/user/worldgraph`, then `git worktree list`.
 2. Merge finished branches after the checks.
-3. Relaunch with `done` = merged labels plus "ai-artifact-web", "story-cascade" and "region", and `resume` = `{label: "wip/wf_bd379cc1-4a0-<n>"}` for unfinished ones (fallbacks: globe `wip/wf_6bd5ecea-85a-1`, forecasts `wip/wf_6bd5ecea-85a-2`).
+3. Relaunch with `done` = ["ai-artifact-web", "story-cascade", "region", "globe", "forecasts"] plus any newly merged labels, and `resume` = `{label: "wip/wf_bd379cc1-4a0-<n>"}` for unfinished ones (fallbacks: globe `wip/wf_6bd5ecea-85a-1`, forecasts `wip/wf_6bd5ecea-85a-2`).
 4. Restart `orchestration/checkpoint.sh 600`.
 
 Session limits have stopped agents three times (11:12, 15:10, 20:20 UTC). Each time the saver kept the work.
