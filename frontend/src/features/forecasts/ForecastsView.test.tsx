@@ -237,6 +237,16 @@ describe("ForecastsView", () => {
     expect(refetch).toHaveBeenCalled();
   });
 
+  it("shows the error when a filter change fails, instead of the old list", () => {
+    const { rerender } = render(<ForecastsView />);
+    expect(rows()).toHaveLength(4);
+    mocks.responses = {};
+    mocks.errors = { forecasts: new DataError("server_error", "boom") };
+    rerender(<ForecastsView />);
+    expect(screen.getByRole("alert").textContent).toContain("This view hit a snag");
+    expect(within(list()).queryAllByRole("listitem")).toHaveLength(0);
+  });
+
   it("never invites anyone to bet or trade", () => {
     useForecastFilters.setState({ includeThin: true });
     render(<ForecastsView />);

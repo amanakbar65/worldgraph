@@ -17,6 +17,7 @@ import {
   forecastsArgs,
   hasActiveFilters,
   isBinary,
+  leadOutcome,
   moneyKind,
   moneyNote,
   outcomeChances,
@@ -335,6 +336,12 @@ describe("If YES / If NO", () => {
     expect(isBinary(["Hold", "Cut", "Hike"])).toBe(false);
     expect(branchViews(detail(FED, { outcomes: ["Hold", "Cut", "Hike"] }))).toEqual([]);
     expect(isBinary([])).toBe(true);
+  });
+
+  it("knows which outcome the probability is for", () => {
+    expect(leadOutcome(["YES", "NO"])).toBe("YES");
+    expect(leadOutcome([])).toBe("YES");
+    expect(leadOutcome(["Hold", "Cut"])).toBe("Hold");
   });
 
   it("titles a branch with its chance", () => {

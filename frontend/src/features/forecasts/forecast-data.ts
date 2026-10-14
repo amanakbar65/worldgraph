@@ -362,6 +362,11 @@ export interface BranchView {
   effects: BranchEffect[];
 }
 
+/** The outcome the probability is for: YES, or the first outcome of other questions. */
+export function leadOutcome(outcomes: readonly string[]): string {
+  return isBinary(outcomes) ? "YES" : (outcomes[0]?.trim() || "YES");
+}
+
 /** True for a plain yes/no question (or one with no outcomes listed). */
 export function isBinary(outcomes: readonly string[]): boolean {
   const set = new Set(outcomes.map((o) => o.trim().toUpperCase()));

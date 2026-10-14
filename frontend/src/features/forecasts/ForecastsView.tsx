@@ -113,7 +113,9 @@ export default function ForecastsView() {
           sectors={sectors}
           list={list}
           stale={latest.stale}
-          error={query.isError && !latest.value ? query.error : null}
+          // A failed request for these filters shows the error, not the previous list;
+          // a failed background refresh keeps the data it has.
+          error={query.isError && query.data === undefined ? query.error : null}
           onRetry={() => void query.refetch()}
           profileUsed={args.profile !== undefined}
           anySample={anySample}

@@ -107,7 +107,7 @@ describe("ForecastPanel", () => {
 
   it("notes a thin market", () => {
     renderPanel(detail(DUBLIN, {}, []));
-    expect(screen.getByText(/Few forecasters and little volume/)).toBeTruthy();
+    expect(screen.getByText(/few forecasters and little volume/)).toBeTruthy();
     expect(screen.getByRole("img", { name: /Chance of YES: 19% crowd forecast, down 30 points in 24 hours, thin market/ })).toBeTruthy();
   });
 
@@ -157,6 +157,8 @@ describe("ForecastPanel", () => {
       renderPanel(detail(FED, { outcomes: ["Hold", "Cut", "Hike"] }, []));
       expect(screen.queryByRole("region", { name: "If YES / If NO" })).toBeNull();
       expect(screen.getByText("Hike")).toBeTruthy();
+      expect(screen.getByRole("img", { name: /^Chance of Hold: 63% crowd forecast/ })).toBeTruthy();
+      expect(screen.getByText("Hold up 13 points in 24 hours.")).toBeTruthy();
     });
   });
 

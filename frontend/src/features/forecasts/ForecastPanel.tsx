@@ -41,13 +41,14 @@ import {
   changeWords,
   endInfo,
   isBigMove,
+  leadOutcome,
   moneyKind,
   moneyNote,
   outcomeChances,
   questionAddsDetail,
   type BranchView,
 } from "./forecast-data";
-import { MetaList, PlayMoneyTag, StoryRow, ThinTag, VolumeFigure } from "./forecast-parts";
+import { MetaList, PlayMoneyTag, StoryRow, VolumeFigure } from "./forecast-parts";
 import { useForecastNav } from "./use-forecast-nav";
 import { useNow } from "./use-now";
 
@@ -123,6 +124,8 @@ function Now({ forecast: f, nav }: { forecast: Detail; nav: Nav }) {
   const now = useNow();
   const chances = outcomeChances(f);
   const end = endInfo(f.end_date, now);
+  // The probability is the chance of YES (or of the first outcome on other questions).
+  const lead = leadOutcome(f.outcomes);
   return (
     <section aria-labelledby={id} className="flex flex-col gap-3">
       <h3 id={id} className="sr-only">
@@ -135,7 +138,7 @@ function Now({ forecast: f, nav }: { forecast: Detail; nav: Nav }) {
           change24h={f.change_24h}
           glow={isBigMove(f.change_24h)}
           thin={f.thin}
-          label={`Chance of ${chances.length ? "YES" : f.outcomes[0] ?? "YES"}`}
+          label={`Chance of ${lead}`}
         />
         <div className="flex min-w-0 flex-1 flex-col gap-2.5">
           {chances.length > 0 ? (
@@ -146,7 +149,7 @@ function Now({ forecast: f, nav }: { forecast: Detail; nav: Nav }) {
                   size="sm"
                   probability={c.probability}
                   thin={f.thin}
-                  label={`${c.outcome}`}
+                  label={c.outcome}
                 />
               </div>
             ))
@@ -154,15 +157,18 @@ function Now({ forecast: f, nav }: { forecast: Detail; nav: Nav }) {
             <OutcomeList outcomes={f.outcomes} />
           )}
           <p className="text-label text-fg-muted">
-            {f.change_24h === null ? "No 24-hour change reported." : `YES ${changeWords(f.change_24h)}.`}
+            {f.change_24h === null ? "No 24-hour change reported." : `${lead} ${changeWords(f.change_24h)}.`}
           </p>
         </div>
       </div>
 
       {f.thin && (
         <p className="flex items-start gap-2 rounded-lg border border-dashed border-line-strong px-3 py-2.5 text-body text-fg-muted">
-          <ThinTag className="mt-px text-label" />
-          Few forecasters and little volume, so this number can swing on a handful of forecasts.
+          <Info aria-hidden className="mt-[3px] size-4 shrink-0" />
+          <span>
+            <span className="font-medium text-fg">Thin market:</span> few forecasters and little volume, so this number
+            can swing on a handful of forecasts.
+          </span>
         </p>
       )}
 
@@ -304,7 +310,7 @@ function History({ forecast: f }: { forecast: Detail }) {
         id={id}
         title="How the forecast has moved"
         icon={ChartLine}
-        description="Chance of YES over time. Use the arrow keys on the chart to read each point."
+        description={`Chance of ${leadOutcome(f.outcomes)} over time. Use the arrow keys on the chart to read each point.`}
       />
       <ProbabilityHistoryChart points={f.history} label={f.short_title} thin={f.thin} height={176} />
     </section>
