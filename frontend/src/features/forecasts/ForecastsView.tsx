@@ -151,7 +151,7 @@ function Movers({
   if (query.isError && !latest.value) return null; // the list below explains the problem
 
   return (
-    <section aria-labelledby={id} className="flex flex-col gap-3">
+    <section aria-labelledby={id} className="@container flex flex-col gap-3">
       <SectionHeader
         id={id}
         title="Biggest moves in 24 hours"
@@ -159,9 +159,12 @@ function Movers({
         description={sectors.length > 0 ? "Within your sector lens." : "Where the crowd changed its mind most since yesterday."}
       />
       {movers === null ? (
-        <div aria-busy="true" aria-label="Loading the biggest moves" className="grid gap-3 md:grid-cols-3">
+        <div aria-busy="true" aria-label="Loading the biggest moves" className="grid gap-3 @4xl:grid-cols-3">
           {[0, 1, 2].map((i) => (
-            <div key={i} className={cn("flex items-center gap-4 rounded-xl border border-line p-4", i > 0 && "hidden md:flex")}>
+            <div
+              key={i}
+              className={cn("flex items-center gap-4 rounded-xl border border-line p-4", i > 0 && "hidden @4xl:flex")}
+            >
               <Skeleton className="size-[88px] shrink-0 rounded-full" />
               <div className="flex flex-1 flex-col gap-2">
                 <Skeleton className="h-3 w-24" />
@@ -178,13 +181,14 @@ function Movers({
       ) : (
         <ul
           className={cn(
-            // Phones: a row to swipe through; wider screens: a grid of three.
-            "-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6",
-            "md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 md:pb-0",
+            // Narrow: a row to swipe through (the gutter stays when a card snaps);
+            // wide: a grid of three.
+            "-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:scroll-px-6 sm:px-6",
+            "@4xl:mx-0 @4xl:grid @4xl:grid-cols-3 @4xl:overflow-visible @4xl:px-0 @4xl:pb-0",
           )}
         >
           {movers.map((f) => (
-            <li key={f.id} className="w-[min(20rem,82%)] shrink-0 snap-start md:w-auto">
+            <li key={f.id} className="w-[min(21rem,84%)] shrink-0 snap-start @4xl:w-auto">
               <MoverCard forecast={f} now={now} onOpen={onOpen} className="h-full" />
             </li>
           ))}
@@ -274,7 +278,7 @@ function AllForecasts({
       <Toolbar filters={filters} sectors={sectors} />
       <ActiveFilters filters={filters} sectors={sectors} onClearAll={clearAll} />
 
-      <div className="overflow-hidden rounded-xl border border-line bg-surface">
+      <div className="@container overflow-hidden rounded-xl border border-line bg-surface">
         {list !== null && list.length > 0 && !error && <ListHeader />}
         {body}
         <p role="status" className="sr-only">
@@ -296,6 +300,7 @@ function Toolbar({ filters, sectors }: { filters: ForecastFilters; sectors: Sect
 
   return (
     <div className="flex flex-col gap-3">
+      {/* Phones: the place search, then the lens and the sort side by side, then thin markets. */}
       <div className="flex flex-wrap items-start gap-2">
         <RegionPicker
           className="w-full sm:w-72"
@@ -305,42 +310,40 @@ function Toolbar({ filters, sectors }: { filters: ForecastFilters; sectors: Sect
           placeholder="Filter by country, state or city"
           disabled={filters.regions.length >= MAX_REGIONS}
         />
-        <div className="flex flex-1 flex-wrap items-center gap-2">
-          <SectorLens sectors={sectors} />
-          <label
-            htmlFor={thinId}
-            className="flex h-10 cursor-pointer items-center gap-2.5 rounded-lg border border-line-strong px-3 text-body text-fg"
-            title="Markets with few forecasters and little volume; their numbers swing easily"
-          >
-            <Switch id={thinId} checked={filters.includeThin} onCheckedChange={setIncludeThin} />
-            Include thin markets
+        <SectorLens sectors={sectors} className="flex-1 sm:flex-none" />
+        <div className="relative min-w-0 flex-1 sm:flex-none">
+          <ArrowUpDown
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
+          />
+          <label htmlFor={sortId} className="sr-only">
+            Sort forecasts
           </label>
-          <div className="relative sm:ml-auto">
-            <ArrowUpDown
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
-            />
-            <label htmlFor={sortId} className="sr-only">
-              Sort forecasts
-            </label>
-            <select
-              id={sortId}
-              value={filters.sort}
-              onChange={(e) => setSort(e.target.value as ForecastSort)}
-              className="h-10 cursor-pointer appearance-none rounded-lg border border-line-strong bg-surface pr-9 pl-9 text-body text-fg"
-            >
-              {SORT_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-fg-muted"
-            />
-          </div>
+          <select
+            id={sortId}
+            value={filters.sort}
+            onChange={(e) => setSort(e.target.value as ForecastSort)}
+            className="h-10 w-full cursor-pointer appearance-none rounded-lg border border-line-strong bg-surface pr-9 pl-9 text-body text-fg transition-colors hover:bg-surface-2"
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-fg-muted"
+          />
         </div>
+        <label
+          htmlFor={thinId}
+          className="flex h-10 w-full cursor-pointer items-center gap-2.5 rounded-lg border border-line-strong px-3 text-body text-fg transition-colors hover:bg-surface-2 sm:ml-auto sm:w-auto"
+          title="Markets with few forecasters and little volume; their numbers swing easily"
+        >
+          <Switch id={thinId} checked={filters.includeThin} onCheckedChange={setIncludeThin} />
+          Include thin markets
+        </label>
       </div>
 
       <div
@@ -348,7 +351,7 @@ function Toolbar({ filters, sectors }: { filters: ForecastFilters; sectors: Sect
         aria-label="Categories"
         className="-mx-4 flex gap-2 overflow-x-auto px-4 py-1 sm:-mx-6 sm:px-6 md:mx-0 md:flex-wrap md:overflow-visible md:px-0"
       >
-        <ChipButton selected={filters.categories.length === 0} onClick={clearCategories}>
+        <ChipButton className="shrink-0" selected={filters.categories.length === 0} onClick={clearCategories}>
           All
         </ChipButton>
         {CATEGORY_IDS.map((category) => {
@@ -356,6 +359,7 @@ function Toolbar({ filters, sectors }: { filters: ForecastFilters; sectors: Sect
           return (
             <ChipButton
               key={category}
+              className="shrink-0"
               selected={filters.categories.includes(category)}
               onClick={() => toggleCategory(category)}
             >
@@ -370,14 +374,18 @@ function Toolbar({ filters, sectors }: { filters: ForecastFilters; sectors: Sect
 }
 
 /** The sector lens, shared with the globe: nine toggles in a popover. */
-function SectorLens({ sectors }: { sectors: SectorId[] }) {
+function SectorLens({ sectors, className }: { sectors: SectorId[]; className?: string }) {
   const toggleSector = useNav((s) => s.toggleSector);
   const clearSectors = useNav((s) => s.clearSectors);
   const titleId = useId();
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" aria-label={`Sector lens${sectors.length ? `: ${sectors.length} on` : ": off"}`}>
+        <Button
+          variant="outline"
+          className={className}
+          aria-label={`Sector lens${sectors.length ? `: ${sectors.length} on` : ": off"}`}
+        >
           <Layers aria-hidden />
           Sectors
           {sectors.length > 0 && (
@@ -506,9 +514,9 @@ function ListSkeleton() {
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-3 w-1/2" />
           </div>
-          <Skeleton className="hidden h-8 w-28 md:block" />
-          <Skeleton className="hidden h-4 w-12 md:block" />
-          <Skeleton className="hidden h-4 w-16 md:block" />
+          <Skeleton className="h-8 w-16 @3xl:w-28" />
+          <Skeleton className="hidden h-4 w-12 @3xl:block" />
+          <Skeleton className="hidden h-4 w-16 @3xl:block" />
         </div>
       ))}
     </div>

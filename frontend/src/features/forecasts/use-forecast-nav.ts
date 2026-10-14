@@ -11,6 +11,8 @@ export function useForecastNav() {
     () => ({
       openForecast: (id: string) => open({ kind: "forecast", id }),
       openStory: (id: string) => open({ kind: "story", id }),
+      /** Ask, scoped to this forecast. */
+      ask: (scope: string) => open({ kind: "ask", scope }),
       /** Places open their panel (and fly the globe there); other entities open their page. */
       openEntity: (entity: { id?: string; type: EntityType }) => {
         if (!entity.id) return;

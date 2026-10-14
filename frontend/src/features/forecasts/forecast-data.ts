@@ -28,7 +28,7 @@ import {
 } from "@/api/contract";
 import { formatCompact, formatProbability } from "@/lib/format";
 import { describeForecast } from "@/lib/meaning";
-import { relativeTime } from "@/lib/time";
+import { formatDate } from "@/lib/time";
 
 // ---------------------------------------------------------------------------
 // Vocabulary
@@ -250,6 +250,44 @@ export function volumeText(f: Pick<ForecastSummary, "volume" | "volume_unit">, l
   return `${parts.value}${parts.unit ? ` ${parts.unit}` : ""} volume`;
 }
 
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+
+const UNIT_WORDS = { min: "minute", h: "hour", d: "day", mo: "month", y: "year" } as const;
+
+export interface EndInfo {
+  /** "in 23 d", "in 3 mo", "in 2 y", "Ended". */
+  short: string;
+  /** The same in words, for screen readers: "ends in 3 months", "ended 12 Oct". */
+  words: string;
+  /** The end date itself: "12 Jan", "12 Jan 2027". */
+  date: string;
+  ended: boolean;
+}
+
+/**
+ * When a forecast closes, as a countdown that stays short at any distance
+ * (minutes, hours, days, then months and years) plus the date itself.
+ * Null when there is no (valid) end date.
+ */
+export function endInfo(end: string | null, now = Date.now()): EndInfo | null {
+  const t = timeOf(end);
+  if (t === null) return null;
+  const date = formatDate(t, now);
+  const diff = t - now;
+  if (diff <= 0) return { short: "Ended", words: `ended ${date}`, date, ended: true };
+  let n: number;
+  let unit: keyof typeof UNIT_WORDS;
+  if (diff < HOUR) [n, unit] = [Math.max(1, Math.round(diff / MINUTE)), "min"];
+  else if (diff < DAY) [n, unit] = [Math.floor(diff / HOUR), "h"];
+  else if (diff < 30 * DAY) [n, unit] = [Math.floor(diff / DAY), "d"];
+  else if (diff < 730 * DAY) [n, unit] = [Math.max(1, Math.round(diff / (30.44 * DAY))), "mo"];
+  else [n, unit] = [Math.round(diff / (365.25 * DAY)), "y"];
+  const word = `${UNIT_WORDS[unit]}${n === 1 ? "" : "s"}`;
+  return { short: `in ${n} ${unit}`, words: `ends in ${n} ${word}`, date, ended: false };
+}
+
 /** "▲ 8" style text needs words for screen readers: "up 8 points", "unchanged". */
 export function changeWords(change: number | null): string {
   if (change === null) return "no 24-hour change reported";
@@ -297,10 +335,8 @@ export function moneyNote(f: Pick<ForecastSummary, "provider" | "provider_name" 
 /** The accessible name of a forecast row: what, how likely, how it moved, how big, when it ends, from whom. */
 export function forecastLabel(f: ForecastSummary, now = Date.now()): string {
   const parts = [f.short_title, describeForecast(f.probability, f.change_24h, f.thin), volumeText(f)];
-  if (f.end_date) {
-    const when = relativeTime(f.end_date, now);
-    if (when) parts.push(`${Date.parse(f.end_date) <= now ? "ended" : "ends"} ${when}`);
-  }
+  const end = endInfo(f.end_date, now);
+  if (end) parts.push(end.words);
   parts.push(`source ${f.provider_name}${moneyKind(f) === "play" ? ", play money" : ""}`);
   if (f.is_sample) parts.push("sample data");
   return parts.join(". ");

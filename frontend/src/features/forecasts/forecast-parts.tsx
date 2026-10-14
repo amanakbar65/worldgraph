@@ -1,10 +1,11 @@
 /**
  * Pieces shared by the forecasts view and the forecast panel: the crowd
  * label, the play-money and thin-market tags, the figures (24-hour change,
- * volume), a list row, a mover card and a related-story row.
+ * volume, the countdown to the end), a list row, a mover card and a
+ * related-story row.
  */
 import { ChevronRight, Coins, Users } from "lucide-react";
-import type { ReactNode } from "react";
+import { Children, type ReactNode } from "react";
 
 import type { ForecastSummary, StorySummary } from "@/api/contract";
 import { ProbabilityRing } from "@/components/ProbabilityRing";
@@ -12,13 +13,15 @@ import { SampleBadge } from "@/components/SampleBadge";
 import { Sparkline } from "@/components/Sparkline";
 import { TimeAgo } from "@/components/TimeAgo";
 import { Chip } from "@/components/ui/chip";
-import { formatPointChange } from "@/lib/format";
-import { cn } from "@/lib/utils";
 import { DraftLabel, ImpactTile, ImpactWord } from "@/features/story/story-parts";
+import { formatPointChange } from "@/lib/format";
+import { formatDateTime } from "@/lib/time";
+import { cn } from "@/lib/utils";
 
 import {
   CATEGORIES,
   changeWords,
+  endInfo,
   forecastLabel,
   isBigMove,
   moneyKind,
@@ -66,6 +69,36 @@ export function ThinTag({ className }: { className?: string }) {
   );
 }
 
+/**
+ * A quiet line of facts separated by small dots. Each fact stays whole, and
+ * when the line wraps no row starts or ends with a dot: every item draws
+ * the dot before it, and the first item of each row has its dot clipped.
+ */
+export function MetaList({ children, className }: { children: ReactNode; className?: string }) {
+  const items = Children.toArray(children);
+  return (
+    <span className={cn("flex min-w-0 overflow-hidden text-label text-fg-muted", className)}>
+      <span className="-ml-3 flex min-w-0 flex-wrap items-center gap-y-1">
+        {items.map((item, i) => (
+          <span
+            key={i}
+            className={cn(
+              "relative inline-flex min-w-0 items-center gap-1.5 pl-3 whitespace-nowrap empty:hidden",
+              "before:absolute before:top-1/2 before:left-[4.5px] before:size-[3px] before:-translate-y-1/2 before:rounded-full before:bg-fg-subtle before:content-['']",
+            )}
+          >
+            {item}
+          </span>
+        ))}
+      </span>
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Figures
+// ---------------------------------------------------------------------------
+
 /** "▲ 16" with words for screen readers; a dash when the provider gives no change. */
 export function ChangeFigure({ change, className }: { change: number | null; className?: string }) {
   const big = isBigMove(change);
@@ -89,6 +122,28 @@ export function VolumeFigure({ forecast, className }: { forecast: ForecastSummar
   );
 }
 
+/** "in 23 d", "in 3 mo" or "Ended", with the full date and time as its tooltip; "Open" with no end date. */
+export function EndsFigure({
+  end,
+  now,
+  prefix,
+  className,
+}: {
+  end: string | null;
+  now: number;
+  /** Words before the countdown, e.g. "Ends" → "Ends in 23 d". */
+  prefix?: string;
+  className?: string;
+}) {
+  const info = endInfo(end, now);
+  if (!info || !end) return <span className={cn("whitespace-nowrap", className)}>{prefix ? "No end date" : "Open"}</span>;
+  return (
+    <time dateTime={end} title={formatDateTime(end)} className={cn("tabular-nums whitespace-nowrap", className)}>
+      {prefix && !info.ended ? `${prefix} ${info.short}` : info.short}
+    </time>
+  );
+}
+
 /** The forecast's 30-day trend, on a range that keeps small wobbles small. */
 export function ForecastSparkline({ forecast, className }: { forecast: ForecastSummary; className?: string }) {
   return (
@@ -101,9 +156,20 @@ export function ForecastSparkline({ forecast, className }: { forecast: ForecastS
   );
 }
 
+/** The provider's name with its play-money or sample mark, kept together. */
+export function ProviderName({ forecast }: { forecast: ForecastSummary }) {
+  return (
+    <>
+      <span>{forecast.provider_name}</span>
+      {moneyKind(forecast) === "play" && <PlayMoneyTag />}
+      {forecast.is_sample && <SampleBadge iconOnly />}
+    </>
+  );
+}
+
 /**
  * One quiet line under a forecast's title: the crowd label, category,
- * provider (and play money), last update, thin market and sample marks.
+ * provider (with play money or sample marks), last update and thin market.
  */
 export function ForecastMeta({
   forecast,
@@ -117,29 +183,18 @@ export function ForecastMeta({
   const category = CATEGORIES[forecast.category];
   const CategoryIcon = category?.icon;
   return (
-    <span className={cn("flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-label text-fg-muted", className)}>
+    <MetaList className={className}>
       <CrowdLabel />
       {showCategory && category && CategoryIcon && (
         <>
-          <span aria-hidden>·</span>
-          <span className="inline-flex items-center gap-1 whitespace-nowrap">
-            <CategoryIcon aria-hidden className="size-3.5" />
-            {category.label}
-          </span>
+          <CategoryIcon aria-hidden className="-mr-0.5 size-3.5" />
+          {category.label}
         </>
       )}
-      <span aria-hidden>·</span>
-      <span className="whitespace-nowrap">{forecast.provider_name}</span>
-      {moneyKind(forecast) === "play" && <PlayMoneyTag />}
-      {forecast.updated_at && (
-        <>
-          <span aria-hidden>·</span>
-          <TimeAgo value={forecast.updated_at} prefix="Updated" className="whitespace-nowrap" />
-        </>
-      )}
+      <ProviderName forecast={forecast} />
+      {forecast.updated_at && <TimeAgo value={forecast.updated_at} prefix="Updated" />}
       {forecast.thin && <ThinTag />}
-      {forecast.is_sample && <SampleBadge iconOnly />}
-    </span>
+    </MetaList>
   );
 }
 
@@ -147,23 +202,27 @@ export function ForecastMeta({
 // List row
 // ---------------------------------------------------------------------------
 
-/** The grid shared by the list's header and its rows. */
+/**
+ * The grid shared by the list's header and its rows. It follows the list's
+ * own width (a container query), so rows stay roomy when a side panel
+ * narrows the screen: narrow lists stack the figures under the title.
+ */
 export const ROW_GRID =
-  "grid grid-cols-[2.75rem_minmax(0,1fr)_4rem] md:grid-cols-[2.75rem_minmax(0,1fr)_7rem_4.5rem_5.5rem_5.5rem_1rem]";
+  "grid grid-cols-[2.75rem_minmax(0,1fr)_4rem] @3xl:grid-cols-[2.75rem_minmax(0,1fr)_4.5rem_3.5rem_5.5rem_4.5rem_1rem]";
 
-/** Column titles over the list (wide screens; each row's name says it all to screen readers). */
+/** Column titles over the list (wide lists; each row's name says it all to screen readers). */
 export function ListHeader() {
   return (
     <div
       aria-hidden
       className={cn(
         ROW_GRID,
-        "hidden items-end gap-x-4 border-b border-line px-3 pt-3 pb-2 text-label text-fg-subtle md:grid",
+        "hidden items-end gap-x-3 border-b border-line px-3 pt-3 pb-2 text-label text-fg-muted @3xl:grid",
       )}
     >
       <span />
       <span>Question</span>
-      <span>Last 30 days</span>
+      <span>30 days</span>
       <span className="text-right">24 h</span>
       <span className="text-right">Volume</span>
       <span className="text-right">Ends</span>
@@ -197,45 +256,37 @@ export function ForecastListRow({
         aria-current={selected ? "true" : undefined}
         className={cn(
           ROW_GRID,
-          "group w-full cursor-pointer items-center gap-x-3 gap-y-1 rounded-lg px-3 py-3 text-left transition-colors hover:bg-surface-2/70 md:gap-x-4",
+          "group w-full cursor-pointer items-center gap-x-3 gap-y-1.5 rounded-lg px-3 py-3 text-left transition-colors hover:bg-surface-2/70",
           "aria-[current=true]:bg-surface-2",
         )}
       >
-        <span className={cn("row-span-2 self-start md:row-span-1 md:self-center", forecast.thin && "opacity-60")}>
+        <span className={cn("row-span-2 self-start @3xl:row-span-1 @3xl:self-center", forecast.thin && "opacity-60")}>
           <ProbabilityRing size="sm" probability={forecast.probability} />
         </span>
 
         <span className="flex min-w-0 flex-col gap-1">
           <span className="line-clamp-2 text-body font-medium text-fg">{forecast.short_title}</span>
-          <ForecastMeta forecast={forecast} className="hidden md:flex" />
+          <ForecastMeta forecast={forecast} className="hidden @3xl:flex" />
         </span>
 
-        <ForecastSparkline forecast={forecast} className="h-8 w-full self-center md:h-9" />
+        <ForecastSparkline forecast={forecast} className="h-8 w-full self-center @3xl:h-9" />
 
-        {/* Phones: the figures and the meta line sit under the title. */}
-        <span className="col-start-2 col-end-4 flex flex-col gap-1 md:hidden">
-          <span className="flex flex-wrap items-center gap-x-1.5 text-label text-fg-muted">
+        {/* Narrow lists: the figures and the meta line sit under the title. */}
+        <span className="col-start-2 col-end-4 flex min-w-0 flex-col gap-1 @3xl:hidden">
+          <MetaList>
             <ChangeFigure change={forecast.change_24h} />
-            <span aria-hidden>·</span>
-            <span className="whitespace-nowrap">{volumeText(forecast)}</span>
-            {forecast.end_date && (
-              <>
-                <span aria-hidden>·</span>
-                <TimeAgo value={forecast.end_date} prefix="Ends" pastPrefix="Ended" className="whitespace-nowrap" />
-              </>
-            )}
-          </span>
+            {volumeText(forecast)}
+            <EndsFigure end={forecast.end_date} now={now} prefix="Ends" />
+          </MetaList>
           <ForecastMeta forecast={forecast} showCategory={false} />
         </span>
 
-        <ChangeFigure change={forecast.change_24h} className="hidden text-right text-body md:block" />
-        <VolumeFigure forecast={forecast} className="hidden text-right text-body md:block" />
-        <span className="hidden text-right text-body whitespace-nowrap text-fg-muted md:block">
-          {forecast.end_date ? <TimeAgo value={forecast.end_date} /> : "Open"}
-        </span>
+        <ChangeFigure change={forecast.change_24h} className="hidden text-right text-body @3xl:block" />
+        <VolumeFigure forecast={forecast} className="hidden text-right text-body @3xl:block" />
+        <EndsFigure end={forecast.end_date} now={now} className="hidden text-right text-body text-fg-muted @3xl:block" />
         <ChevronRight
           aria-hidden
-          className="hidden size-4 text-fg-subtle transition-colors group-hover:text-fg-muted md:block"
+          className="hidden size-4 text-fg-subtle transition-colors group-hover:text-fg-muted @3xl:block"
         />
       </button>
     </li>
@@ -277,19 +328,11 @@ export function MoverCard({
       <span className="flex min-w-0 flex-1 flex-col gap-1.5">
         <CrowdLabel className="text-label" />
         <span className="line-clamp-3 text-body font-medium text-fg">{forecast.short_title}</span>
-        <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-label text-fg-muted">
-          <span className="whitespace-nowrap">{forecast.provider_name}</span>
-          {moneyKind(forecast) === "play" && <PlayMoneyTag />}
-          <span aria-hidden>·</span>
-          <span className="whitespace-nowrap">{volumeText(forecast)}</span>
-          {forecast.updated_at && (
-            <>
-              <span aria-hidden>·</span>
-              <TimeAgo value={forecast.updated_at} prefix="Updated" className="whitespace-nowrap" />
-            </>
-          )}
-          {forecast.is_sample && <SampleBadge iconOnly />}
-        </span>
+        <MetaList>
+          <ProviderName forecast={forecast} />
+          {volumeText(forecast)}
+          {forecast.updated_at && <TimeAgo value={forecast.updated_at} prefix="Updated" />}
+        </MetaList>
       </span>
     </button>
   );
@@ -324,29 +367,14 @@ export function StoryRow({
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="line-clamp-2 text-body font-medium text-fg">{story.headline}</span>
           {children}
-          <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-label text-fg-muted">
+          <MetaList>
             {story.analysed ? <ImpactWord impact={story.impact} direction={story.direction} /> : <DraftLabel />}
-            {story.region && (
-              <>
-                <span aria-hidden>·</span>
-                <span className="min-w-0 truncate">{story.region.name}</span>
-              </>
-            )}
-            {story.kind === "projected" ? (
-              <>
-                <span aria-hidden>·</span>
-                <span className="whitespace-nowrap">Possible effect</span>
-              </>
-            ) : (
-              story.first_seen && (
-                <>
-                  <span aria-hidden>·</span>
-                  <TimeAgo value={story.first_seen} className="whitespace-nowrap" />
-                </>
-              )
-            )}
+            {story.region && <span className="max-w-48 truncate">{story.region.name}</span>}
+            {story.kind === "projected"
+              ? "Possible effect"
+              : story.first_seen && <TimeAgo value={story.first_seen} />}
             {story.is_sample && <SampleBadge iconOnly />}
-          </span>
+          </MetaList>
         </span>
         <ChevronRight aria-hidden className="mt-2.5 size-4 shrink-0 text-fg-subtle" />
       </button>

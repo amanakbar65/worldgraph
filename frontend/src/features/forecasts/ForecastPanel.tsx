@@ -1,5 +1,16 @@
-import { ChartLine, ExternalLink, GitFork, Info, Newspaper, Scale, Shapes, Users } from "lucide-react";
-import { useId, type ReactNode } from "react";
+import {
+  ChartLine,
+  ExternalLink,
+  GitFork,
+  Info,
+  MessageCircleQuestion,
+  Newspaper,
+  Scale,
+  Shapes,
+  Star,
+  Users,
+} from "lucide-react";
+import { useId, useState, type ReactNode } from "react";
 
 import type { ForecastResponse } from "@/api/contract";
 import { useRpc } from "@/api/client";
@@ -18,8 +29,9 @@ import { Chip } from "@/components/ui/chip";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { formatCompact } from "@/lib/format";
 import { safeHttpUrl } from "@/lib/links";
-import { formatDate } from "@/lib/time";
+import { formatDate, formatDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import { useUserValue } from "@/platform/storage";
 import type { Panel } from "@/state/nav";
 
 import {
@@ -27,6 +39,7 @@ import {
   branchTitle,
   branchViews,
   changeWords,
+  endInfo,
   isBigMove,
   moneyKind,
   moneyNote,
@@ -34,8 +47,9 @@ import {
   questionAddsDetail,
   type BranchView,
 } from "./forecast-data";
-import { PlayMoneyTag, StoryRow, ThinTag, VolumeFigure } from "./forecast-parts";
+import { MetaList, PlayMoneyTag, StoryRow, ThinTag, VolumeFigure } from "./forecast-parts";
 import { useForecastNav } from "./use-forecast-nav";
+import { useNow } from "./use-now";
 
 type Detail = ForecastResponse["forecast"];
 type Nav = ReturnType<typeof useForecastNav>;
@@ -89,7 +103,7 @@ function ForecastDetail({ data, nav }: { data: ForecastResponse; nav: Nav }) {
         {questionAddsDetail(f.short_title, f.question) && <p className="text-body text-fg-muted">{f.question}</p>}
       </header>
 
-      <Now forecast={f} />
+      <Now forecast={f} nav={nav} />
       <History forecast={f} />
       <Branches data={data} nav={nav} />
       <Resolution forecast={f} />
@@ -104,9 +118,11 @@ function ForecastDetail({ data, nav }: { data: ForecastResponse; nav: Nav }) {
 // The crowd's number now
 // ---------------------------------------------------------------------------
 
-function Now({ forecast: f }: { forecast: Detail }) {
+function Now({ forecast: f, nav }: { forecast: Detail; nav: Nav }) {
   const id = useId();
+  const now = useNow();
   const chances = outcomeChances(f);
+  const end = endInfo(f.end_date, now);
   return (
     <section aria-labelledby={id} className="flex flex-col gap-3">
       <h3 id={id} className="sr-only">
@@ -165,10 +181,12 @@ function Now({ forecast: f }: { forecast: Detail }) {
           )}
         </Tile>
         <Tile label="Ends">
-          {f.end_date ? (
+          {end && f.end_date ? (
             <span className="flex flex-wrap items-baseline gap-x-1.5">
-              <TimeAgo value={f.end_date} />
-              <span className="text-label text-fg-muted">{formatDate(f.end_date)}</span>
+              <time dateTime={f.end_date} title={formatDateTime(f.end_date)} className="tabular-nums">
+                {end.date}
+              </time>
+              <span className="text-label text-fg-muted tabular-nums">{end.short}</span>
             </span>
           ) : (
             <span className="text-fg-muted">No end date</span>
@@ -180,6 +198,7 @@ function Now({ forecast: f }: { forecast: Detail }) {
       </dl>
 
       <SourceLine forecast={f} />
+      <Actions forecast={f} nav={nav} />
     </section>
   );
 }
@@ -206,33 +225,68 @@ function OutcomeList({ outcomes }: { outcomes: string[] }) {
   );
 }
 
-/** Where the number comes from, and the provider's page when linking is allowed. */
+/** Where the number comes from and when it was last updated. */
 function SourceLine({ forecast: f }: { forecast: Detail }) {
-  // The API sends a URL only where linking to the provider is allowed for this viewer.
-  const url = safeHttpUrl(f.url);
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-      <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-label text-fg-muted">
-        <span>
-          Source: <span className="font-medium text-fg">{f.provider_name}</span>
-        </span>
-        {moneyKind(f) === "play" && <span>· play money</span>}
-        {f.updated_at && (
-          <>
-            <span aria-hidden>·</span>
-            <TimeAgo value={f.updated_at} prefix="Updated" />
-          </>
-        )}
-      </p>
-      {url && (
-        <Button asChild variant="outline" size="sm">
-          <a href={url} target="_blank" rel="noreferrer">
-            View on {f.provider_name}
-            <ExternalLink aria-hidden />
-            <span className="sr-only">(opens in a new tab)</span>
-          </a>
+    <MetaList>
+      <span>
+        Source: <span className="font-medium text-fg">{f.provider_name}</span>
+      </span>
+      {moneyKind(f) === "play" && "Play money"}
+      {f.updated_at && <TimeAgo value={f.updated_at} prefix="Updated" />}
+    </MetaList>
+  );
+}
+
+/**
+ * Watch it (the watchlist My Business reads), ask about it, and the
+ * provider's own page. The API sends a URL only where linking to the
+ * provider is allowed for this viewer, so with no URL there is no link.
+ */
+function Actions({ forecast: f, nav }: { forecast: Detail; nav: Nav }) {
+  const watchlist = useUserValue<string[]>("watchlist", []);
+  const watching = watchlist.value.includes(f.id);
+  const [note, setNote] = useState("");
+  const url = safeHttpUrl(f.url);
+  const toggleWatch = () => {
+    watchlist.setValue((prev) => (prev.includes(f.id) ? prev.filter((x) => x !== f.id) : [...prev, f.id]));
+    setNote(watching ? "Removed from your watchlist." : "Added to your watchlist.");
+  };
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant="secondary"
+          onClick={toggleWatch}
+          disabled={watchlist.loading}
+          aria-pressed={watching}
+          title={watchlist.kind === "memory" ? "Saved for this visit only" : undefined}
+          className="aria-pressed:bg-fg/15 aria-pressed:text-fg"
+        >
+          <Star aria-hidden className={cn(watching && "fill-current")} />
+          {watching ? "Watching" : "Watch"}
         </Button>
-      )}
+        <Button variant="secondary" onClick={() => nav.ask(f.id)} aria-label="Ask about this forecast">
+          <MessageCircleQuestion aria-hidden />
+          Ask
+        </Button>
+        {url && (
+          <Button asChild variant="outline" className="ml-auto">
+            <a href={url} target="_blank" rel="noreferrer">
+              View on {f.provider_name}
+              <ExternalLink aria-hidden />
+              <span className="sr-only">(opens in a new tab)</span>
+            </a>
+          </Button>
+        )}
+      </div>
+      <p
+        role="status"
+        aria-live="polite"
+        className={cn("text-label text-fg-muted", !note && !watchlist.saveError && "sr-only")}
+      >
+        {watchlist.saveError ? "Couldn't save your watchlist; it's kept for this visit." : note}
+      </p>
     </div>
   );
 }
