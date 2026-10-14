@@ -34,7 +34,7 @@ import {
   questionAddsDetail,
   type BranchView,
 } from "./forecast-data";
-import { ChangeFigure, PlayMoneyTag, StoryRow, ThinTag, VolumeFigure } from "./forecast-parts";
+import { PlayMoneyTag, StoryRow, ThinTag, VolumeFigure } from "./forecast-parts";
 import { useForecastNav } from "./use-forecast-nav";
 
 type Detail = ForecastResponse["forecast"];
