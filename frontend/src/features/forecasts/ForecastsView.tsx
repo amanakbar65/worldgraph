@@ -310,7 +310,7 @@ function Toolbar({ filters, sectors }: { filters: ForecastFilters; sectors: Sect
           placeholder="Filter by country, state or city"
           disabled={filters.regions.length >= MAX_REGIONS}
         />
-        <SectorLens sectors={sectors} className="flex-1 sm:flex-none" />
+        <SectorLens sectors={sectors} />
         <div className="relative min-w-0 flex-1 sm:flex-none">
           <ArrowUpDown
             aria-hidden

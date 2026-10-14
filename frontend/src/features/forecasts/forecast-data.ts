@@ -57,7 +57,8 @@ export const CATEGORIES: Record<ForecastCategory, CategoryInfo> = {
   policy: { label: "Policy", icon: ScrollText },
   politics: { label: "Politics", icon: Vote },
   geopolitics: { label: "Geopolitics", icon: Globe },
-  trade: { label: "Trade", icon: ArrowLeftRight },
+  // "Global trade", not a bare "Trade": in a forecasts view that word must never read as a call to action.
+  trade: { label: "Global trade", icon: ArrowLeftRight },
   tech: { label: "Tech", icon: Cpu },
   commodities: { label: "Commodities", icon: Package },
   energy: { label: "Energy", icon: Zap },
