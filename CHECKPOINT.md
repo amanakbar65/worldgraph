@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 9 Oct 2026, 01:05 UTC.
+**Last updated:** 14 Oct 2026, 13:00 UTC.
 
 ## How to resume (any new session)
 
@@ -31,20 +31,21 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 
 ## In flight
 
-**Screens:** run `wf_6bd5ecea-85a`, launched 01:04 UTC on 9 Oct with args `{"done": ["ai-artifact-web", "story-cascade", "region"], "resume": {"globe": "wip/wf_746a0799-b34-1"}}`.
+**Screens:** run `wf_bd379cc1-4a0`, launched 12:58 UTC on 14 Oct (after the weekly limit reset), with args `{"done": ["ai-artifact-web", "story-cascade", "region"], "resume": {"globe": "wip/wf_6bd5ecea-85a-1", "forecasts": "wip/wf_6bd5ecea-85a-2"}}`.
 - **Merged:** story-cascade and region (333 frontend tests pass).
-- **Running, two at a time:** globe (resuming 4 commits of saved work, which already include the first globe attempt), forecasts, business, graph-entity, ask-brief-search-settings.
-- **Worktrees:** `.claude/worktrees/wf_6bd5ecea-85a-<n>`, saved to `wip/wf_6bd5ecea-85a-<n>`.
+- **Running, two at a time:** globe (resuming, with all earlier globe work inside), forecasts (resuming 8 started files), business, graph-entity, ask-brief-search-settings.
+- **Worktrees:** `.claude/worktrees/wf_bd379cc1-4a0-<n>`, saved to `wip/wf_bd379cc1-4a0-<n>`. Older worktrees `wf_6bd5ecea-85a-1/2` hold the same work; remove them once their labels merge.
+- The 9 Oct run stopped at the **weekly** limit, which reset on 14 Oct at 12:00 UTC.
 
 **If interrupted:**
 1. `cd /home/user/worldgraph`, then `git worktree list`.
 2. Merge finished branches after the checks.
-3. Relaunch with `done` = merged labels plus "ai-artifact-web", "story-cascade" and "region", and `resume` = `{label: "wip/wf_6bd5ecea-85a-<n>"}` for unfinished ones (the globe falls back to `wip/wf_746a0799-b34-1`).
+3. Relaunch with `done` = merged labels plus "ai-artifact-web", "story-cascade" and "region", and `resume` = `{label: "wip/wf_bd379cc1-4a0-<n>"}` for unfinished ones (fallbacks: globe `wip/wf_6bd5ecea-85a-1`, forecasts `wip/wf_6bd5ecea-85a-2`).
 4. Restart `orchestration/checkpoint.sh 600`.
 
 Session limits have stopped agents three times (11:12, 15:10, 20:20 UTC). Each time the saver kept the work.
 
-**Live data is on** (the owner added `DATABASE_URL` at about 15:00). Runs succeeded at 15:03 and 16:12: 411 live stories (all pending analysis), 859 articles and 73 Manifold forecasts. A news run takes about 7 minutes.
+**Live data is on** (the owner added `DATABASE_URL` on 8 Oct). By 14 Oct: 23 news runs in 5 days on GitHub's patchy schedule, and 1,041 live stories (none analysed yet). First runs (8 Oct): Runs succeeded at 15:03 and 16:12: 411 live stories (all pending analysis), 859 articles and 73 Manifold forecasts. A news run takes about 7 minutes.
 
 **Problem:** GitHub's `*/15` schedule fired only about every 7 hours, and a run catches up at most 1 hour of GDELT. The proposed fix is `backend/supabase/ops_dispatch.sql` (pg_cron calls workflow_dispatch every 15 minutes, using a fine-grained token in Supabase Vault named `github_dispatch_token`). The owner approved it; it is **applied (pg_cron job `wg-live-data`) and idle until the token is in Vault**.
 
