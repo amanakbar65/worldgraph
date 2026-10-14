@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import type { PickInfo } from "./GlobeMap";
 import { DEFAULT_TOGGLES, type LayerToggles } from "./layers";
+import type { LngLat } from "./model";
 
 /**
  * The globe's own view state. It lives in memory (not the URL) and survives
@@ -17,11 +18,14 @@ interface GlobeUiState {
   interacted: boolean;
   /** The last fly-to request (useNav.focus) the globe acted on. */
   appliedFocus: number | null;
+  /** Where the viewer left the camera, so coming back to the globe lands there again. */
+  camera: { center: LngLat; zoom: number } | null;
   setToggle: (key: keyof LayerToggles, on: boolean) => void;
   setListOpen: (open: boolean) => void;
   setTopCollapsed: (collapsed: boolean) => void;
   setInteracted: () => void;
   setAppliedFocus: (nonce: number) => void;
+  setCamera: (camera: { center: LngLat; zoom: number }) => void;
 }
 
 export const useGlobeUi = create<GlobeUiState>((set) => ({
@@ -30,11 +34,13 @@ export const useGlobeUi = create<GlobeUiState>((set) => ({
   topCollapsed: false,
   interacted: false,
   appliedFocus: null,
+  camera: null,
   setToggle: (key, on) => set((s) => ({ toggles: { ...s.toggles, [key]: on } })),
   setListOpen: (listOpen) => set({ listOpen }),
   setTopCollapsed: (topCollapsed) => set({ topCollapsed }),
   setInteracted: () => set({ interacted: true }),
   setAppliedFocus: (appliedFocus) => set({ appliedFocus }),
+  setCamera: (camera) => set({ camera }),
 }));
 
 /**

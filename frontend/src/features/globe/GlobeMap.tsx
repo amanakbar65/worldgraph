@@ -79,6 +79,8 @@ export interface GlobeMapProps {
   padding: Padding;
   /** Where "reset view" goes, and where the globe starts. */
   home: { center: LngLat; zoom: number };
+  /** Where the viewer left the camera on an earlier visit; the globe starts there instead of home. */
+  initialCamera?: { center: LngLat; zoom: number } | null;
   camera: CameraRequest | null;
   calm: boolean;
   /** Turn slowly until the viewer touches the map. */
@@ -229,13 +231,16 @@ export function GlobeMap(props: GlobeMapProps) {
     const el = container.current;
     if (!el) return;
     const initial = propsRef.current;
+    const start = initial.initialCamera ?? initial.home;
+    // A camera the viewer chose is kept: no re-framing to home.
+    if (initial.initialCamera) interacted.current = true;
     let map: MapLibreMap;
     try {
       map = new MapLibreMap({
         container: el,
         style: baseStyle(initial.layerInput.palette),
-        center: initial.home.center,
-        zoom: initial.home.zoom,
+        center: start.center,
+        zoom: start.zoom,
         minZoom: 0.2,
         maxZoom: 9,
         maxPitch: 0,
@@ -582,7 +587,11 @@ export function GlobeMap(props: GlobeMapProps) {
     const map = mapRef.current;
     if (!map || !camera) return;
     const duration = calm ? 0 : FLIGHT_MS;
-    if (camera.kind !== "zoom") interacted.current = true;
+    // A requested move counts as the viewer taking over: no auto-turn, no re-framing.
+    if (!interacted.current) {
+      interacted.current = true;
+      propsRef.current.onInteract();
+    }
     // Settle the padding first (a panel may have just opened): MapLibre fits
     // inside the map's padding plus the margin given here.
     map.setPadding(propsRef.current.padding);
@@ -609,7 +618,6 @@ export function GlobeMap(props: GlobeMapProps) {
         });
         break;
       case "zoom":
-        interacted.current = true;
         map.easeTo({ zoom: map.getZoom() + camera.delta, duration: calm ? 0 : 300 });
         break;
       case "reset": {

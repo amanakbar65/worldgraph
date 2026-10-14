@@ -96,25 +96,27 @@ export function makeRingAtlas(): RingAtlas | null {
     if (!ctx) return null;
     const mapping: RingAtlas["mapping"] = {};
     const r = CELL / 2 - 7;
+    // A mask: deck.gl keeps only its alpha and paints it in the forecast token's colour.
+    ctx.strokeStyle = ctx.fillStyle = "white";
     for (let i = 0; i < steps; i++) {
       const cx = i * CELL + CELL / 2;
       const cy = CELL / 2;
       // The faint track, then the probability arc from 12 o'clock, clockwise.
       ctx.lineWidth = 7;
-      ctx.strokeStyle = "rgba(255,255,255,0.32)";
+      ctx.globalAlpha = 0.32;
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.stroke();
       const p = i / 20;
       if (p > 0) {
-        ctx.strokeStyle = "rgba(255,255,255,1)";
+        ctx.globalAlpha = 1;
         ctx.lineCap = p < 1 ? "round" : "butt";
         ctx.beginPath();
         ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2);
         ctx.stroke();
       }
       // A small centre dot marks the exact place.
-      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.globalAlpha = 0.9;
       ctx.beginPath();
       ctx.arc(cx, cy, 4, 0, Math.PI * 2);
       ctx.fill();

@@ -190,6 +190,7 @@ beforeEach(() => {
     topCollapsed: false,
     interacted: false,
     appliedFocus: null,
+    camera: null,
   });
   useGlobeHover.setState({ hover: null });
 });
@@ -315,6 +316,26 @@ describe("GlobeView on a desktop", () => {
     act(() => useGlobeUi.getState().setToggle("arcs", false));
     expect(layerIds()).not.toContain("arcs");
     expect(layerIds()).toContain("events");
+  });
+
+  it("comes back to where the viewer left the camera", () => {
+    const first = renderGlobe();
+    act(() => map().fire("load"));
+    act(() => map().fire("mousedown"));
+    act(() => map().fire("moveend"));
+    expect(useGlobeUi.getState().camera).toEqual({ center: [25, 20], zoom: 1.8 });
+    first.unmount();
+    useGlobeUi.setState({ camera: { center: [78, 22], zoom: 4.2 } });
+    renderGlobe();
+    expect(map(1).options).toMatchObject({ center: [78, 22], zoom: 4.2 });
+  });
+
+  it("starts at home, and doesn't keep a camera nobody moved", () => {
+    renderGlobe();
+    act(() => map().fire("load"));
+    act(() => map().fire("moveend"));
+    expect(useGlobeUi.getState().camera).toBeNull();
+    expect(map().options.center).toEqual([25, 20]);
   });
 
   it("flies to places that other screens ask for", () => {

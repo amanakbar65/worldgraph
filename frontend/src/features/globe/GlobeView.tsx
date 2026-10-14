@@ -154,10 +154,17 @@ export default function GlobeView() {
   const setInteracted = useGlobeUi((s) => s.setInteracted);
   const appliedFocus = useGlobeUi((s) => s.appliedFocus);
   const setAppliedFocus = useGlobeUi((s) => s.setAppliedFocus);
+  const saveCamera = useGlobeUi((s) => s.setCamera);
+  // Read once: the map starts where the viewer left it on an earlier visit.
+  const [initialCamera] = useState(() => useGlobeUi.getState().camera);
 
   const [rootRef, size] = useElementSize<HTMLDivElement>();
   const [stripRef, stripSize] = useElementSize<HTMLDivElement>();
-  const [view, setView] = useState<ViewInfo>({ zoom: 1.8, center: HOME_CENTER, centerCountry: null });
+  const [view, setView] = useState<ViewInfo>(() => ({
+    zoom: initialCamera?.zoom ?? 1.8,
+    center: initialCamera?.center ?? HOME_CENTER,
+    centerCountry: null,
+  }));
   const setHover = useGlobeHover((s) => s.setHover);
   const hoverItem = useGlobeHover(hoveredItem);
   const hovering = useGlobeHover((s) => s.hover !== null);
@@ -494,6 +501,14 @@ export default function GlobeView() {
   );
 
   const onInteract = useCallback(() => setInteracted(), [setInteracted]);
+  const onView = useCallback(
+    (next: ViewInfo) => {
+      setView(next);
+      // Only a camera the viewer moved is worth coming back to.
+      if (useGlobeUi.getState().interacted) saveCamera({ center: next.center, zoom: next.zoom });
+    },
+    [saveCamera],
+  );
   const onMapError = useCallback(
     (e: Error) => {
       setMapError(e);
@@ -712,12 +727,13 @@ export default function GlobeView() {
           }
           padding={padding}
           home={home}
+          initialCamera={initialCamera}
           camera={camera}
           calm={calm}
           autoRotate={!interacted && panel === null && !listOpen && !hovering && selected === null}
           onHover={onHover}
           onPick={onPick}
-          onView={setView}
+          onView={onView}
           onInteract={onInteract}
           onError={onMapError}
           ariaLabel="Globe of world events. Drag to turn it, scroll or pinch to zoom. The list shows the same events as text."
