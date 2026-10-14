@@ -52,7 +52,7 @@ export class HorizonFadeExtension extends LayerExtension {
             float fadeHorizon = 256.0 / fadeCameraDistance;
             float fadeAlong = dot(fadeCamera / fadeCameraDistance, normalize(geometry.position.xyz));
             float fadeInside = (fadeAlong - fadeHorizon) / max(1e-4, 1.0 - fadeHorizon);
-            color.a *= smoothstep(0.04, 0.32, fadeInside);
+            color.a *= smoothstep(0.08, 0.42, fadeInside);
           }
         `,
       },

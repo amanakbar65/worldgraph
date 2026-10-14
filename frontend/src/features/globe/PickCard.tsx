@@ -15,6 +15,7 @@ import type { PickInfo } from "./GlobeMap";
 import { GLASS } from "./GlobeControls";
 import { countryName, eventAsStory, type GlobeCountry, type GlobeEvent } from "./model";
 import { useGlobeHover } from "./store";
+import { DraftNote } from "./TopNow";
 
 export interface PickContext {
   /** Every event on the globe is sample data (no live data yet). */
@@ -80,6 +81,7 @@ export function PickContent({
       return (
         <>
           <StoryCard story={eventAsStory(info.event, { isSample: context.allSample })} variant="compact" />
+          {info.event.analysed === false && <DraftNote className="-mt-1.5 pb-2 pl-14" />}
           {hint && <Hint icon={MousePointerClick}>Click to open the story</Hint>}
         </>
       );

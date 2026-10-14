@@ -139,8 +139,8 @@ function baseStyle(p: GlobePalette): StyleSpecification {
         source: "states",
         paint: {
           "line-color": toCss(p.border),
-          "line-width": ["interpolate", ["linear"], ["zoom"], 2, 0.3, 6, 0.9],
-          "line-opacity": 0.8,
+          "line-width": ["interpolate", ["linear"], ["zoom"], 2, 0.4, 4, 0.8, 7, 1.2],
+          "line-opacity": 0.9,
           "line-dasharray": [3, 2],
         },
       },

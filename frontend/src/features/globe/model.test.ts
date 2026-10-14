@@ -5,6 +5,7 @@ import type { GlobePalette, Rgba } from "@/lib/globe-color";
 import {
   angularDistance,
   arcColor,
+  arcDash,
   arcPath,
   arcWidth,
   binEvents,
@@ -13,6 +14,7 @@ import {
   countryStats,
   countryName,
   declutterLabels,
+  densityScale,
   distanceMeters,
   eventAsStory,
   eventRadius,
@@ -26,6 +28,7 @@ import {
   leaningImpact,
   lensSummary,
   mainBounds,
+  markDimmed,
   nextRow,
   replayFrame,
   replaySpan,
@@ -173,6 +176,17 @@ describe("event marks", () => {
     expect(zoomScale(4)).toBeGreaterThan(zoomScale(2));
     expect(zoomScale(20)).toBe(1.5);
   });
+
+  it("draws smaller points in a busy window, growing back as you zoom in", () => {
+    expect(densityScale(100, 1.8)).toBe(1);
+    expect(densityScale(150, 1.8)).toBe(1);
+    expect(densityScale(400, 1.8)).toBeLessThan(1);
+    expect(densityScale(1500, 1.8)).toBeCloseTo(0.63, 2);
+    expect(densityScale(1_000_000, 1.8)).toBe(0.6);
+    expect(densityScale(1500, 2.6)).toBeCloseTo(densityScale(1500, 1.8));
+    expect(densityScale(1500, 4)).toBeGreaterThan(densityScale(1500, 2.6));
+    expect(densityScale(1500, 5.6)).toBe(1);
+  });
 });
 
 describe("arcs", () => {
@@ -233,6 +247,29 @@ describe("arcs", () => {
     expect(focused[3]).toBeGreaterThan(reported[3]);
     expect(dimmed[3]).toBeLessThan(inferred[3]);
     expect(arcWidth({ ...arc(1), confidence: 1 })).toBeGreaterThan(arcWidth({ ...arc(1), confidence: 0.3 }));
+  });
+
+  it("draws reported links solid, inferred ones dashed and projected ones dotted", () => {
+    expect(arcDash("reported")).toEqual([0, 0]);
+    const [dash, gap] = arcDash("inferred");
+    expect(dash).toBeGreaterThan(gap / 2);
+    const [dot] = arcDash("projected");
+    expect(dot).toBeLessThan(dash / 2);
+    expect(arcDash("conditional")).toEqual(arcDash("projected"));
+  });
+
+  it("fades other links behind the story in focus, or behind the open region's own", () => {
+    const list = [
+      { ...arc(1), focus: false },
+      { ...arc(2, { src_country: "region:us", dst_country: "region:cn" }), focus: false },
+    ];
+    expect(markDimmed(list, null).map((a) => a.dim)).toEqual([false, false]);
+    // A region open: links that start or end in its country stay bright.
+    expect(markDimmed(list, "region:in").map((a) => a.dim)).toEqual([false, true]);
+    expect(markDimmed(list, "region:de").map((a) => a.dim)).toEqual([false, true]);
+    // A story in focus wins over the region.
+    const focused = [list[0], { ...list[1], focus: true }];
+    expect(markDimmed(focused, "region:in").map((a) => a.dim)).toEqual([true, false]);
   });
 
   it("measures distances on the sphere", () => {
@@ -326,6 +363,12 @@ describe("the list view", () => {
       country_id: "region:in",
     });
     expect(eventAsStory(event("b", { country_id: null }), { isSample: false }).region).toBeNull();
+  });
+
+  it("keeps a draft a draft when the API says so", () => {
+    expect(eventAsStory(event("a"), { isSample: false }).analysed).toBe(true);
+    expect(eventAsStory(event("a", { analysed: false }), { isSample: false }).analysed).toBe(false);
+    expect(eventAsStory(event("a", { analysed: false }), { isSample: false }).so_what).toBeNull();
   });
 });
 

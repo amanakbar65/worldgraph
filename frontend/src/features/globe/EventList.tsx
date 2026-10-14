@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 
 import { GLASS } from "./GlobeControls";
 import { eventAsStory, nextRow, sortEventsForList, type GlobeEvent } from "./model";
+import { DraftNote } from "./TopNow";
 
 const LIST_PAGE = 40;
 
@@ -111,6 +112,7 @@ export function EventListBody({
                     rank={i + 1}
                     onOpen={() => onOpen(event)}
                   />
+                  {event.analysed === false && <DraftNote className="-mt-1.5 pb-2 pl-20" />}
                 </li>
               ))}
             </ul>

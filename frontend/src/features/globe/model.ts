@@ -9,7 +9,12 @@ import type { ForecastSummary, GlobeResponse, Impact, SectorId, StorySummary } f
 import { SECTORS } from "@/lib/icons";
 import { mix, withAlpha, type GlobePalette, type Rgba } from "@/lib/globe-color";
 
-export type GlobeEvent = GlobeResponse["events"][number];
+/**
+ * An event as api.globe sends it. `analysed` is read when the API sends it
+ * (false marks a draft from the live news pipeline); without it, an event
+ * counts as analysed.
+ */
+export type GlobeEvent = GlobeResponse["events"][number] & { analysed?: boolean };
 export type GlobeArc = GlobeResponse["arcs"][number];
 export type GlobeCountry = GlobeResponse["countries"][number];
 export type LngLat = [number, number];
@@ -127,6 +132,18 @@ export function zoomScale(zoom: number): number {
   return Math.min(1.5, Math.max(0.7, 0.85 + 0.15 * (zoom - 1.8)));
 }
 
+/**
+ * With many events in the window, points shrink (to 60 % at about 1,500) so
+ * busy places stay readable and the heat shows through. Zoomed in, the
+ * points spread out and grow back to full size.
+ */
+export function densityScale(count: number, zoom: number): number {
+  if (count <= 150) return 1;
+  const crowded = Math.max(0.6, (150 / count) ** 0.2);
+  const spread = Math.min(1, Math.max(0, (zoom - 2.6) / 3));
+  return crowded + (1 - crowded) * spread;
+}
+
 // ---------------------------------------------------------------------------
 // Arcs (cross-border cascade links)
 // ---------------------------------------------------------------------------
@@ -134,6 +151,8 @@ export function zoomScale(zoom: number): number {
 export interface ArcDatum extends GlobeArc {
   /** Touches the story or forecast in focus (hovered or open). */
   focus: boolean;
+  /** Fades into the background: something else is in focus. */
+  dim: boolean;
   path: [number, number, number][];
 }
 
@@ -168,6 +187,24 @@ export function filterArcs(
   const focused = out.filter((a) => a.focus);
   const rest = out.filter((a) => !a.focus).slice(0, Math.max(0, max - focused.length));
   return [...focused, ...rest];
+}
+
+/**
+ * Which arcs step back. With a story in focus, every arc that doesn't touch
+ * it; otherwise, with a region open, every arc that doesn't start or end in
+ * its country (so its own links stand out); otherwise none.
+ */
+export function markDimmed<T extends GlobeArc & { focus: boolean }>(
+  arcs: readonly T[],
+  regionCountry: string | null,
+): (T & { dim: boolean })[] {
+  const storyFocus = arcs.some((a) => a.focus);
+  return arcs.map((a) => ({
+    ...a,
+    dim: storyFocus
+      ? !a.focus
+      : regionCountry !== null && a.src_country !== regionCountry && a.dst_country !== regionCountry,
+  }));
 }
 
 const RAD = Math.PI / 180;
@@ -231,6 +268,21 @@ export function arcColor(arc: GlobeArc & { focus?: boolean }, palette: GlobePale
   if (arc.focus) return withAlpha(base, 0.95);
   const a = (arc.link_type === "reported" ? 0.5 : 0.36) * (0.6 + 0.4 * arc.confidence);
   return withAlpha(base, dimmed ? a * 0.3 : a);
+}
+
+/**
+ * The line pattern in pixels (dash, gap), as in the cascade view: reported
+ * links are solid, inferred ones dashed, projected and conditional ones dotted.
+ */
+export function arcDash(linkType: GlobeArc["link_type"]): [number, number] {
+  switch (linkType) {
+    case "reported":
+      return [0, 0];
+    case "inferred":
+      return [6, 5];
+    default:
+      return [1.5, 5];
+  }
 }
 
 /** Line width in pixels: confidence 0.3 → 1 px, 1.0 → 2.2 px; focus adds a little. */
@@ -426,7 +478,7 @@ export function eventAsStory(event: GlobeEvent, options: { isSample: boolean }):
     lon: event.lon,
     lat: event.lat,
     source_count: 0,
-    analysed: true,
+    analysed: event.analysed !== false,
     is_sample: options.isSample,
   };
 }

@@ -23,7 +23,9 @@ import { HorizonExtension, HorizonFadeExtension } from "./horizon-extension";
 
 import {
   arcColor,
+  arcDash,
   arcWidth,
+  densityScale,
   eventRadius,
   hexFill,
   impactColor,
@@ -56,13 +58,13 @@ export interface LayerInput {
   hexes: HexBin[];
   maxHexWeight: number;
   events: GlobeEvent[];
+  /** Events in the whole window (a replay draws fewer): busy windows draw smaller points. */
+  crowd: number;
   fresh: GlobeEvent[];
   arcs: ArcDatum[];
   forecasts: ForecastSummary[];
   /** The hovered or selected item, drawn with a ring. */
   focusId: string | null;
-  /** Something is in focus: other arcs fade. */
-  dimArcs: boolean;
   /** Place names to draw (already decluttered for the current view). */
   labels: PlaceLabel[];
   fontFamily: string;
@@ -158,6 +160,7 @@ export function buildLayers(input: LayerInput): Layer[] {
   const { palette, paletteKey, toggles, zoom } = input;
   const layers: Layer[] = [];
   const pointScale = zoomScale(zoom);
+  const eventScale = pointScale * densityScale(input.crowd, zoom);
 
   if (toggles.heat && input.hexes.length > 0) {
     // Fades as you zoom in, where the points tell the story better.
@@ -227,19 +230,19 @@ export function buildLayers(input: LayerInput): Layer[] {
         id: "arcs",
         data: input.arcs,
         getPath: (d) => d.path,
-        getColor: (d) => arcColor(d, palette, input.dimArcs),
+        getColor: (d) => arcColor(d, palette, d.dim),
         getWidth: (d) => arcWidth(d),
         widthUnits: "pixels",
         capRounded: true,
         jointRounded: true,
-        // Reported links are solid; inferred ones dashed (facts and inferences stay apart).
-        getDashArray: (d) => (d.link_type === "reported" ? [0, 0] : [6, 5]),
+        // Reported links are solid, inferred ones dashed, projected ones dotted (facts and inferences stay apart).
+        getDashArray: (d) => arcDash(d.link_type),
         dashUnits: "pixels",
         dashJustified: true,
         dashGapPickable: true,
         extensions: [dashes, horizonFade],
         pickable: true,
-        updateTriggers: { getColor: [paletteKey, input.dimArcs, input.focusId], getWidth: [input.focusId] },
+        updateTriggers: { getColor: [paletteKey, input.focusId], getWidth: [input.focusId] },
       } as PathLayerProps<ArcDatum> & PathStyleExtensionProps<ArcDatum>),
     );
   }
@@ -318,7 +321,7 @@ export function buildLayers(input: LayerInput): Layer[] {
           getPosition: (d) => [d.lon, d.lat],
           getRadius: (d) => eventRadius(d.importance),
           radiusUnits: "pixels",
-          radiusScale: (1.3 + 1.5 * t) * pointScale,
+          radiusScale: (1.3 + 1.5 * t) * eventScale,
           stroked: true,
           filled: false,
           getLineColor: (d) => impactColor(d.impact, palette),
@@ -338,7 +341,7 @@ export function buildLayers(input: LayerInput): Layer[] {
         getPosition: (d) => [d.lon, d.lat],
         getRadius: (d) => eventRadius(d.importance),
         radiusUnits: "pixels",
-        radiusScale: pointScale,
+        radiusScale: eventScale,
         radiusMinPixels: 2.5,
         getFillColor: (d) => withAlpha(impactColor(d.impact, palette), 0.92),
         stroked: true,
@@ -362,7 +365,7 @@ export function buildLayers(input: LayerInput): Layer[] {
         getPosition: (d) => [d.lon, d.lat],
         getRadius: (d) => eventRadius(d.importance) + 5,
         radiusUnits: "pixels",
-        radiusScale: pointScale,
+        radiusScale: eventScale,
         stroked: true,
         filled: false,
         getLineColor: palette.fg,

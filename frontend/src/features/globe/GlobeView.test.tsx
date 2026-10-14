@@ -362,6 +362,33 @@ describe("GlobeView on a desktop", () => {
     expect(screen.getAllByText("Draft · awaiting analysis")).toHaveLength(1);
     expect(screen.queryByText("Sample data")).toBeNull();
   });
+
+  it("marks draft events in the list when the API says which they are", () => {
+    const [first, ...rest] = GLOBE.events;
+    mocks.responses = {
+      ...mocks.responses,
+      globe: { ...GLOBE, events: [{ ...first, analysed: false }, ...rest] },
+    };
+    renderGlobe();
+    fireEvent.click(screen.getByRole("radio", { name: "List of all events" }));
+    const list = screen.getByRole("list", { name: "All events" });
+    const notes = within(list).getAllByText("Draft · awaiting analysis");
+    expect(notes).toHaveLength(1);
+    expect(notes[0].closest("li")?.textContent).toContain("Bab-el-Mandeb");
+  });
+
+  it("fades links that don't touch the open region's country", () => {
+    useNav.setState({ panels: [{ kind: "region", id: "region:fr" }] });
+    renderGlobe();
+    act(() => map().fire("load"));
+    const arcs = mocks.overlays[0]?.props.layers?.find((l) => l.id === "arcs") as unknown as {
+      props: { data: { dim: boolean; src_country: string; dst_country: string }[] };
+    };
+    expect(arcs.props.data.length).toBeGreaterThan(0);
+    for (const a of arcs.props.data) {
+      expect(a.dim).toBe(a.src_country !== "region:fr" && a.dst_country !== "region:fr");
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

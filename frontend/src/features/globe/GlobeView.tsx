@@ -51,6 +51,7 @@ import {
   homeZoom,
   labelPoint,
   mainBounds,
+  markDimmed,
   replayFrame,
   replaySpan,
   sampleLabelling,
@@ -176,6 +177,7 @@ export default function GlobeView() {
 
   // --- States/provinces and cities, loaded when they matter -----------------
   const panelRegion = panel?.kind === "region" ? panel.id : null;
+  const regionCountry = panelRegion ? countryIdOf(panelRegion) : null;
   const statesFor =
     (panelRegion && countryIdOf(panelRegion)) || (view.zoom >= 3.4 ? view.centerCountry : null);
   const states = useQuery({
@@ -249,12 +251,9 @@ export default function GlobeView() {
         (a) => shown.has(a.dst_story) && (!eventsById.has(a.src_story) || shown.has(a.src_story)),
       );
     }
-    return filterArcs(list, { focusId: focusStory, max: 28, minConfidence: 0.5 }).map((a) => ({
-      ...a,
-      path: paths.get(a.id) ?? [],
-    }));
-  }, [data, frame, eventsById, paths, focusStory]);
-  const dimArcs = focusStory !== null && arcs.some((a) => a.focus);
+    const shown = filterArcs(list, { focusId: focusStory, max: 28, minConfidence: 0.5 });
+    return markDimmed(shown, regionCountry).map((a) => ({ ...a, path: paths.get(a.id) ?? [] }));
+  }, [data, frame, eventsById, paths, focusStory, regionCountry]);
 
   const countryFills = useMemo(() => {
     const max = (data?.countries ?? []).reduce((m, c) => Math.max(m, c.count), 0);
@@ -306,11 +305,11 @@ export default function GlobeView() {
       hexes,
       maxHexWeight,
       events: shownEvents,
+      crowd: events.length,
       fresh,
       arcs,
       forecasts,
       focusId,
-      dimArcs,
       fontFamily: font ?? "sans-serif",
       ringAtlas,
       calm,
@@ -323,11 +322,11 @@ export default function GlobeView() {
       hexes,
       maxHexWeight,
       shownEvents,
+      events.length,
       fresh,
       arcs,
       forecasts,
       focusId,
-      dimArcs,
       font,
       ringAtlas,
       calm,
