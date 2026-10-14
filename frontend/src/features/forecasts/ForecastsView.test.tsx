@@ -146,7 +146,7 @@ describe("ForecastsView", () => {
     fireEvent.change(sort, { target: { value: "moved" } });
     expectSent({ sort: "moved" });
     expect(rows().map((r) => r.getAttribute("aria-label"))).toEqual([OPEC, ECB, FED, RICE].map((f) => forecastLabel(f, NOW)));
-    expect(screen.getByText("Sorted by biggest moves.")).toBeTruthy();
+    expect(screen.getByText("Biggest 24-hour moves first.")).toBeTruthy();
     fireEvent.change(sort, { target: { value: "ending" } });
     expectSent({ sort: "ending" });
     expect(rows()[0].getAttribute("aria-label")).toMatch(/^OPEC\+|^Will the Fed/);

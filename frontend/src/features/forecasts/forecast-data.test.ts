@@ -23,6 +23,7 @@ import {
   pickMovers,
   questionAddsDetail,
   shapeList,
+  sortDescription,
   sortForecasts,
   sparklineDomain,
   usableProfile,
@@ -117,6 +118,16 @@ describe("usableProfile", () => {
     expect(
       usableProfile({ ...PROFILE, sectors: [], locations: [], markets: [], keywords: [] }),
     ).toBeNull();
+  });
+});
+
+describe("sortDescription", () => {
+  it("says how the list is ordered, and when it is personal", () => {
+    expect(sortDescription("relevance", false)).toBe("Big moves and busy markets first.");
+    expect(sortDescription("relevance", true)).toBe("Most relevant to your business first.");
+    expect(sortDescription("moved", true)).toBe("Biggest 24-hour moves first.");
+    expect(sortDescription("ending", false)).toBe("Ending soonest first.");
+    expect(sortDescription("volume", false)).toBe("Most volume first.");
   });
 });
 

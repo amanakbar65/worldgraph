@@ -11,7 +11,11 @@ export interface FakeQuery<T> {
   refetch: () => Promise<unknown>;
 }
 
-export function fakeQuery<T>(data: T | undefined, error: Error | null = null, refetch = vi.fn(() => Promise.resolve())): FakeQuery<T> {
+export function fakeQuery<T>(
+  data: T | undefined,
+  error: Error | null = null,
+  refetch: () => Promise<unknown> = vi.fn(() => Promise.resolve()),
+): FakeQuery<T> {
   return {
     data,
     error,

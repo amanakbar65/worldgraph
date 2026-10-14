@@ -31,6 +31,7 @@ import {
   hasActiveFilters,
   pickMovers,
   shapeList,
+  sortDescription,
   usableProfile,
   type ForecastFilters,
   type ForecastSort,
@@ -111,7 +112,7 @@ export default function ForecastsView() {
           filters={filters}
           sectors={sectors}
           list={list}
-          stale={latest.stale || (query.isFetching && query.isPlaceholderData)}
+          stale={latest.stale}
           error={query.isError && !latest.value ? query.error : null}
           onRetry={() => void query.refetch()}
           profileUsed={args.profile !== undefined}
@@ -183,8 +184,8 @@ function Movers({
           className={cn(
             // Narrow: a row to swipe through (the gutter stays when a card snaps);
             // wide: a grid of three.
-            "-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:scroll-px-6 sm:px-6",
-            "@4xl:mx-0 @4xl:grid @4xl:grid-cols-3 @4xl:overflow-visible @4xl:px-0 @4xl:pb-0",
+            "-mx-4 -my-1 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 py-1 sm:-mx-6 sm:scroll-px-6 sm:px-6",
+            "@4xl:mx-0 @4xl:my-0 @4xl:grid @4xl:grid-cols-3 @4xl:overflow-visible @4xl:p-0",
           )}
         >
           {movers.map((f) => (
@@ -258,8 +259,6 @@ function AllForecasts({
     );
   }
 
-  const sortLabel = SORT_OPTIONS.find((o) => o.value === filters.sort)?.label.toLowerCase() ?? "";
-
   return (
     <section aria-labelledby={id} className="flex flex-col gap-3">
       <SectionHeader
@@ -267,11 +266,7 @@ function AllForecasts({
         title="All forecasts"
         icon={Users}
         count={list && !stale ? list.length : undefined}
-        description={
-          filters.sort === "relevance" && profileUsed
-            ? "Most relevant to your business first."
-            : `Sorted by ${sortLabel}.`
-        }
+        description={sortDescription(filters.sort, profileUsed)}
         action={anySample ? <SampleBadge className="sm:hidden" /> : undefined}
       />
 

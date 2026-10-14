@@ -36,12 +36,19 @@ import { formatDate } from "@/lib/time";
 
 export type ForecastSort = NonNullable<RpcArgs["forecasts"]["sort"]>;
 
-export const SORT_OPTIONS: readonly { value: ForecastSort; label: string }[] = [
-  { value: "relevance", label: "Most relevant" },
-  { value: "moved", label: "Biggest moves" },
-  { value: "ending", label: "Ending soon" },
-  { value: "volume", label: "Most volume" },
+export const SORT_OPTIONS: readonly { value: ForecastSort; label: string; description: string }[] = [
+  // Without a business profile, relevance ranks by recent moves and volume (api.forecasts).
+  { value: "relevance", label: "Most relevant", description: "Big moves and busy markets first." },
+  { value: "moved", label: "Biggest moves", description: "Biggest 24-hour moves first." },
+  { value: "ending", label: "Ending soon", description: "Ending soonest first." },
+  { value: "volume", label: "Most volume", description: "Most volume first." },
 ];
+
+/** One line under the list's title on how it is ordered. */
+export function sortDescription(sort: ForecastSort, profileUsed: boolean): string {
+  if (sort === "relevance" && profileUsed) return "Most relevant to your business first.";
+  return SORT_OPTIONS.find((o) => o.value === sort)?.description ?? "";
+}
 
 export interface CategoryInfo {
   label: string;
