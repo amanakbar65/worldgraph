@@ -24,6 +24,7 @@ import { EntityPicker } from "./EntityPicker";
 import { forecastSummaryOf, type WatchQueries } from "./use-business";
 
 const ROW_LIMIT = 6;
+const SUGGESTED_LIMIT = 3;
 const THRESHOLDS = [0.1, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 0.75, 0.8, 0.9];
 
 // ---------------------------------------------------------------------------
@@ -74,9 +75,15 @@ export function SuggestedForecasts({
 }) {
   const open = useNav((s) => s.open);
   const headingId = useId();
-  if (!loading && (forecasts ?? []).length === 0) return null;
+  const [all, setAll] = useState(false);
+  const list = forecasts ?? [];
+  if (!loading && list.length === 0) return null;
+  const shown = all ? list : list.slice(0, SUGGESTED_LIMIT);
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-1 rounded-xl border border-line bg-surface p-4">
+    <section
+      aria-labelledby={headingId}
+      className="flex flex-col gap-1 rounded-xl border border-line bg-surface p-4"
+    >
       <SectionHeader
         id={headingId}
         title="Crowd forecasts for you"
@@ -94,9 +101,14 @@ export function SuggestedForecasts({
         </div>
       ) : (
         <ul className="-mx-3 flex flex-col">
-          {(forecasts ?? []).map((f) => (
+          {shown.map((f) => (
             <li key={f.id} className="flex items-start">
-              <ForecastRow forecast={f} short onOpen={() => open({ kind: "forecast", id: f.id })} className="min-w-0 flex-1" />
+              <ForecastRow
+                forecast={f}
+                short
+                onOpen={() => open({ kind: "forecast", id: f.id })}
+                className="min-w-0 flex-1"
+              />
               <WatchButton
                 watching={watchlist.includes(f.id)}
                 name={f.short_title}
@@ -106,6 +118,15 @@ export function SuggestedForecasts({
             </li>
           ))}
         </ul>
+      )}
+      {list.length > SUGGESTED_LIMIT && (
+        <button
+          type="button"
+          onClick={() => setAll(!all)}
+          className="h-10 cursor-pointer rounded-lg border border-line text-body text-fg-muted transition-colors hover:border-line-strong hover:text-fg"
+        >
+          {all ? "Show fewer" : `Show all ${list.length}`}
+        </button>
       )}
     </section>
   );
@@ -137,7 +158,10 @@ export function Watchlist({ ids, watch, since, rules, onAdd, onRemove, onThresho
   const shown = all ? ordered : ordered.slice(0, ROW_LIMIT);
 
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
+    <section
+      aria-labelledby={headingId}
+      className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4"
+    >
       <SectionHeader
         id={headingId}
         title="Watchlist"
@@ -154,7 +178,8 @@ export function Watchlist({ ids, watch, since, rules, onAdd, onRemove, onThresho
       />
       {ids.length === 0 ? (
         <p className="text-body text-fg-muted">
-          Nothing here yet. Add something above, or tap Watch on a region, company or forecast anywhere in the app.
+          Nothing here yet. Add something above, or tap Watch on a region, company or forecast anywhere in the
+          app.
         </p>
       ) : (
         <>
@@ -170,7 +195,12 @@ export function Watchlist({ ids, watch, since, rules, onAdd, onRemove, onThresho
                     onRemove={() => onRemove(id)}
                   />
                 ) : (
-                  <WatchEntityRow id={id} query={watch.entities.get(id)} since={since} onRemove={() => onRemove(id)} />
+                  <WatchEntityRow
+                    id={id}
+                    query={watch.entities.get(id)}
+                    since={since}
+                    onRemove={() => onRemove(id)}
+                  />
                 )}
               </li>
             ))}
@@ -248,7 +278,9 @@ function WatchEntityRow({
         >
           <TypeIcon type={type} />
           <span className="flex min-w-0 flex-1 flex-col">
-            <span className={cn("truncate text-body font-medium", missing ? "text-fg-muted" : "text-fg")}>{name}</span>
+            <span className={cn("truncate text-body font-medium", missing ? "text-fg-muted" : "text-fg")}>
+              {name}
+            </span>
             {countText === null ? (
               <Skeleton className="mt-1 h-3 w-24" />
             ) : (
@@ -320,11 +352,11 @@ function WatchForecastRow({
 
   return (
     <div className="flex items-start gap-1 px-2 py-2">
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
         <button
           type="button"
           onClick={() => open({ kind: "forecast", id })}
-          className="flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-md text-left"
+          className="flex w-full min-w-0 cursor-pointer items-start gap-3 rounded-md text-left"
         >
           <ProbabilityRing
             size="sm"
@@ -333,15 +365,15 @@ function WatchForecastRow({
             thin={forecast.thin}
             label={forecast.short_title}
           />
-          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="flex min-w-0 flex-1 flex-col gap-1 pt-0.5">
             <span className="line-clamp-2 text-body font-medium text-fg">{forecast.short_title}</span>
             <ForecastFacts forecast={forecast} />
+            {forecast.is_sample && <SampleBadge compact className="self-start" />}
           </span>
-          {forecast.is_sample && <SampleBadge compact className="shrink-0" />}
         </button>
-        <div className="flex items-center gap-2 pl-14">
-          <Bell aria-hidden className="size-3.5 shrink-0 text-fg-muted" />
-          <label htmlFor={selectId} className="text-label text-fg-muted">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pl-14">
+          <label htmlFor={selectId} className="inline-flex items-center gap-1.5 text-label text-fg-muted">
+            <Bell aria-hidden className="size-3.5 shrink-0" />
             Alert when it crosses
           </label>
           <select

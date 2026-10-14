@@ -110,7 +110,10 @@ export function EntityPicker({
 
   return (
     <div className={cn("relative", className)}>
-      <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted" />
+      <Search
+        aria-hidden
+        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
+      />
       <input
         type="text"
         role="combobox"
@@ -166,7 +169,11 @@ export function EntityPicker({
           );
         })}
       </ul>
-      <p role="status" aria-live="polite" className={cn("mt-1 text-label text-fg-muted", (!status || open) && "sr-only")}>
+      <p
+        role="status"
+        aria-live="polite"
+        className={cn("mt-1 text-label text-fg-muted", (!status || open) && "sr-only")}
+      >
         {status}
       </p>
     </div>

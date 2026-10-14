@@ -37,8 +37,16 @@ export function Exposure({
   const quiet = quietCount(rows, profile);
 
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-4">
-      <SectionHeader id={headingId} title="Where it reaches you" icon={Target} description="Tap one to see only its stories." />
+    <section
+      aria-labelledby={headingId}
+      className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-4"
+    >
+      <SectionHeader
+        id={headingId}
+        title="Where it reaches you"
+        icon={Target}
+        description="Tap one to see only its stories."
+      />
       {loading ? (
         <div aria-busy="true" aria-label="Loading" className="flex flex-col gap-3 py-1">
           {[0, 1, 2].map((i) => (
@@ -77,7 +85,9 @@ export function Exposure({
                       <TypeIcon type={row.entity.type} />
                     )}
                     <span className="truncate text-body font-medium text-fg">{name}</span>
-                    {role && <span className="shrink-0 text-label text-fg-subtle">{ROLE_INFO[role].short}</span>}
+                    {role && (
+                      <span className="shrink-0 text-label text-fg-subtle">{ROLE_INFO[role].short}</span>
+                    )}
                     <ImpactCountsInline counts={row} className="ml-auto shrink-0" />
                   </span>
                   <ImpactSplitBar counts={row} scale={max > 0 ? row.total / max : 0} />

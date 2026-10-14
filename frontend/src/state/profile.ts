@@ -31,7 +31,14 @@ import { getUserStore, type UserStore } from "@/platform/storage";
 // ---------------------------------------------------------------------------
 
 /** The lists of ids in a profile (sectors are slugs, the rest node ids). */
-export const PROFILE_ROLES = ["sectors", "locations", "suppliers", "markets", "inputs", "competitors"] as const;
+export const PROFILE_ROLES = [
+  "sectors",
+  "locations",
+  "suppliers",
+  "markets",
+  "inputs",
+  "competitors",
+] as const;
 export type ProfileRole = (typeof PROFILE_ROLES)[number];
 export type EntityRole = Exclude<ProfileRole, "sectors">;
 
@@ -49,7 +56,12 @@ export interface RoleInfo {
 export const ROLE_INFO: Record<ProfileRole, RoleInfo> = {
   sectors: { label: "Sectors", short: "Sector", phrase: "your sector", types: ["sector"] },
   locations: { label: "Where you operate", short: "Base", phrase: "where you operate", types: ["region"] },
-  suppliers: { label: "Where you buy from", short: "Supplier", phrase: "where you buy from", types: ["region", "organization"] },
+  suppliers: {
+    label: "Where you buy from",
+    short: "Supplier",
+    phrase: "where you buy from",
+    types: ["region", "organization"],
+  },
   markets: { label: "Where you sell", short: "Market", phrase: "where you sell", types: ["region"] },
   inputs: {
     label: "Key inputs and routes",
@@ -57,7 +69,12 @@ export const ROLE_INFO: Record<ProfileRole, RoleInfo> = {
     phrase: "your input",
     types: ["commodity", "infrastructure", "policy"],
   },
-  competitors: { label: "Competitors to follow", short: "Competitor", phrase: "your competitor", types: ["organization"] },
+  competitors: {
+    label: "Competitors to follow",
+    short: "Competitor",
+    phrase: "your competitor",
+    types: ["organization"],
+  },
 };
 
 export const emptyProfile: Profile = {
@@ -78,7 +95,8 @@ export const KEYWORD_MIN = 2;
 export const KEYWORD_MAX = 40;
 
 const NODE_ID = /^[a-z_]+:[a-z0-9][a-z0-9.-]*$/;
-const isSector = (s: unknown): s is SectorId => typeof s === "string" && (SECTOR_IDS as readonly string[]).includes(s);
+const isSector = (s: unknown): s is SectorId =>
+  typeof s === "string" && (SECTOR_IDS as readonly string[]).includes(s);
 
 function idList(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -182,7 +200,9 @@ export function removeFromProfile(profile: Profile, role: EntityRole, id: string
 export function toggleSector(profile: Profile, sector: SectorId): Profile {
   return {
     ...profile,
-    sectors: profile.sectors.includes(sector) ? profile.sectors.filter((s) => s !== sector) : [...profile.sectors, sector],
+    sectors: profile.sectors.includes(sector)
+      ? profile.sectors.filter((s) => s !== sector)
+      : [...profile.sectors, sector],
   };
 }
 
@@ -198,7 +218,11 @@ export function removeKeyword(profile: Profile, keyword: string): Profile {
 
 /** Is region `inner` the same place as `outer` or inside it (a state's city)? */
 export function regionWithin(inner: string, outer: string): boolean {
-  return inner === outer || inner.startsWith(`${outer}.`) || (outer.split("-").length === 1 && inner.startsWith(`${outer}-`));
+  return (
+    inner === outer ||
+    inner.startsWith(`${outer}.`) ||
+    (outer.split("-").length === 1 && inner.startsWith(`${outer}-`))
+  );
 }
 
 /** One reason a story touches the profile. */
@@ -220,22 +244,28 @@ export function hasKeyword(text: string, keyword: string): boolean {
  * follows the entities a story mentions and causal links; this is the
  * part the browser can check on its own.)
  */
-export function matches(profile: Profile, story: Pick<StorySummary, "sectors" | "region" | "headline" | "so_what">): MatchReason[] {
+export function matches(
+  profile: Profile,
+  story: Pick<StorySummary, "sectors" | "region" | "headline" | "so_what">,
+): MatchReason[] {
   const reasons: MatchReason[] = [];
-  for (const sector of story.sectors) if (profile.sectors.includes(sector)) reasons.push({ kind: "sector", sector });
+  for (const sector of story.sectors)
+    if (profile.sectors.includes(sector)) reasons.push({ kind: "sector", sector });
   const region = story.region;
   if (region) {
     for (const role of ["locations", "suppliers", "markets"] as const) {
       for (const id of profile[role]) {
         if (!id.startsWith("region:")) continue;
         if (regionWithin(region.id, id) || region.country_id === id) {
-          if (!reasons.some((r) => r.kind === "place" && r.id === id)) reasons.push({ kind: "place", role, id });
+          if (!reasons.some((r) => r.kind === "place" && r.id === id))
+            reasons.push({ kind: "place", role, id });
         }
       }
     }
   }
   const text = `${story.headline} ${story.so_what ?? ""}`;
-  for (const keyword of profile.keywords) if (hasKeyword(text, keyword)) reasons.push({ kind: "keyword", keyword });
+  for (const keyword of profile.keywords)
+    if (hasKeyword(text, keyword)) reasons.push({ kind: "keyword", keyword });
   return reasons;
 }
 
@@ -382,7 +412,9 @@ export function collectAlerts(input: AlertInput): Alert[] {
     }
   }
   const storyAlerts = [...stories.values()].sort(
-    (a, b) => Date.parse(b.story.first_seen ?? "") - Date.parse(a.story.first_seen ?? "") || a.story.id.localeCompare(b.story.id),
+    (a, b) =>
+      Date.parse(b.story.first_seen ?? "") - Date.parse(a.story.first_seen ?? "") ||
+      a.story.id.localeCompare(b.story.id),
   );
 
   const forecastAlerts: Alert[] = [];
@@ -392,13 +424,17 @@ export function collectAlerts(input: AlertInput): Alert[] {
       if (seen.has(forecast.id) || !after(forecast.updated_at, since)) continue;
       seen.add(forecast.id);
       const threshold = rules.thresholds[forecast.id];
-      const crossed = threshold === undefined ? null : crossedThreshold(forecast.probability, forecast.change_24h, threshold);
+      const crossed =
+        threshold === undefined
+          ? null
+          : crossedThreshold(forecast.probability, forecast.change_24h, threshold);
       if (crossed && threshold !== undefined) {
         forecastAlerts.push({ kind: "forecast-threshold", forecast, threshold, direction: crossed });
         continue;
       }
       const points = Math.round((forecast.change_24h ?? 0) * 100);
-      if (Math.abs(points) >= rules.forecastMove) forecastAlerts.push({ kind: "forecast-move", forecast, points });
+      if (Math.abs(points) >= rules.forecastMove)
+        forecastAlerts.push({ kind: "forecast-move", forecast, points });
     }
     forecastAlerts.sort((a, b) => moveSize(b) - moveSize(a));
   }
@@ -406,7 +442,9 @@ export function collectAlerts(input: AlertInput): Alert[] {
 }
 
 function moveSize(alert: Alert): number {
-  return alert.kind === "story" ? 0 : Math.abs(alert.forecast.change_24h ?? 0) + (alert.kind === "forecast-threshold" ? 1 : 0);
+  return alert.kind === "story"
+    ? 0
+    : Math.abs(alert.forecast.change_24h ?? 0) + (alert.kind === "forecast-threshold" ? 1 : 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -433,7 +471,11 @@ interface StoredValueHandle<T> {
   reset: () => void;
 }
 
-function createStoredValue<T>(key: string, fallback: T, normalize: (raw: unknown) => T): StoredValueHandle<T> {
+function createStoredValue<T>(
+  key: string,
+  fallback: T,
+  normalize: (raw: unknown) => T,
+): StoredValueHandle<T> {
   let version = 0; // bumped by every local change, so a slower read never overwrites it
   let started = false;
   const initial = { value: fallback, loaded: false, kind: null, saveError: null };
@@ -446,7 +488,9 @@ function createStoredValue<T>(key: string, fallback: T, normalize: (raw: unknown
       void getUserStore()
         .then((userStore) => userStore.set(key, resolved))
         .then(() => set({ saveError: null }))
-        .catch((error: unknown) => set({ saveError: error instanceof Error ? error : new Error(String(error)) }));
+        .catch((error: unknown) =>
+          set({ saveError: error instanceof Error ? error : new Error(String(error)) }),
+        );
     },
     refresh: async () => {
       const at = version;
@@ -509,7 +553,10 @@ export const useAlertRules = () => useStored(rulesValue);
  * Opening My Business records the new visit for next time; "Mark all as
  * seen" moves the baseline to now.
  */
-const useBaseline = create<{ since: string | null; captured: boolean }>(() => ({ since: null, captured: false }));
+const useBaseline = create<{ since: string | null; captured: boolean }>(() => ({
+  since: null,
+  captured: false,
+}));
 
 export function useLastVisit(): {
   /** The last visit before this one (null on the first visit or while loading). */
@@ -554,5 +601,10 @@ export const __testing = {
     lastSeenValue.reset();
     useBaseline.setState({ since: null, captured: false });
   },
-  stores: { profile: profileValue.store, watchlist: watchValue.store, rules: rulesValue.store, lastSeen: lastSeenValue.store },
+  stores: {
+    profile: profileValue.store,
+    watchlist: watchValue.store,
+    rules: rulesValue.store,
+    lastSeen: lastSeenValue.store,
+  },
 };

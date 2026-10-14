@@ -47,7 +47,11 @@ export interface EntityName {
 
 /** "commodity:crude-oil" → "Crude oil": a readable stand-in while the real name loads. */
 export function nameFromId(id: string): string {
-  const slug = id.slice(id.indexOf(":") + 1).split(".").pop() ?? id;
+  const slug =
+    id
+      .slice(id.indexOf(":") + 1)
+      .split(".")
+      .pop() ?? id;
   const words = slug.replace(/-/g, " ").trim();
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
@@ -68,7 +72,8 @@ export function useEntityName(id: string): EntityName {
   if (sector) return { name: sectorLabel(sector), type: "sector", loading: false, missing: false };
   if (known) return { ...known, loading: false, missing: false };
   const type = typeOfId(id) ?? "region";
-  if (entity && entity.id === id) return { name: entity.name, type: entity.type, loading: false, missing: false };
+  if (entity && entity.id === id)
+    return { name: entity.name, type: entity.type, loading: false, missing: false };
   const missing = !!query.error && /^not found/i.test(query.error.message);
   return { name: nameFromId(id), type, loading: lookup && !query.error, missing };
 }

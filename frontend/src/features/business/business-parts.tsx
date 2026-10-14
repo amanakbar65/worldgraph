@@ -19,7 +19,11 @@ import { volumeText, type ImpactCounts } from "./business-data";
 /** A news draft from the live pipeline that the AI hasn't analysed yet. */
 export function DraftLabel({ className }: { className?: string }) {
   return (
-    <Chip tone="outline" className={className} title="Straight from the news feed; the summary and actions come after analysis">
+    <Chip
+      tone="outline"
+      className={className}
+      title="Straight from the news feed; the summary and actions come after analysis"
+    >
       <Hourglass aria-hidden />
       Draft · awaiting analysis
     </Chip>
@@ -49,7 +53,11 @@ export function ScoreMeter({
   const v = Math.min(1, Math.max(0, value));
   const pct = Math.round(v * 100);
   return (
-    <span role="img" aria-label={`${label} ${pct}%`} className={cn("inline-flex items-center gap-1.5 text-label text-fg-muted", className)}>
+    <span
+      role="img"
+      aria-label={`${label} ${pct}%`}
+      className={cn("inline-flex items-center gap-1.5 text-label text-fg-muted", className)}
+    >
       {showLabel && <span aria-hidden>{label}</span>}
       <span aria-hidden className="relative h-1.5 w-10 overflow-hidden rounded-full bg-line-strong">
         <span className="absolute inset-y-0 left-0 rounded-full bg-fg-muted" style={{ width: `${pct}%` }} />
@@ -92,7 +100,15 @@ export function ImpactCountsInline({ counts, className }: { counts: ImpactCounts
 }
 
 /** A thin bar split by impact; its width shows the share of the busiest row. */
-export function ImpactSplitBar({ counts, scale, className }: { counts: ImpactCounts; scale: number; className?: string }) {
+export function ImpactSplitBar({
+  counts,
+  scale,
+  className,
+}: {
+  counts: ImpactCounts;
+  scale: number;
+  className?: string;
+}) {
   const total = counts.risk + counts.opportunity + counts.other;
   if (total === 0) return null;
   const pct = (n: number) => `${(n / total) * 100}%`;
@@ -171,7 +187,12 @@ export function RemovableChip({
  */
 export function ForecastFacts({ forecast, className }: { forecast: ForecastSummary; className?: string }) {
   return (
-    <span className={cn("flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-label text-fg-muted", className)}>
+    <span
+      className={cn(
+        "flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-label text-fg-muted",
+        className,
+      )}
+    >
       <span className="inline-flex items-center gap-1 font-medium text-forecast">
         <Users aria-hidden className="size-3.5" />
         Crowd forecast
@@ -235,7 +256,9 @@ export function StoreNote({
       <Icon aria-hidden className="mt-px size-3.5 shrink-0" />
       <span>
         {error ? "Couldn't save just now; your changes are kept for this visit." : copy.text}
-        {showDetail && !error && <span className="text-fg-subtle"> · {copy.detail} Only ids and keywords, nothing personal.</span>}
+        {showDetail && !error && (
+          <span className="text-fg-subtle"> · {copy.detail} Only ids and keywords, nothing personal.</span>
+        )}
       </span>
     </p>
   );

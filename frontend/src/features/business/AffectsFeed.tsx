@@ -1,4 +1,14 @@
-import { ArrowRight, ChevronDown, CircleDot, GitBranch, KeyRound, Pencil, Radar, Target, X } from "lucide-react";
+import {
+  ArrowRight,
+  ChevronDown,
+  CircleDot,
+  GitBranch,
+  KeyRound,
+  Pencil,
+  Radar,
+  Target,
+  X,
+} from "lucide-react";
 import { useId, useState } from "react";
 
 import type { CascadeLink, Profile } from "@/api/contract";
@@ -58,7 +68,14 @@ export interface AffectsFeedProps {
  * down a cause-and-effect chain, most relevant first. Each says why it
  * matched, how relevant it is, and what you could do.
  */
-export function AffectsFeed({ affects, profile, filter, onFilter, nodeName, onEditProfile }: AffectsFeedProps) {
+export function AffectsFeed({
+  affects,
+  profile,
+  filter,
+  onFilter,
+  nodeName,
+  onEditProfile,
+}: AffectsFeedProps) {
   const timeWindow = useNav((s) => s.window);
   const setWindow = useNav((s) => s.setWindow);
   const [shown, setShown] = useState(PAGE);
@@ -71,11 +88,19 @@ export function AffectsFeed({ affects, profile, filter, onFilter, nodeName, onEd
   const impactOptions = [
     { value: "all" as const, label: `All ${counts.all}`, ariaLabel: `All, ${counts.all}` },
     { value: "risk" as const, label: `Risks ${counts.risk}`, ariaLabel: `Risks, ${counts.risk}` },
-    { value: "opportunity" as const, label: `Opportunities ${counts.opportunity}`, ariaLabel: `Opportunities, ${counts.opportunity}` },
+    {
+      value: "opportunity" as const,
+      label: `Opportunities ${counts.opportunity}`,
+      ariaLabel: `Opportunities, ${counts.opportunity}`,
+    },
   ];
   const pathOptions = [
     { value: "all" as const, label: "Any route" },
-    { value: "direct" as const, label: `Direct ${counts.direct}`, ariaLabel: `Direct matches, ${counts.direct}` },
+    {
+      value: "direct" as const,
+      label: `Direct ${counts.direct}`,
+      ariaLabel: `Direct matches, ${counts.direct}`,
+    },
     {
       value: "downstream" as const,
       label: `Knock-on ${counts.downstream}`,
@@ -129,7 +154,7 @@ export function AffectsFeed({ affects, profile, filter, onFilter, nodeName, onEd
                 type="button"
                 onClick={() => onFilter({ ...filter, node: null })}
                 aria-label={`Show all stories, not only ${nodeName ?? "this one"}`}
-                className="relative flex size-7 cursor-pointer items-center justify-center rounded-full hover:bg-surface-2 hover:text-fg before:absolute before:-inset-1.5 before:content-['']"
+                className="relative flex size-7 cursor-pointer items-center justify-center rounded-full before:absolute before:-inset-1.5 before:content-[''] hover:bg-surface-2 hover:text-fg"
               >
                 <X aria-hidden className="size-3.5" />
               </button>
@@ -141,14 +166,20 @@ export function AffectsFeed({ affects, profile, filter, onFilter, nodeName, onEd
       {affects.isPending && affects.ready ? (
         <FeedSkeleton />
       ) : affects.isError && !affects.data ? (
-        <ErrorState error={affects.error} onRetry={() => void affects.refetch()} className="rounded-xl border border-line bg-surface" />
+        <ErrorState
+          error={affects.error}
+          onRetry={() => void affects.refetch()}
+          className="rounded-xl border border-line bg-surface"
+        />
       ) : items.length === 0 ? (
         <div className="rounded-xl border border-line bg-surface">
           <EmptyState
             icon={Radar}
             title={`Nothing touches your business ${windowWords}`}
             description="A longer window or a few more places and inputs usually help."
-            action={timeWindow !== "30d" ? { label: "Show 30 days", onClick: () => setWindow("30d") } : undefined}
+            action={
+              timeWindow !== "30d" ? { label: "Show 30 days", onClick: () => setWindow("30d") } : undefined
+            }
             secondaryAction={{ label: "Edit profile", onClick: onEditProfile, icon: Pencil }}
           />
         </div>
@@ -233,7 +264,14 @@ export function AffectsCard({ item, profile }: { item: AffectsItem; profile: Pro
     >
       <header className="flex flex-wrap items-center gap-2">
         {story.analysed ? <ImpactBadge impact={story.impact} direction={story.direction} /> : <DraftLabel />}
-        <Chip tone="outline" title={direct ? "This story touches your profile itself" : "This story follows from one that touches your profile"}>
+        <Chip
+          tone="outline"
+          title={
+            direct
+              ? "This story touches your profile itself"
+              : "This story follows from one that touches your profile"
+          }
+        >
           {direct ? <CircleDot aria-hidden /> : <GitBranch aria-hidden />}
           {direct ? "Direct" : `Knock-on · ${hops} ${hops === 1 ? "step" : "steps"}`}
         </Chip>
@@ -338,10 +376,18 @@ function HopChain({ item }: { item: AffectsItem }) {
 
 function HopChainSteps({ item }: { item: AffectsItem }) {
   const open = useNav((s) => s.open);
-  const query = useRpc("cascade", { id: item.story.id, depth: 2 }, { staleTime: 5 * 60_000, refetchInterval: false });
+  const query = useRpc(
+    "cascade",
+    { id: item.story.id, depth: 2 },
+    { staleTime: 5 * 60_000, refetchInterval: false },
+  );
   if (query.isPending) {
     return (
-      <div aria-busy="true" aria-label="Loading the chain" className="flex flex-col gap-2 rounded-lg border border-line bg-bg-sunken/60 p-3">
+      <div
+        aria-busy="true"
+        aria-label="Loading the chain"
+        className="flex flex-col gap-2 rounded-lg border border-line bg-bg-sunken/60 p-3"
+      >
         <Skeleton className="h-4 w-3/4" />
         <Skeleton className="h-3 w-1/2" />
         <Skeleton className="h-4 w-2/3" />
@@ -351,7 +397,10 @@ function HopChainSteps({ item }: { item: AffectsItem }) {
   if (query.isError) return <ErrorState compact error={query.error} onRetry={() => void query.refetch()} />;
   const steps = buildHopChain(item.path, query.data);
   return (
-    <ol aria-label="From the story that touches you to this one" className="flex flex-col rounded-lg border border-line bg-bg-sunken/60 p-3">
+    <ol
+      aria-label="From the story that touches you to this one"
+      className="flex flex-col rounded-lg border border-line bg-bg-sunken/60 p-3"
+    >
       {steps.map((step, i) => {
         const headline = step.story?.headline ?? "An earlier story";
         const last = i === steps.length - 1;
@@ -361,7 +410,10 @@ function HopChainSteps({ item }: { item: AffectsItem }) {
             <div className="flex items-start gap-2">
               <span
                 aria-hidden
-                className={cn("mt-1.5 size-2 shrink-0 rounded-full", last ? "bg-fg" : "border border-fg-muted")}
+                className={cn(
+                  "mt-1.5 size-2 shrink-0 rounded-full",
+                  last ? "bg-fg" : "border border-fg-muted",
+                )}
               />
               {last ? (
                 <span className="text-body text-fg">
@@ -391,8 +443,21 @@ function LinkLine({ link }: { link: CascadeLink }) {
   const info = LINK_TYPES[link.link_type];
   return (
     <div className="ml-[3px] flex items-stretch gap-3 py-1">
-      <svg aria-hidden viewBox="0 0 2 24" preserveAspectRatio="none" className="h-auto min-h-6 w-0.5 shrink-0 overflow-visible">
-        <line x1="1" x2="1" y1="0" y2="24" strokeWidth={2} className="stroke-fg-muted" strokeDasharray={info?.dasharray} />
+      <svg
+        aria-hidden
+        viewBox="0 0 2 24"
+        preserveAspectRatio="none"
+        className="h-auto min-h-6 w-0.5 shrink-0 overflow-visible"
+      >
+        <line
+          x1="1"
+          x2="1"
+          y1="0"
+          y2="24"
+          strokeWidth={2}
+          className="stroke-fg-muted"
+          strokeDasharray={info?.dasharray}
+        />
       </svg>
       <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-0.5 text-label text-fg-muted">
         <span className="font-medium text-fg">{link.mechanism}</span>

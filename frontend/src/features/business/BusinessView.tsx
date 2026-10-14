@@ -84,10 +84,14 @@ export default function BusinessView() {
 
 function BusinessSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading My Business" className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6">
+    <div
+      aria-busy="true"
+      aria-label="Loading My Business"
+      className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6"
+    >
       <Skeleton className="h-8 w-48" />
       <Skeleton className="h-12 w-full rounded-xl" />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-3">
           {[0, 1, 2].map((i) => (
             <div key={i} className="rounded-xl border border-line bg-surface p-4">
@@ -145,11 +149,21 @@ function Dashboard({ profile, onEdit }: { profile: Profile; onEdit: (step: numbe
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6">
-      <DashboardHeader profile={profile} onEdit={onEdit} storeKind={stored.kind} saveError={stored.saveError ?? watchlist.saveError} />
+      <DashboardHeader
+        profile={profile}
+        onEdit={onEdit}
+        storeKind={stored.kind}
+        saveError={stored.saveError ?? watchlist.saveError}
+      />
 
-      <AlertsCard alerts={alerts.alerts} since={alerts.since} ready={alerts.ready && (empty || !affects.isPending)} onMarkSeen={alerts.markSeen} />
+      <AlertsCard
+        alerts={alerts.alerts}
+        since={alerts.since}
+        ready={alerts.ready && (empty || !affects.isPending)}
+        onMarkSeen={alerts.markSeen}
+      />
 
-      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[auto_auto_auto_1fr] lg:items-start">
+      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:grid-rows-[auto_auto_auto_1fr] lg:items-start">
         {empty ? (
           <div className="rounded-xl border border-line bg-surface lg:col-start-1 lg:row-span-4 lg:row-start-1">
             <EmptyState
@@ -229,57 +243,61 @@ function DashboardHeader({
   const timeWindow = useNav((s) => s.window);
   const setWindow = useNav((s) => s.setWindow);
   const places = profile.locations.length + profile.suppliers.length + profile.markets.length;
-  const counts: { n: number; one: string; many: string; icon: typeof MapPin; step: number }[] = [
-    { n: places, one: "place", many: "places", icon: MapPin, step: 1 },
-    { n: profile.inputs.length, one: "input", many: "inputs", icon: Package, step: 2 },
-    { n: profile.competitors.length, one: "competitor", many: "competitors", icon: Building, step: 2 },
-    { n: profile.keywords.length, one: "keyword", many: "keywords", icon: KeyRound, step: 2 },
+  const counts: { n: number; one: string; many: string; icon: typeof MapPin }[] = [
+    { n: places, one: "place", many: "places", icon: MapPin },
+    { n: profile.inputs.length, one: "input", many: "inputs", icon: Package },
+    { n: profile.competitors.length, one: "competitor", many: "competitors", icon: Building },
+    { n: profile.keywords.length, one: "keyword", many: "keywords", icon: KeyRound },
   ];
 
   return (
     <header className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <h1 className="flex items-center gap-2 text-figure font-semibold tracking-tight">
-            <Store aria-hidden className="size-6 shrink-0 text-fg-muted" />
-            My Business
-          </h1>
-          {!isEmpty(profile) && (
-            <ul aria-label="Your profile" className="flex flex-wrap items-center gap-1.5">
-              {profile.sectors.map((s) => (
-                <li key={s}>
-                  <SectorChip sector={s} size="sm" />
-                </li>
-              ))}
-              {counts
-                .filter((c) => c.n > 0)
-                .map((c) => (
-                  <li key={c.one}>
-                    <Chip size="sm">
-                      <c.icon aria-hidden />
-                      <span className="tabular-nums">
-                        {c.n} {c.n === 1 ? c.one : c.many}
-                      </span>
-                    </Chip>
-                  </li>
-                ))}
-            </ul>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Segmented<TimeWindow>
-            aria-label="Time window"
-            value={timeWindow}
-            onValueChange={setWindow}
-            options={TIME_WINDOWS.map((w) => ({ value: w, label: WINDOW_LABELS[w].short, ariaLabel: WINDOW_LABELS[w].long }))}
-          />
-          <Button variant="outline" onClick={() => onEdit(0)}>
-            <Pencil aria-hidden />
-            Edit profile
-          </Button>
-        </div>
+      <div className="flex items-center gap-3">
+        <h1 className="flex min-w-0 flex-1 items-center gap-2 text-figure font-semibold tracking-tight">
+          <Store aria-hidden className="size-6 shrink-0 text-fg-muted" />
+          <span className="truncate">My Business</span>
+        </h1>
+        <Button variant="outline" onClick={() => onEdit(0)} aria-label="Edit profile">
+          <Pencil aria-hidden />
+          <span className="sm:hidden">Edit</span>
+          <span className="hidden sm:inline">Edit profile</span>
+        </Button>
       </div>
-      <StoreNote kind={storeKind} error={saveError} />
+      {!isEmpty(profile) && (
+        <ul aria-label="Your profile" className="flex flex-wrap items-center gap-1.5">
+          {profile.sectors.map((s) => (
+            <li key={s}>
+              <SectorChip sector={s} size="sm" />
+            </li>
+          ))}
+          {counts
+            .filter((c) => c.n > 0)
+            .map((c) => (
+              <li key={c.one}>
+                <Chip size="sm">
+                  <c.icon aria-hidden />
+                  <span className="tabular-nums">
+                    {c.n} {c.n === 1 ? c.one : c.many}
+                  </span>
+                </Chip>
+              </li>
+            ))}
+        </ul>
+      )}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <StoreNote kind={storeKind} error={saveError} />
+        <Segmented<TimeWindow>
+          aria-label="Time window"
+          value={timeWindow}
+          onValueChange={setWindow}
+          className="ml-auto"
+          options={TIME_WINDOWS.map((w) => ({
+            value: w,
+            label: WINDOW_LABELS[w].short,
+            ariaLabel: WINDOW_LABELS[w].long,
+          }))}
+        />
+      </div>
     </header>
   );
 }

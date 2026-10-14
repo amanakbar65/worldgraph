@@ -24,9 +24,9 @@ import { useEntityName } from "./entity-names";
 import { EntityPicker } from "./EntityPicker";
 
 const SETUP_STEPS = [
-  { id: "sectors", title: "Your sectors", icon: Briefcase },
-  { id: "places", title: "Your places", icon: MapPin },
-  { id: "inputs", title: "Inputs and keywords", icon: Package },
+  { id: "sectors", title: "Your sectors", short: "Sectors", icon: Briefcase },
+  { id: "places", title: "Your places", short: "Places", icon: MapPin },
+  { id: "inputs", title: "Inputs and keywords", short: "Inputs", icon: Package },
 ] as const;
 
 export interface ProfileSetupProps {
@@ -58,7 +58,10 @@ export function ProfileSetup({ mode, initialStep = 0, onDone }: ProfileSetupProp
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 py-6 sm:py-10">
       <header className="flex flex-col gap-2">
-        <span aria-hidden className="flex size-10 items-center justify-center rounded-xl border border-line bg-surface-2 text-fg">
+        <span
+          aria-hidden
+          className="flex size-10 items-center justify-center rounded-xl border border-line bg-surface-2 text-fg"
+        >
           <Briefcase className="size-5" />
         </span>
         <h1 id={headingId} className="text-figure font-semibold tracking-tight">
@@ -97,7 +100,8 @@ export function ProfileSetup({ mode, initialStep = 0, onDone }: ProfileSetupProp
                   >
                     {done ? <Check className="size-3" /> : i + 1}
                   </span>
-                  <span className="truncate font-medium">{s.title}</span>
+                  <span className="truncate font-medium sm:hidden">{s.short}</span>
+                  <span className="hidden truncate font-medium sm:inline">{s.title}</span>
                   <span className="sr-only">
                     {`, step ${i + 1} of ${SETUP_STEPS.length}${done ? ", has choices" : ""}`}
                   </span>
@@ -160,7 +164,10 @@ function StepHeading({ title, hint }: { title: string; hint: ReactNode }) {
 function SectorsStep({ profile, update }: { profile: Profile; update: Update }) {
   return (
     <>
-      <StepHeading title="What is your business in?" hint="Pick the sectors you work in. One to three is usual." />
+      <StepHeading
+        title="What is your business in?"
+        hint="Pick the sectors you work in. One to three is usual."
+      />
       <div role="group" aria-label="Sectors" className="flex flex-wrap gap-2">
         {SECTOR_IDS.map((sector) => (
           <SectorChip
@@ -168,6 +175,7 @@ function SectorsStep({ profile, update }: { profile: Profile; update: Update }) 
             sector={sector}
             selected={profile.sectors.includes(sector)}
             onClick={(s) => update((p) => toggleSector(p, s))}
+            className="h-10 px-3.5 text-body [&_svg]:size-4"
           />
         ))}
       </div>
@@ -213,7 +221,10 @@ function PlacesStep({ profile, update }: { profile: Profile; update: Update }) {
 function InputsStep({ profile, update }: { profile: Profile; update: Update }) {
   return (
     <>
-      <StepHeading title="What do you depend on?" hint="The inputs, routes and rivals you keep an eye on, plus any words to watch for." />
+      <StepHeading
+        title="What do you depend on?"
+        hint="The inputs, routes and rivals you keep an eye on, plus any words to watch for."
+      />
       <RoleField
         role="inputs"
         profile={profile}
@@ -321,7 +332,10 @@ function KeywordField({ profile, update }: { profile: Profile; update: Update })
       </div>
       <form onSubmit={submit} className="flex gap-2">
         <div className="relative min-w-0 flex-1">
-          <KeyRound aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted" />
+          <KeyRound
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
+          />
           <input
             id={inputId}
             type="text"

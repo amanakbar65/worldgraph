@@ -41,8 +41,15 @@ export function AlertsCard({
 
   if (!since || alerts.length === 0) {
     return (
-      <p role="status" className="flex items-center gap-2 rounded-xl border border-line bg-surface px-4 py-3 text-body text-fg-muted">
-        {since ? <CircleCheck aria-hidden className="size-4 shrink-0" /> : <Bell aria-hidden className="size-4 shrink-0" />}
+      <p
+        role="status"
+        className="flex items-center gap-2 rounded-xl border border-line bg-surface px-4 py-3 text-body text-fg-muted"
+      >
+        {since ? (
+          <CircleCheck aria-hidden className="size-4 shrink-0" />
+        ) : (
+          <Bell aria-hidden className="size-4 shrink-0" />
+        )}
         {since
           ? `You're up to date: nothing new since your last visit ${relativeTime(since)}.`
           : "From your next visit, new stories that match your business and watchlist show up here."}
@@ -52,22 +59,26 @@ export function AlertsCard({
 
   const shown = all ? alerts : alerts.slice(0, LIMIT);
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-2 rounded-xl border border-line-strong bg-surface p-4">
+    <section
+      aria-labelledby={headingId}
+      className="flex flex-col gap-2 rounded-xl border border-line-strong bg-surface p-4"
+    >
       <SectionHeader
         id={headingId}
-        title={`${alerts.length} new since your last visit`}
+        title={`${alerts.length} new for you`}
         icon={BellRing}
-        description={<TimeAgo value={since} prefix="Last visit" />}
+        description={<TimeAgo value={since} prefix="Since your last visit" />}
         action={
-          <Button variant="outline" size="sm" onClick={onMarkSeen} className="h-10 sm:h-8">
+          <Button variant="outline" size="sm" onClick={onMarkSeen} className="h-10">
             <CheckCheck aria-hidden />
             Mark all as seen
           </Button>
         }
       />
-      <ul className="-mx-2 flex flex-col">
-        {shown.map((alert) => (
-          <li key={alertKey(alert)}>
+      <ul className="-mx-2 grid gap-x-4 md:grid-cols-2">
+        {shown.map((alert, i) => (
+          // Phones show three until "Show all".
+          <li key={alertKey(alert)} className={cn(!all && i >= 3 && "hidden md:block")}>
             <AlertRow alert={alert} />
           </li>
         ))}
@@ -144,7 +155,10 @@ function AlertRow({ alert }: { alert: Alert }) {
       : `Crossed ${formatProbability(alert.threshold)} ${alert.direction === "up" ? "▲" : "▼"}`;
   return (
     <button type="button" onClick={() => open({ kind: "forecast", id: forecast.id })} className={look}>
-      <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-forecast/60">
+      <span
+        aria-hidden
+        className="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-forecast/60"
+      >
         <Users className="size-3.5 text-forecast" />
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -165,10 +179,19 @@ function AlertRow({ alert }: { alert: Alert }) {
 }
 
 /** The viewer's alert rules, saved with the profile. */
-export function AlertSettings({ rules, onChange }: { rules: AlertRules; onChange: (rules: AlertRules) => void }) {
+export function AlertSettings({
+  rules,
+  onChange,
+}: {
+  rules: AlertRules;
+  onChange: (rules: AlertRules) => void;
+}) {
   const headingId = useId();
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-4">
+    <section
+      aria-labelledby={headingId}
+      className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-4"
+    >
       <SectionHeader
         id={headingId}
         title="Alerts"
@@ -198,7 +221,9 @@ export function AlertSettings({ rules, onChange }: { rules: AlertRules; onChange
             aria-label="Smallest daily move to flag, in points"
             size="sm"
             value={String(rules.forecastMove) as "5" | "10" | "20"}
-            onValueChange={(v) => onChange({ ...rules, forecastMove: Number(v) as AlertRules["forecastMove"] })}
+            onValueChange={(v) =>
+              onChange({ ...rules, forecastMove: Number(v) as AlertRules["forecastMove"] })
+            }
             options={[
               { value: "5", label: "5 pts", ariaLabel: "5 points" },
               { value: "10", label: "10 pts", ariaLabel: "10 points" },

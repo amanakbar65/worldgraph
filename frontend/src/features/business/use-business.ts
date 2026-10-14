@@ -86,8 +86,14 @@ export function useWatchQueries(ids: readonly string[]): WatchQueries {
 /** A watched forecast as a summary (api.forecast adds history and more). */
 export function forecastSummaryOf(response: ForecastResponse | undefined): ForecastSummary | null {
   if (!response) return null;
-  const { history: _history, outcomes: _outcomes, resolution_rule: _rule, entities: _entities, stories: _stories, ...summary } =
-    response.forecast;
+  const {
+    history: _history,
+    outcomes: _outcomes,
+    resolution_rule: _rule,
+    entities: _entities,
+    stories: _stories,
+    ...summary
+  } = response.forecast;
   return summary;
 }
 

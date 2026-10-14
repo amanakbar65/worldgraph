@@ -47,7 +47,8 @@ export const hopCount = (item: Pick<AffectsItem, "path">) => Math.max(0, item.pa
 
 export function filterFeed(items: readonly AffectsItem[], filter: FeedFilter): AffectsItem[] {
   return items.filter((item) => {
-    if (filter.impact !== "all" && (!item.story.analysed || item.story.impact !== filter.impact)) return false;
+    if (filter.impact !== "all" && (!item.story.analysed || item.story.impact !== filter.impact))
+      return false;
     if (filter.path === "direct" && !isDirect(item)) return false;
     if (filter.path === "downstream" && isDirect(item)) return false;
     if (filter.node && !item.matched.some((m) => m.id === filter.node)) return false;
@@ -80,7 +81,14 @@ export function feedCounts(items: readonly AffectsItem[]): FeedCounts {
 // ---------------------------------------------------------------------------
 
 /** Most specific first: what you buy, where you work, then the broad sector. */
-const ROLE_ORDER: readonly ProfileRole[] = ["inputs", "competitors", "locations", "suppliers", "markets", "sectors"];
+const ROLE_ORDER: readonly ProfileRole[] = [
+  "inputs",
+  "competitors",
+  "locations",
+  "suppliers",
+  "markets",
+  "sectors",
+];
 
 export interface MatchedNode {
   entity: EntityRef;
@@ -163,7 +171,14 @@ export function exposure(items: readonly AffectsItem[], profile: Profile): Expos
     for (const node of matchedNodes(item.matched, profile)) {
       const row =
         rows.get(node.entity.id) ??
-        ({ entity: node.entity, roles: node.roles, risk: 0, opportunity: 0, other: 0, total: 0 } satisfies ExposureRow);
+        ({
+          entity: node.entity,
+          roles: node.roles,
+          risk: 0,
+          opportunity: 0,
+          other: 0,
+          total: 0,
+        } satisfies ExposureRow);
       if (impact === "risk") row.risk += 1;
       else if (impact === "opportunity") row.opportunity += 1;
       else row.other += 1;
@@ -208,7 +223,10 @@ export interface HopStep {
  * The path from the story that touches you to this one, with each causal
  * link's type, mechanism and confidence from api.cascade.
  */
-export function buildHopChain(path: readonly string[], cascade: Pick<CascadeResponse, "nodes" | "links"> | undefined): HopStep[] {
+export function buildHopChain(
+  path: readonly string[],
+  cascade: Pick<CascadeResponse, "nodes" | "links"> | undefined,
+): HopStep[] {
   const nodes = new Map((cascade?.nodes ?? []).map((n) => [n.id, n]));
   return path.map((id, i) => {
     const prev = i > 0 ? path[i - 1] : null;
@@ -287,7 +305,8 @@ export function watchActivity(
 }
 
 /** Does any of these stories carry sample data? */
-export const anySample = (stories: readonly Pick<StorySummary, "is_sample">[]) => stories.some((s) => s.is_sample);
+export const anySample = (stories: readonly Pick<StorySummary, "is_sample">[]) =>
+  stories.some((s) => s.is_sample);
 
 // ---------------------------------------------------------------------------
 // Small shared helpers
