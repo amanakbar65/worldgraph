@@ -26,8 +26,13 @@ export interface EventListProps {
   note?: ReactNode;
   onOpen: (event: GlobeEvent) => void;
   onFocusItem: (id: string | null) => void;
-  /** What to show when there is nothing to list. */
+  /** What to show when there is nothing to list (instead of the suggestions below). */
   empty?: ReactNode;
+  /** Sector lens on: an empty list offers to clear it. */
+  lensOn?: boolean;
+  onClearLens?: () => void;
+  /** Null when the window is already the longest. */
+  onWiderWindow?: (() => void) | null;
   /** The id of a visible heading that names the list; without one the list brings its own (for screen readers). */
   labelledBy?: string;
 }
@@ -46,6 +51,9 @@ export function EventListBody({
   onFocusItem,
   empty,
   labelledBy,
+  lensOn = false,
+  onClearLens,
+  onWiderWindow,
 }: EventListProps) {
   const ownHeadingId = useId();
   const headingId = labelledBy ?? ownHeadingId;
@@ -90,8 +98,24 @@ export function EventListBody({
             <EmptyState
               compact
               icon={ListX}
-              title={`No events in the ${WINDOW_LABELS[window].long.toLowerCase()}`}
-              description="Try a longer window or all sectors."
+              title={
+                lensOn
+                  ? "No events for this sector lens"
+                  : `No events in the ${WINDOW_LABELS[window].long.toLowerCase()}`
+              }
+              description={lensOn ? "Try all sectors, or a longer window." : "Try a longer window."}
+              action={
+                lensOn && onClearLens
+                  ? { label: "Show all sectors", onClick: onClearLens }
+                  : onWiderWindow
+                    ? { label: "Show 30 days", onClick: onWiderWindow }
+                    : undefined
+              }
+              secondaryAction={
+                lensOn && onClearLens && onWiderWindow
+                  ? { label: "Show 30 days", onClick: onWiderWindow }
+                  : undefined
+              }
             />
           ))
         ) : (

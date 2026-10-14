@@ -372,6 +372,23 @@ describe("GlobeView on a desktop", () => {
     expect(useNav.getState().window).toBe("30d");
   });
 
+  it("offers a next step when the list is empty", () => {
+    mocks.responses = {
+      globe: { ...GLOBE, events: [], arcs: [], forecasts: [] },
+      top: { stories: [], movers: [] },
+      meta: META,
+    };
+    useNav.setState({ sectors: ["energy"] });
+    renderGlobe();
+    fireEvent.click(screen.getByRole("radio", { name: "List of all events" }));
+    expect(screen.getByText("No events for this sector lens")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Show all sectors" }));
+    expect(useNav.getState().sectors).toEqual([]);
+    expect(screen.getByText("No events in the last 7 days")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Show 30 days" }));
+    expect(useNav.getState().window).toBe("30d");
+  });
+
   it("shows drafts from the live feed by their source headline, without a so-what", () => {
     mocks.responses = {
       globe: GLOBE,

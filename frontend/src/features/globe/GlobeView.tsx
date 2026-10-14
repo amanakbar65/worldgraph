@@ -558,6 +558,9 @@ export default function GlobeView() {
     note: listNote,
     onOpen: openStory,
     onFocusItem: setItemFocus,
+    lensOn: sectors.length > 0,
+    onClearLens: clearSectors,
+    onWiderWindow: wider,
     empty: globeFailed ? <ErrorState error={globe.error!} onRetry={retryAll} compact /> : undefined,
   };
   const failure = globeFailed ? (
