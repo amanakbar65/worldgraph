@@ -39,3 +39,4 @@ desktop.ini
 .idea/
 backend/data/seed-sql/
 orchestration/.checkpoint.log
+orchestration/.checkpoint.lock

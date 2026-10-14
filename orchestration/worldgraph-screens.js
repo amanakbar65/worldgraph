@@ -41,7 +41,7 @@ Environment
 - Other agents are building the other screens in parallel in their own worktrees. Create or edit ONLY the files your task gives you. Shared files you must NOT edit unless your task says so: frontend/src/api/**, frontend/src/components/**, frontend/src/lib/** (you may ADD new files in lib/ with a name prefixed by your feature, e.g. lib/globe-*.ts), frontend/src/styles/**, frontend/src/state/** (except files your task names), frontend/src/app/**, frontend/src/ai/engine.ts, frontend/src/ai/schemas.ts, frontend/src/platform/**, backend/**, prompts/**, package.json. If a shared file needs a change, describe it precisely in "concerns".
 
 Saving progress
-- Usage limits can stop you mid-task. Commit early and often in your worktree (after each working milestone, with a plain "<Area>: <what>" message); a background saver also pushes your worktree every 10 minutes. If you were given a RESUME note, start from that branch.
+- Usage limits can stop you mid-task. Commit early and often in your worktree (after each working milestone, with a plain "<Area>: <what>" message); after every commit also run \`git push -q -f origin HEAD:refs/heads/wip/$(basename "$(git rev-parse --show-toplevel)")\` so your work is on GitHub even if you are stopped mid-task (usage limits stop agents without warning). A background saver also pushes uncommitted work every 10 minutes. If you were given a RESUME note, start from that branch.
 
 Finishing
 1. Checks (all must pass): \`cd frontend && npx tsc -b --noEmit && npx eslint . && npx vitest run && npx vite build\`. Write vitest tests for your pure logic (data shaping, layout, filtering) and at least one render test per screen with mocked data (mock useRpc via vi.mock('@/api/client')).

@@ -8,7 +8,7 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 
 1. `cd /home/user/worldgraph && git pull` (or clone `amanakbar65/worldgraph`), then `pg_ctlcluster 16 main start`.
 2. Read this file, then `CLAUDE.md`, `PLAN.md`, and the latest `PROGRESS.md` entry.
-3. Start the progress saver: `orchestration/checkpoint.sh 600 &` (it pushes agents' unfinished work to `wip/<worktree>` every 10 minutes, and pushes `main` if it is ahead).
+3. Run `orchestration/status.sh`. It shows in one screen main vs GitHub, every agent worktree (label, commits, uncommitted files, when last saved) and whether the progress saver is running. If the saver is stopped, start it with `setsid nohup orchestration/checkpoint.sh 600 12 >/dev/null 2>&1 </dev/null &`. It runs detached for 12 hours, saves every agent's work to `wip/<worktree>` every 10 minutes, keeps saving after a usage limit stops the agents, and a lock stops a second copy.
 4. Look at "In flight" below. For each item: if its agent finished, merge its branch; if not, relaunch the script named there with the `args` shown. The script tells each agent to start from its `wip/` branch.
 5. Agent worktrees branch from `origin/main`: **push `main` before launching agents.**
 6. **`cd /home/user/worldgraph` before launching any workflow.** After a restart the shell starts in `/home/user`, and every agent then fails instantly with "not in a git repository".
@@ -75,7 +75,7 @@ Session limits have stopped agents three times (11:12, 15:10, 20:20 UTC). Each t
 
 ## Gotchas learned
 
-- Workflow concurrency is 2 (4 CPUs). Agents hit usage limits mid-run, so keep `checkpoint.sh` running and keep this file current.
+- Workflow concurrency is 2 (4 CPUs). Agents hit usage limits mid-run (session limits about every 5 hours, plus a weekly limit). Agents now push their own commits to `wip/<worktree>`, and the detached saver covers uncommitted work. Keep this file current at every merge.
 - Supabase refuses function-level `SET` of extension settings (`pg_trgm.similarity_threshold`).
 - Dev servers in agent worktrees: `vite.config.ts` now allows the real node_modules path (fonts) and uses a per-checkout `.vite-cache`.
 - `ops.run_remote_sql` only runs files from this repo's raw GitHub URLs with a matching md5; push first, use commit-SHA URLs.

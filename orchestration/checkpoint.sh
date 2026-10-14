@@ -7,11 +7,24 @@
 # temporary index, so the agent's own branch and index are untouched, and
 # force-push it to wip/<worktree-name>. Also pushes main if it is ahead.
 #
-# Run in the background from the repo root:  orchestration/checkpoint.sh 600
+# Start it detached from the repo root, so it outlives tool time limits and
+# keeps saving after a usage limit stops the agents:
+#   setsid nohup orchestration/checkpoint.sh 600 12 >/dev/null 2>&1 </dev/null &
+# Arguments: seconds between saves (600), hours before it stops itself (12).
+# A lock file makes a second copy exit at once, so starting it again is safe.
 set -u
 INTERVAL="${1:-600}"
+MAX_HOURS="${2:-12}"
 ROOT="$(git rev-parse --show-toplevel)"
 LOG="$ROOT/orchestration/.checkpoint.log"
+
+exec 9>"$ROOT/orchestration/.checkpoint.lock"
+if ! flock -n 9; then
+  echo "Progress saver already running." >&2
+  exit 0
+fi
+END=$(( $(date +%s) + MAX_HOURS * 3600 ))
+echo "$(date -u +%FT%TZ) saver started (every ${INTERVAL}s for ${MAX_HOURS}h, pid $$)" >>"$LOG"
 
 snapshot() {
   local w="$1" name idx tree parent commit
@@ -36,7 +49,7 @@ snapshot() {
   fi
 }
 
-while true; do
+while [ "$(date +%s)" -lt "$END" ]; do
   for w in "$ROOT"/.claude/worktrees/*; do
     [ -d "$w" ] && [ -e "$w/.git" ] && snapshot "$w"
   done
@@ -45,3 +58,4 @@ while true; do
   fi
   sleep "$INTERVAL"
 done
+echo "$(date -u +%FT%TZ) saver stopped after ${MAX_HOURS}h" >>"$LOG"

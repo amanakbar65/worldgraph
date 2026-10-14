@@ -20,6 +20,7 @@ Environment
 - Artifact build: \`cd frontend && npm run build:artifact\` → dist-artifact/ (outside claude.ai it has no capabilities, so it falls back to the bundled snapshot); serve it with \`npx vite preview --outDir dist-artifact --port <port+50> --strictPort &\`.
 - Playwright (@playwright/test, @axe-core/playwright installed): launch Chromium with executablePath '/opt/pw-browsers/chromium'. Settings live in localStorage key worldgraph.settings.v1 (e.g. {"theme":"light","sample":"on","borders":"india","calm":true}). Screenshot at 1440×900 and 390×844 (and 360×740 where layout is tight), dark and light, under frontend/test-results/<your label>/ (git-ignored). LOOK at every screenshot with the Read tool.
 - Stop every server you start before you finish.
+- Usage limits can stop you without warning. Keep notes of findings as you go in frontend/test-results/<your label>/findings.md, and if you commit (e2e author), after every commit also run \`git push -q -f origin HEAD:refs/heads/wip/$(basename "$(git rev-parse --show-toplevel)")\` so your work is on GitHub even if you are stopped mid-task (usage limits stop agents without warning).
 
 Rules for findings
 - Report only what you have REPRODUCED: a failing command, a screenshot you looked at, an axe violation, or code you read with an exact file:line and a concrete input that breaks it. No speculation, no style preferences dressed up as bugs.

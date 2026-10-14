@@ -23,7 +23,7 @@ How to work
 - Edit ONLY files in the area you own (listed below). If a finding needs a change elsewhere, don't make it: report it as "blocked" with the exact change needed.
 - Add or update a unit test for each logic fix. Never weaken, skip or delete a test to make it pass; if an e2e test is itself wrong, say so and fix only the test's mistake.
 - If a finding is not real (cannot reproduce on current main), say so with what you tried.
-- Commit after each fix or small group (\`git add -A && git commit -m "<Area>: <what changed>"\`, plain message, no trailers; never commit test-results/). A background saver also pushes your worktree every 10 minutes.
+- Commit after each fix or small group (\`git add -A && git commit -m "<Area>: <what changed>"\`, plain message, no trailers; never commit test-results/); after every commit also run \`git push -q -f origin HEAD:refs/heads/wip/$(basename "$(git rev-parse --show-toplevel)")\` so your work is on GitHub even if you are stopped mid-task (usage limits stop agents without warning). A background saver also pushes uncommitted work every 10 minutes.
 
 Finishing
 - Checks (all must pass): \`cd frontend && npx tsc -b --force --noEmit && npx eslint . && npx vitest run && npx vite build\`, the e2e specs for your area, and for backend changes \`cd backend && uv run ruff check . && TEST_DATABASE_URL=postgresql://wg:wg@localhost:5432/postgres uv run pytest -q\`.
