@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 14 Oct 2026, 13:00 UTC.
+**Last updated:** 14 Oct 2026, 13:40 UTC (forced save before a usage limit).
 
 ## How to resume (any new session)
 
@@ -33,7 +33,8 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 
 **Screens:** run `wf_bd379cc1-4a0`, launched 12:58 UTC on 14 Oct (after the weekly limit reset), with args `{"done": ["ai-artifact-web", "story-cascade", "region"], "resume": {"globe": "wip/wf_6bd5ecea-85a-1", "forecasts": "wip/wf_6bd5ecea-85a-2"}}`.
 - **Merged:** story-cascade and region (333 frontend tests pass).
-- **Running, two at a time:** globe (resuming, with all earlier globe work inside), forecasts (resuming 8 started files), business, graph-entity, ask-brief-search-settings.
+- **Finished, not yet merged:** globe (`worktree-wf_bd379cc1-4a0-1` at `f841ca6`, 410 tests pass) and forecasts (`worktree-wf_bd379cc1-4a0-2` at `01794f5`, checks pass). Both are also on `wip/wf_bd379cc1-4a0-1` and `-2`. **Next step: merge both** (`git merge --no-edit <branch>`, then run the frontend checks).
+- **Running at 13:40 UTC:** business (`-3`) and graph-entity (`-4`). ask-brief-search-settings comes after them. All work was force-saved to `wip/wf_bd379cc1-4a0-<n>` at 13:40.
 - **Worktrees:** `.claude/worktrees/wf_bd379cc1-4a0-<n>`, saved to `wip/wf_bd379cc1-4a0-<n>`. Older worktrees `wf_6bd5ecea-85a-1/2` hold the same work; remove them once their labels merge.
 - The 9 Oct run stopped at the **weekly** limit, which reset on 14 Oct at 12:00 UTC.
 
