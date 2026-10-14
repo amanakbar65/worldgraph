@@ -73,22 +73,56 @@ export function unwrapRing(ring: LngLat[]): LngLat[] {
   return ring.map(([lon, lat]) => [lon < 0 ? lon + 360 : lon, lat]);
 }
 
+/**
+ * A cell's outline and centre never change, so they are worked out once:
+ * a replay re-bins the events many times a second.
+ */
+const cellShapes = new Map<string, { polygon: LngLat[]; lon: number; lat: number }>();
+
+function cellShape(h3: string) {
+  let shape = cellShapes.get(h3);
+  if (!shape) {
+    if (cellShapes.size >= 20_000) cellShapes.clear();
+    const [lat, lon] = cellToLatLng(h3);
+    shape = { polygon: unwrapRing(cellToBoundary(h3, true) as LngLat[]), lon, lat };
+    cellShapes.set(h3, shape);
+  }
+  return shape;
+}
+
+/** Each event's cell per resolution, kept for as long as the event object lives. */
+const eventCells = new WeakMap<GlobeEvent, Map<number, string | null>>();
+
+function cellOf(e: GlobeEvent, resolution: number): string | null {
+  let cells = eventCells.get(e);
+  if (!cells) {
+    cells = new Map();
+    eventCells.set(e, cells);
+  }
+  let h3 = cells.get(resolution);
+  if (h3 === undefined) {
+    try {
+      h3 = latLngToCell(e.lat, e.lon, resolution);
+    } catch {
+      h3 = null;
+    }
+    cells.set(resolution, h3);
+  }
+  return h3;
+}
+
 /** Group events into H3 cells at one resolution. Stable order: heaviest first. */
 export function binEvents(events: readonly GlobeEvent[], resolution: number): HexBin[] {
   const bins = new Map<string, HexBin>();
   for (const e of events) {
-    let h3: string;
-    try {
-      h3 = latLngToCell(e.lat, e.lon, resolution);
-    } catch {
-      continue;
-    }
+    const h3 = cellOf(e, resolution);
+    if (h3 === null) continue;
     let bin = bins.get(h3);
     if (!bin) {
-      const [lat, lon] = cellToLatLng(h3);
+      const { polygon, lon, lat } = cellShape(h3);
       bin = {
         h3,
-        polygon: unwrapRing(cellToBoundary(h3, true) as LngLat[]),
+        polygon,
         lon,
         lat,
         count: 0,
