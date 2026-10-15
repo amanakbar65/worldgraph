@@ -107,6 +107,7 @@ def add_story(
     lat: float = -15.8,
     sectors: tuple[str, ...] = ("energy",),
     sources: int = 3,
+    status: str = "done",
 ) -> None:
     """A live (non-sample) event story."""
     point = f"SRID=4326;POINT({lon} {lat})"
@@ -118,9 +119,9 @@ def add_story(
     conn.execute(
         """insert into story (node_id, kind, headline, so_what, event_type, impact, importance, sectors,
                               primary_region, location, first_seen, last_seen, country_id, admin1_id,
-                              source_count, mention_count)
+                              source_count, mention_count, analysis_status)
            values (%s, 'event', 'A live test story', 'It matters for tests.', 'test', %s, %s, %s,
-                   %s, st_geogfromtext(%s), now() - make_interval(secs => %s), now(), %s, %s, %s, %s)""",
+                   %s, st_geogfromtext(%s), now() - make_interval(secs => %s), now(), %s, %s, %s, %s, %s)""",
         (
             sid,
             impact,
@@ -133,6 +134,7 @@ def add_story(
             admin1,
             sources,
             sources * 3,
+            status,
         ),
     )
 
@@ -393,6 +395,82 @@ def test_globe_caps_events_at_1500(sdb):
     assert (time.perf_counter() - started) < 0.5
     assert len(data["events"]) == 1500
     assert min(e["importance"] for e in data["events"]) >= 6  # the 100 least important are dropped
+    assert data["truncated"] is True
+
+
+def bulk_stories(conn: psycopg.Connection, prefix: str, n: int, country: str, importance: int, impact: str):
+    """`n` live events in `country`, two days old, all with the same importance."""
+    conn.execute(
+        """insert into node (id, type, subtype, name, is_sample)
+           select %s || i, 'story', 'event', 'Bulk ' || i, false from generate_series(1, %s) i""",
+        (prefix, n),
+    )
+    conn.execute(
+        """insert into story (node_id, kind, headline, so_what, event_type, impact, importance, sectors,
+                              location, first_seen, source_count, country_id)
+           select %s || i, 'event', 'Bulk story', 'A bulk test story.', 'test', %s, %s, '{energy}',
+                  st_geogfromtext('SRID=4326;POINT(10 10)'), now() - interval '2 days', 1, %s
+           from generate_series(1, %s) i""",
+        (prefix, impact, importance, country, n),
+    )
+
+
+def test_globe_countries_count_every_event_beyond_the_cap(sdb):
+    # 1,600 important US events fill the 1,500 drawn; 400 minor Brazil events
+    # fall outside them but still count for their country.
+    bulk_stories(sdb, "story:bulk-us-", 1600, "region:us", 50, "neutral")
+    bulk_stories(sdb, "story:bulk-br-", 400, "region:br", 10, "risk")
+    data = check("globe", call(sdb, "globe", {"window": "30d"}))
+    assert len(data["events"]) == 1500 and data["truncated"] is True
+    assert {e["country_id"] for e in data["events"]} == {"region:us"}
+    countries = {c["id"]: c for c in data["countries"]}
+    assert set(countries) == {"region:us", "region:br"}
+    assert countries["region:us"]["count"] == 1600 and countries["region:us"]["neutral"] == 1600
+    assert countries["region:br"]["count"] == 400 and countries["region:br"]["risk"] == 400
+    assert countries["region:br"]["score"] == -1
+    # The same counts as the compare panel.
+    compare = call(sdb, "compare", {"ids": ["region:us", "region:br"], "window": "30d"})
+    assert [sum(r["counts"].values()) for r in compare["regions"]] == [1600, 400]
+    # A sector filter applies to the counts too.
+    assert call(sdb, "globe", {"window": "30d", "sectors": ["health"]})["countries"] == []
+
+
+def test_globe_is_not_truncated_below_the_cap(sdb):
+    for window in WINDOW_HOURS:
+        assert call(sdb, "globe", {"window": window})["truncated"] is False
+
+
+def test_globe_events_say_whether_they_are_analysed(sdb):
+    data = call(sdb, "globe", {"window": "30d"})
+    assert data["events"] and all(e["analysed"] is True for e in data["events"])  # the sample
+    add_story(sdb, "story:live-done", hours_ago=2)
+    add_story(sdb, "story:live-draft", hours_ago=1, status="pending")
+    data = check("globe", call(sdb, "globe", {"window": "24h", "sample": False}))
+    assert {e["id"]: e["analysed"] for e in data["events"]} == {
+        "story:live-done": True,
+        "story:live-draft": False,
+    }
+
+
+def test_globe_leaves_out_skipped_stories(sdb):
+    # A live story stored as skipped (the 0009 trigger only fires on an update)
+    # and a sample story marked skipped (the trigger never deletes sample rows).
+    add_story(sdb, "story:live-kept", country="region:de", lon=10.0, lat=51.0, hours_ago=1)
+    add_story(
+        sdb, "story:live-skipped", country="region:fr", lon=2.3, lat=48.9, hours_ago=2, status="skipped"
+    )
+    add_link(sdb, "story:live-skipped", "story:live-kept")
+    sample = call(sdb, "globe", {"window": "30d", "sample": True})["events"][0]
+    sdb.execute("update story set analysis_status = 'skipped' where node_id = %s", (sample["id"],))
+    assert scalar(sdb, "select count(*) from story where node_id = %s", (sample["id"],)) == 1
+    data = check("globe", call(sdb, "globe", {"window": "30d", "sample": True}))
+    event_ids = set(ids(data["events"]))
+    assert "story:live-kept" in event_ids
+    assert "story:live-skipped" not in event_ids and sample["id"] not in event_ids
+    assert "region:fr" not in {
+        c["id"] for c in call(sdb, "globe", {"window": "24h", "sample": False})["countries"]
+    }
+    assert all("story:live-skipped" not in (a["src_story"], a["dst_story"]) for a in data["arcs"])
 
 
 # ---------------------------------------------------------------------------
