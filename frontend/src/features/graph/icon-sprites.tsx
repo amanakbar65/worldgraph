@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 
 import type { EntityType, Impact } from "@/api/contract";
 import { ENTITY_TYPE_ICONS, IMPACT_ICONS, type IconInfo } from "@/lib/icons";
@@ -67,21 +67,21 @@ export function svgToPath(svg: Element): Path2D | null {
  * supported); the graph then draws plain dots.
  */
 export function useSprites(): { sprites: Sprites | null; host: React.ReactNode } {
-  const ref = useRef<HTMLDivElement>(null);
   const [sprites, setSprites] = useState<Sprites | null>(cache);
-  useLayoutEffect(() => {
-    if (cache || !ref.current) return;
+  // Build the paths as soon as the hidden icons are in the document.
+  const collect = useCallback((el: HTMLDivElement | null) => {
+    if (!el || cache) return;
     const built = new Map<string, Path2D>();
-    for (const el of Array.from(ref.current.querySelectorAll("svg[data-sprite]"))) {
-      const path = svgToPath(el);
-      if (path) built.set(el.getAttribute("data-sprite")!, path);
+    for (const svg of Array.from(el.querySelectorAll("svg[data-sprite]"))) {
+      const path = svgToPath(svg);
+      if (path) built.set(svg.getAttribute("data-sprite")!, path);
     }
     if (built.size === 0) return;
     cache = built;
     setSprites(built);
   }, []);
   const host = sprites ? null : (
-    <div ref={ref} hidden aria-hidden>
+    <div ref={collect} hidden aria-hidden>
       {SOURCES.map(([key, info]) => {
         const Icon = info.icon;
         return <Icon key={key} data-sprite={key} />;
