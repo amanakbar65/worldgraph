@@ -20,6 +20,7 @@ Long builds get cut off: session and weekly usage limits stop agents mid-task, c
 - **Start workflows from inside the repository.** After a restart the shell often starts in the home folder, and worktree agents then fail instantly with "not in a git repository".
 - **Push `main` before launching agents**: worktrees branch from `origin/main`.
 - **Agents push their own work.** Put this in every agent prompt: "Commit after each working milestone, and after every commit run `git push -q -f origin HEAD:refs/heads/wip/$(basename "$(git rev-parse --show-toplevel)")`. Usage limits can stop you without warning."
+- **Agents keep running notes in `findings.md` (or an `agent-notes/` folder)**, especially agents that only report at the end, such as reviewers. The saver keeps these even inside git-ignored folders, so a stopped reviewer's findings survive. If one is lost anyway, its transcript in `~/.claude/projects/<session>/subagents/` still holds what it wrote.
 - **Make workflow scripts resumable**: accept `args.done` (labels already merged) and `args.resume` (label → `wip/...` branch), and tell a resumed agent to `git fetch origin <branch> && git merge --no-edit FETCH_HEAD` first.
 - **Update CHECKPOINT.md at every milestone** (merge, launch, relaunch): run IDs, worktree → `wip/` branch, the exact relaunch args, and anything waiting on the owner. Commit and push it.
 

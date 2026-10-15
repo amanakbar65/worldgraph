@@ -33,6 +33,8 @@ snapshot() {
   cp "$(git -C "$w" rev-parse --git-dir)/index" "$idx" 2>/dev/null || true
   GIT_INDEX_FILE="$idx" git -C "$w" add -A -- . ':!frontend/node_modules' ':!frontend/test-results' \
     ':!backend/data/cache' >/dev/null 2>&1
+  # Agents' working notes are kept even inside ignored folders (e.g. test-results/).
+  GIT_INDEX_FILE="$idx" git -C "$w" add -f -- ':(glob)**/findings.md' ':(glob)**/agent-notes/**' >/dev/null 2>&1 || true
   tree="$(GIT_INDEX_FILE="$idx" git -C "$w" write-tree)"
   rm -f "$idx"
   parent="$(git -C "$w" rev-parse HEAD)"
@@ -56,6 +58,6 @@ while [ "$(date +%s)" -lt "$END" ]; do
   if [ -n "$(git -C "$ROOT" log origin/main..main --oneline 2>/dev/null)" ]; then
     git -C "$ROOT" push -q origin main 2>>"$LOG" && echo "$(date -u +%FT%TZ) pushed main" >>"$LOG"
   fi
-  sleep "$INTERVAL"
+  sleep "$INTERVAL" 9>&-  # the sleep must not hold the lock
 done
 echo "$(date -u +%FT%TZ) saver stopped after ${MAX_HOURS}h" >>"$LOG"

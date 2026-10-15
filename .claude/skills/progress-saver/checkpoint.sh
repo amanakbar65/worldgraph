@@ -31,6 +31,8 @@ snapshot() {
   GIT_INDEX_FILE="$idx" git -C "$w" add -A -- . \
     ':(exclude,glob)**/node_modules/**' ':(exclude,glob)**/.venv/**' \
     ':(exclude,glob)**/__pycache__/**' >/dev/null 2>&1
+  # Agents' working notes are kept even inside ignored folders (e.g. test-results/).
+  GIT_INDEX_FILE="$idx" git -C "$w" add -f -- ':(glob)**/findings.md' ':(glob)**/agent-notes/**' >/dev/null 2>&1 || true
   tree="$(GIT_INDEX_FILE="$idx" git -C "$w" write-tree)"
   rm -f "$idx"
   last="$(git -C "$w" rev-parse -q --verify "refs/remotes/origin/wip/$name^{tree}" 2>/dev/null || true)"
@@ -53,6 +55,6 @@ while [ "$(date +%s)" -lt "$END" ]; do
      && [ -n "$(git -C "$ROOT" log '@{u}..HEAD' --oneline 2>/dev/null)" ]; then
     git -C "$ROOT" push -q 2>>"$LOG" && echo "$(date -u +%FT%TZ) pushed main checkout" >>"$LOG"
   fi
-  sleep "$INTERVAL"
+  sleep "$INTERVAL" 9>&-  # the sleep must not hold the lock
 done
 echo "$(date -u +%FT%TZ) saver stopped after ${MAX_HOURS}h" >>"$LOG"
