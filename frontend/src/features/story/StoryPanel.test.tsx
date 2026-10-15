@@ -130,4 +130,14 @@ describe("StoryPanel states", () => {
     renderPanel("story:gone");
     expect(screen.getByText("No longer available")).toBeTruthy();
   });
+
+  it("keeps the loaded card, causes and effects when a background refresh fails", () => {
+    const down = new DataError("unavailable", "The database didn't answer.", true);
+    mocks.errors = { story: down, cascade: down };
+    renderPanel();
+    expect(screen.getByRole("heading", { level: 2, name: /container rates jump/ })).toBeTruthy();
+    const section = screen.getByRole("region", { name: "Causes and effects" });
+    expect(within(section).getByRole("button", { name: /Red Sea attacks push carriers around Africa/ })).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
 });

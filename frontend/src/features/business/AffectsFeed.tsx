@@ -394,7 +394,9 @@ function HopChainSteps({ item }: { item: AffectsItem }) {
       </div>
     );
   }
-  if (query.isError) return <ErrorState compact error={query.error} onRetry={() => void query.refetch()} />;
+  if (query.isError && !query.data) {
+    return <ErrorState compact error={query.error} onRetry={() => void query.refetch()} />;
+  }
   const steps = buildHopChain(item.path, query.data);
   return (
     <ol
