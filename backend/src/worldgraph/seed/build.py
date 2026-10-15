@@ -423,6 +423,8 @@ def build_bundle(now: datetime | None = None, seed_dir: Path = SEED_DIR) -> Bund
                 raise SeedError(f"{where}: mentions unknown id {ref}")
         primary, country, admin1 = region_chain(st.at)
         first_seen = None if st.kind == "projected" else now - timedelta(hours=st.age_hours or 0)
+        # Seen until now, or for six hours at most.
+        last_seen = first_seen + timedelta(hours=min(st.age_hours or 0, 6)) if first_seen else None
         rng = _rng(sid)
         mentions = st.sources * rng.randint(3, 9)
         bundle.nodes.append(_node(sid, "story", st.kind, st.headline, lon=lon, lat=lat, is_sample=True))
@@ -454,7 +456,7 @@ def build_bundle(now: datetime | None = None, seed_dir: Path = SEED_DIR) -> Bund
                 "h3_cell": h3.latlng_to_cell(lat, lon, 7),
                 "actions": list(st.actions),
                 "first_seen": first_seen,
-                "last_seen": first_seen + timedelta(hours=min(st.age_hours or 0, 6)) if first_seen else None,
+                "last_seen": last_seen,
                 "mention_count": mentions if st.kind == "event" else 0,
                 "source_count": st.sources if st.kind == "event" else 0,
             }
@@ -464,16 +466,16 @@ def build_bundle(now: datetime | None = None, seed_dir: Path = SEED_DIR) -> Bund
             refs.add(f"sector:{sector}")
         for ref in sorted(refs):
             bundle.edges.append(_edge(sid, ref, "mentions", sample=True))
-        if st.kind == "event":
+        if st.kind == "event" and first_seen and last_seen:
+            # Sources are published while the story is seen: never after last_seen.
+            span = int((last_seen - first_seen).total_seconds() // 60)
             for i in range(st.sources):
                 bundle.articles.append(
                     {
                         "story_id": sid,
                         "source_name": SAMPLE_SOURCES[(rng.randint(0, 99) + i) % len(SAMPLE_SOURCES)],
                         "title": st.headline,
-                        "published_at": first_seen + timedelta(minutes=rng.randint(0, 240))
-                        if first_seen
-                        else None,
+                        "published_at": first_seen + timedelta(minutes=rng.randint(0, span)),
                         "snippet": None,
                     }
                 )

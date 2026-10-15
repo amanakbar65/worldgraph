@@ -1,7 +1,7 @@
 """api.meta, api.globe, api.top, api.region, api.compare and api.brief.
 
 Every test runs against the seeded database (sample data, clock shifted so
-the newest sample story is about 20 minutes old) and rolls back afterwards,
+the newest sample time is 5 minutes old) and rolls back afterwards,
 so rows inserted here never leak into other tests.
 """
 
