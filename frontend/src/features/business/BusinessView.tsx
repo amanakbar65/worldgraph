@@ -1,6 +1,5 @@
 import { Briefcase, Building, KeyRound, MapPin, Package, Pencil, Store } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { create } from "zustand";
 
 import type { Profile, TimeWindow } from "@/api/contract";
 import { EmptyState } from "@/components/EmptyState";
@@ -29,10 +28,8 @@ import { NO_FILTER, type FeedFilter } from "./business-data";
 import { Exposure } from "./Exposure";
 import { ProfileSetup } from "./ProfileSetup";
 import { useAffects, useBusinessAlerts, useWatchQueries } from "./use-business";
+import { useFirstRun } from "./setup-state";
 import { SuggestedForecasts, Watchlist } from "./Watchlist";
-
-/** Skipping the first-run setup lasts for this visit. */
-const useSetupSkipped = create<{ skipped: boolean }>(() => ({ skipped: false }));
 
 /**
  * My Business: a two-minute setup on the first visit, then what affects
@@ -41,7 +38,7 @@ const useSetupSkipped = create<{ skipped: boolean }>(() => ({ skipped: false }))
  */
 export default function BusinessView() {
   const profile = useProfile();
-  const skipped = useSetupSkipped((s) => s.skipped);
+  const phase = useFirstRun((s) => s.phase);
   const [editing, setEditing] = useState<number | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const panelOpen = useNav((s) => {
@@ -50,7 +47,13 @@ export default function BusinessView() {
   });
   const isDesktop = useIsDesktop();
 
-  const showSetup = editing !== null || (profile.loaded && isEmpty(profile.value) && !skipped);
+  const emptyProfile = profile.loaded && isEmpty(profile.value);
+  const firstRun = phase === "open" || (phase === "unknown" && emptyProfile);
+  useEffect(() => {
+    if (profile.loaded && phase === "unknown") useFirstRun.setState({ phase: emptyProfile ? "open" : "done" });
+  }, [profile.loaded, phase, emptyProfile]);
+
+  const showSetup = editing !== null || firstRun;
   useEffect(() => {
     scroller.current?.scrollTo({ top: 0 });
   }, [showSetup]);
@@ -71,7 +74,7 @@ export default function BusinessView() {
           mode={editing !== null ? "edit" : "first-run"}
           initialStep={editing ?? 0}
           onDone={() => {
-            if (editing === null) useSetupSkipped.setState({ skipped: true });
+            if (editing === null) useFirstRun.setState({ phase: "done" });
             setEditing(null);
           }}
         />

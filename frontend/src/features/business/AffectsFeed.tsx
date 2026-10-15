@@ -175,7 +175,7 @@ export function AffectsFeed({
         <div className="rounded-xl border border-line bg-surface">
           <EmptyState
             icon={Radar}
-            title={`Nothing touches your business ${windowWords}`}
+            title={`Nothing touches your business in the ${windowWords}`}
             description="A longer window or a few more places and inputs usually help."
             action={
               timeWindow !== "30d" ? { label: "Show 30 days", onClick: () => setWindow("30d") } : undefined
