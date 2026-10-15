@@ -38,6 +38,8 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 `{"only":["e2e","review:a11y-design","review:rules","review:artifact-security","review:polish"],"resume":{"e2e":"wip/wf_4ef20849-b70-1"}}`.
 Worktrees are `wf_5401d9b0-dd2-<n>`, saved to `wip/` of the same name. If it is interrupted, relaunch with `only` set to the labels that did not report, and `resume` pointing at their `wip/` branches.
 
+**Fix run 1** `wf_46134b48-10a` (launched 17:05 UTC): `orchestration/worldgraph-qa-fix.js` with 2 groups, `backend` and `shell`, fixing the correctness findings below plus the known items. The full args are in that run's transcript. If it is interrupted, merge the `wip/wf_46134b48-10a-<n>` branches or relaunch the same group with a resume note.
+
 **Correctness findings already in** (run 2; 14 findings in `orchestration/qa-notes/review-correctness-run2.md`):
 - watchlist logic duplicated in RegionPanel.tsx:181 and ForecastPanel.tsx:253 (use `useWatchlist()`);
 - api.globe country counts come from the capped 1,500 events (migration 0004:282/302);
