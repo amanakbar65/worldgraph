@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 14 Oct 2026, 13:40 UTC (forced save before a usage limit).
+**Last updated:** 15 Oct 2026, 00:55 UTC.
 
 ## How to resume (any new session)
 
@@ -31,16 +31,15 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 
 ## In flight
 
-**Screens:** run `wf_bd379cc1-4a0`, launched 12:58 UTC on 14 Oct (after the weekly limit reset), with args `{"done": ["ai-artifact-web", "story-cascade", "region"], "resume": {"globe": "wip/wf_6bd5ecea-85a-1", "forecasts": "wip/wf_6bd5ecea-85a-2"}}`.
-- **Merged:** story-cascade, region, globe and forecasts (497 frontend tests pass, 14 Oct 13:45).
-- **Running at 13:40 UTC:** business (`-3`) and graph-entity (`-4`). ask-brief-search-settings comes after them. All work was force-saved to `wip/wf_bd379cc1-4a0-<n>` at 13:40.
-- **Worktrees:** `.claude/worktrees/wf_bd379cc1-4a0-<n>`, saved to `wip/wf_bd379cc1-4a0-<n>`. Older worktrees `wf_6bd5ecea-85a-1/2` hold the same work; remove them once their labels merge.
-- The 9 Oct run stopped at the **weekly** limit, which reset on 14 Oct at 12:00 UTC.
+**Screens:** run `wf_c4f14d0d-a79`, launched 00:53 UTC on 15 Oct with args `{"done": ["ai-artifact-web", "story-cascade", "region", "globe", "forecasts"], "resume": {"business": "wip/wf_bd379cc1-4a0-3", "graph-entity": "wip/wf_bd379cc1-4a0-4"}}`.
+- **Merged:** story-cascade, region, globe and forecasts (497 frontend tests pass).
+- **Running:** business and graph-entity (both resuming), then ask-brief-search-settings (fresh).
+- **Worktrees:** `.claude/worktrees/wf_c4f14d0d-a79-<n>`, saved to `wip/wf_c4f14d0d-a79-<n>`. Agents now also push after every commit. The old worktrees `wf_bd379cc1-4a0-3/4` hold the same starting work; remove them once their labels merge.
 
 **If interrupted:**
 1. `cd /home/user/worldgraph`, then `git worktree list`.
 2. Merge finished branches after the checks.
-3. Relaunch with `done` = ["ai-artifact-web", "story-cascade", "region", "globe", "forecasts"] plus any newly merged labels, and `resume` = `{label: "wip/wf_bd379cc1-4a0-<n>"}` for unfinished ones (fallbacks: globe `wip/wf_6bd5ecea-85a-1`, forecasts `wip/wf_6bd5ecea-85a-2`).
+3. Relaunch with `done` = ["ai-artifact-web", "story-cascade", "region", "globe", "forecasts"] plus any newly merged labels, and `resume` = `{label: "wip/wf_c4f14d0d-a79-<n>"}` for unfinished ones (fallbacks: business `wip/wf_bd379cc1-4a0-3`, graph-entity `wip/wf_bd379cc1-4a0-4`).
 4. Restart `orchestration/checkpoint.sh 600`.
 
 Session limits have stopped agents three times (11:12, 15:10, 20:20 UTC). Each time the saver kept the work.
