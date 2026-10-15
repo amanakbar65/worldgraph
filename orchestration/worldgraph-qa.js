@@ -122,10 +122,15 @@ Focus: VISUAL POLISH AND EASE OF USE, as the owner (a business person, not a dev
 
 phase('Review')
 const only = (args && args.only) || null
+// args.resume maps a label to a wip/ branch holding an interrupted attempt.
+const RESUME_FROM = (args && args.resume) || {}
+const resumeNote = (label) => RESUME_FROM[label] ? `
+RESUME FIRST: an earlier attempt at this exact task was stopped by a usage limit. Its work is on branch ${RESUME_FROM[label]}. Start with \`git fetch origin ${RESUME_FROM[label]} && git merge --no-edit FETCH_HEAD\` (a WIP snapshot commit may include uncommitted files), review it critically, then continue the task.
+` : ''
 const todo = only ? tasks.filter(t => only.includes(t.label)) : tasks
 log('Launching ' + todo.length + ' QA agents in isolated worktrees')
 const results = await parallel(todo.map(t => () =>
-  agent(COMMON + `\nYour label: ${t.label}. Your dev-server port: ${t.port}. Your database name: wg_qa_${t.db}.\n` + t.prompt, {
+  agent(COMMON + `\nYour label: ${t.label}. Your dev-server port: ${t.port}. Your database name: wg_qa_${t.db}.\n` + resumeNote(t.label) + t.prompt, {
     label: t.label,
     phase: 'Review',
     isolation: 'worktree',
