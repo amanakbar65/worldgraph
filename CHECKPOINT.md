@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 15 Oct 2026, 00:55 UTC.
+**Last updated:** 15 Oct 2026, 01:40 UTC (forced save before a usage limit).
 
 ## How to resume (any new session)
 
@@ -33,7 +33,8 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 
 **Screens:** run `wf_c4f14d0d-a79`, launched 00:53 UTC on 15 Oct with args `{"done": ["ai-artifact-web", "story-cascade", "region", "globe", "forecasts"], "resume": {"business": "wip/wf_bd379cc1-4a0-3", "graph-entity": "wip/wf_bd379cc1-4a0-4"}}`.
 - **Merged:** story-cascade, region, globe and forecasts (497 frontend tests pass).
-- **Running:** business and graph-entity (both resuming), then ask-brief-search-settings (fresh).
+- **Finished, not merged:** graph-entity (`worktree-wf_c4f14d0d-a79-2`, 7 commits; read its report and concerns in the run journal, merge, run the checks).
+- **Running at 01:40 UTC:** business (`-1`, 9 commits) and ask-brief-search-settings (`-3`, just started). All three were force-saved to `wip/wf_c4f14d0d-a79-<n>` at 01:40.
 - **Worktrees:** `.claude/worktrees/wf_c4f14d0d-a79-<n>`, saved to `wip/wf_c4f14d0d-a79-<n>`. Agents now also push after every commit. The old worktrees `wf_bd379cc1-4a0-3/4` hold the same starting work; remove them once their labels merge.
 
 **If interrupted:**
