@@ -6,6 +6,7 @@ export const meta = {
 
 // args.groups: [{ label, owns: ["frontend/src/features/globe/**", ...], findings: [{title, severity, files, evidence, fix}] }]
 // Triaged by hand from worldgraph-qa.js output. Areas must not overlap.
+// findings may also be a string pointing at notes files in the repo (saves tokens).
 
 const COMMON = `
 You are fixing review findings in WorldGraph, a visual world-knowledge web app for businesses (globe, knowledge graph, cascades, crowd forecasts). The owner wants it sleek, professional, simple, accurate and convenient. It runs as a claude.ai Artifact (test link) and later as a website on Netlify.
@@ -24,6 +25,8 @@ How to work
 - Add or update a unit test for each logic fix. Never weaken, skip or delete a test to make it pass; if an e2e test is itself wrong, say so and fix only the test's mistake.
 - If a finding is not real (cannot reproduce on current main), say so with what you tried.
 - Commit after each fix or small group (\`git add -A && git commit -m "<Area>: <what changed>"\`, plain message, no trailers; never commit test-results/); after every commit also run \`git push -q -f origin HEAD:refs/heads/wip/$(basename "$(git rev-parse --show-toplevel)")\` so your work is on GitHub even if you are stopped mid-task (usage limits stop agents without warning). A background saver also pushes uncommitted work every 10 minutes.
+
+- Keep running notes in frontend/test-results/<label>/findings.md as you go.
 
 Finishing
 - Checks (all must pass): \`cd frontend && npx tsc -b --force --noEmit && npx eslint . && npx vitest run && npx vite build\`, the e2e specs for your area, and for backend changes \`cd backend && uv run ruff check . && TEST_DATABASE_URL=postgresql://wg:wg@localhost:5432/postgres uv run pytest -q\`.
@@ -57,13 +60,13 @@ const groups = (args && args.groups) || []
 if (!groups.length) throw new Error('Pass args.groups (see the comment at the top)')
 
 phase('Fix')
-log('Fixing ' + groups.reduce((n, g) => n + g.findings.length, 0) + ' findings in ' + groups.length + ' areas')
+log('Fixing findings in ' + groups.length + ' areas')
 return await parallel(groups.map((g, i) => () =>
   agent(COMMON + `
 Your label: fix:${g.label}. Your dev-server port: ${5401 + i}. Your database name: wg_fix_${g.label.replace(/[^a-z0-9]/g, '_')}.
 Files you own: ${g.owns.join(', ')}.
 ${g.note ? 'Note: ' + g.note + '\n' : ''}Findings (fix all of them, most severe first):
-${JSON.stringify(g.findings, null, 2)}`, {
+${typeof g.findings === 'string' ? g.findings : JSON.stringify(g.findings, null, 2)}`, {
     label: 'fix:' + g.label,
     phase: 'Fix',
     isolation: 'worktree',
