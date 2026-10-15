@@ -357,7 +357,8 @@ function OwnFigure({ id, subject }: { id: string; subject: FactLink | null }) {
       {kpi ? (
         <div className="flex flex-col gap-1.5">
           <KpiTile kpi={kpi} />
-          <p className="text-label text-fg-muted">
+          {/* The tile tells screen readers the source and date already. */}
+          <p aria-hidden className="text-label text-fg-muted">
             Source: {kpi.source_name} · as of {formatDate(kpi.as_of)}
           </p>
         </div>
