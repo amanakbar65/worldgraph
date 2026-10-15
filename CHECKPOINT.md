@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 15 Oct 2026, 07:00 UTC.
+**Last updated:** 15 Oct 2026, 08:15 UTC.
 
 ## How to resume (any new session)
 
@@ -31,18 +31,20 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 
 ## In flight
 
-**Screens:** 7 of 8 merged: ai-artifact-web, story-cascade, region, globe, forecasts, business (with opportunities) and graph-entity. All checks pass on `main`: 696 frontend tests, lint, types and build.
-- **Last one running:** ask-brief-search-settings. Run `wf_497c67a1-c6e`, launched 06:59 UTC on 15 Oct with args `{"done": [the 7 merged labels], "resume": {"ask-brief-search-settings": "wip/wf_c4f14d0d-a79-3"}}`. Worktree `.claude/worktrees/wf_497c67a1-c6e-1`, saved to `wip/wf_497c67a1-c6e-1`. The old worktree `wf_c4f14d0d-a79-3` holds its starting point; remove it after the merge.
-- **When it merges:** run the frontend checks, then QA (see Next). Agent concerns to feed into QA:
-  - the globe needs an `analysed` flag on `api.globe` events (new migration plus contract);
-  - `api.globe` may not filter skipped stories;
-  - the ForecastRow footer can wrap at 352 px;
-  - a favicon link is missing.
+**Screens: all 8 merged** (15 Oct, 08:10 UTC). On `main`:
+- 820 frontend tests, lint, types and build all pass;
+- the artifact build is 12.6 MB in 110 files.
+
+**Next: QA** with `orchestration/worldgraph-qa.js` (no args): an e2e author plus 5 reviewers, in worktrees. Concerns from the agents to fold into the fixes:
+- `api.globe` events need an `analysed` flag (new migration, contract and pytest; rebuild the snapshot);
+- `api.globe` may not filter skipped stories;
+- the ForecastRow footer can wrap at 352 px;
+- a favicon link is missing.
 
 **If interrupted:**
 1. `cd /home/user/worldgraph`, then `git worktree list`.
 2. Merge finished branches after the checks.
-3. Relaunch with `done` = the 7 merged labels and `resume` = `{"ask-brief-search-settings": "wip/wf_497c67a1-c6e-1"}` (fallback: `wip/wf_c4f14d0d-a79-3`).
+3. For QA: relaunch `orchestration/worldgraph-qa.js` with `args.only` = the labels that did not report. Reviewers report findings; only the e2e agent commits (to `wip/<worktree>`).
 4. Restart `orchestration/checkpoint.sh 600`.
 
 Session limits have stopped agents three times (11:12, 15:10, 20:20 UTC). Each time the saver kept the work.
