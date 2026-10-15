@@ -70,7 +70,7 @@ export function CitationChip({ story, onOpen }: { story: AskStory; onOpen: (id: 
       onClick={() => onOpen(story.id)}
       title={story.headline}
       aria-label={`Source story: ${story.headline}${story.analysed ? "" : " (draft, awaiting analysis)"}`}
-      className="max-w-[15rem] border-line bg-surface-2/60"
+      className="max-w-full border-line bg-surface-2/60"
     >
       <Icon aria-hidden className={tone.text} />
       <span className="truncate text-fg">{story.headline}</span>

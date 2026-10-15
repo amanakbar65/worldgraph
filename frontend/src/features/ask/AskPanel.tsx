@@ -10,7 +10,7 @@ import {
   Users,
   Waypoints,
 } from "lucide-react";
-import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { Profile, type SectorId } from "@/api/contract";
 import { useRpc } from "@/api/client";
@@ -22,10 +22,11 @@ import { SampleBadge } from "@/components/SampleBadge";
 import { TimeAgo } from "@/components/TimeAgo";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useIsDesktop } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { useUserValue } from "@/platform/storage";
 import { useNav, type Panel } from "@/state/nav";
-import { sampleArg, useSettings } from "@/state/settings";
+import { sampleArg, useCalm, useSettings } from "@/state/settings";
 
 import {
   CONTEXT_LIMIT,
@@ -78,11 +79,29 @@ function AskBody({ q, scope }: { q?: string; scope?: string }) {
   const active = entries.find((e) => e.id === shownId) ?? null;
   const earlier = entries.filter((e) => e.id !== active?.id).reverse().slice(0, 5);
 
+  // Phones: the half-height sheet hides its lower part, so a new question
+  // scrolls to the top of the sheet where its answer will appear.
+  const isDesktop = useIsDesktop();
+  const calm = useCalm();
+  const entryRef = useRef<HTMLDivElement>(null);
+  const scrollTo = useRef<number | null>(null);
+  const activeId = active?.id ?? null;
+  useEffect(() => {
+    if (isDesktop || activeId === null || scrollTo.current !== activeId) return;
+    scrollTo.current = null;
+    entryRef.current?.scrollIntoView({ block: "start", behavior: calm ? "auto" : "smooth" });
+  }, [activeId, isDesktop, calm]);
+
   const ask = (text: string) => {
     const question = cleanQuestion(text);
     if (!isAskable(question)) return;
-    submit(question, sample, panelKey);
+    scrollTo.current = submit(question, sample, panelKey);
     setDraft("");
+  };
+
+  const showEntry = (id: number) => {
+    scrollTo.current = id;
+    show(panelKey, id);
   };
 
   return (
@@ -148,7 +167,9 @@ function AskBody({ q, scope }: { q?: string; scope?: string }) {
       </form>
 
       {active ? (
-        <EntryView entry={active} engine={engine} onAsk={ask} />
+        <div ref={entryRef} className="scroll-mt-2">
+          <EntryView entry={active} engine={engine} onAsk={ask} />
+        </div>
       ) : (
         <Suggestions scope={scope} onAsk={ask} />
       )}
@@ -160,7 +181,7 @@ function AskBody({ q, scope }: { q?: string; scope?: string }) {
               <li key={e.id}>
                 <button
                   type="button"
-                  onClick={() => show(panelKey, e.id)}
+                  onClick={() => showEntry(e.id)}
                   className="flex min-h-10 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-surface-2/70"
                 >
                   <span className="min-w-0 flex-1 truncate text-body text-fg">{e.question}</span>
@@ -177,6 +198,9 @@ function AskBody({ q, scope }: { q?: string; scope?: string }) {
           </ul>
         </AnswerSection>
       )}
+
+      {/* Room to scroll an answer up into the half-height sheet on phones. */}
+      {!isDesktop && active && <div aria-hidden className="h-[40dvh] shrink-0" />}
     </div>
   );
 }
@@ -489,14 +513,6 @@ function AnswerView({
             className="rounded-xl border border-line bg-surface/60"
           />
         </div>
-        {entry.context && (
-          <FoundStories
-            stories={entry.context.stories}
-            forecasts={entry.context.forecasts}
-            onOpenStory={onOpenStory}
-            onOpenForecast={onOpenForecast}
-          />
-        )}
         <AnswerSection title="Try asking instead" icon={Sparkles}>
           <QuestionList questions={followUps} onAsk={onAsk} />
         </AnswerSection>

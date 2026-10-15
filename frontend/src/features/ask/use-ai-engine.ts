@@ -16,15 +16,3 @@ export function useAiEngine(): AiEngine | null {
   }, []);
   return engine;
 }
-
-/** What using the AI costs the viewer, in one short line. */
-export function aiCostText(kind: AiEngine["kind"]): string {
-  switch (kind) {
-    case "artifact":
-      return "Uses your Claude account while the app is open";
-    case "api":
-      return "WorldGraph AI, daily limit";
-    default:
-      return "Not available here";
-  }
-}

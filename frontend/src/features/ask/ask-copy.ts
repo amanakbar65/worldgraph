@@ -30,7 +30,9 @@ export function aiProblemCopy(kind: AiError["kind"], engine: AiEngine["kind"] | 
         description:
           engine === "artifact"
             ? `${message} In the test link, Ask uses your Claude account while the app is open.`
-            : "Ask needs AI: the test link uses your Claude account, and the website uses WorldGraph AI. Neither is reachable in this view.",
+            : engine === "api"
+              ? `${message} On the website, Ask uses WorldGraph AI; in the test link, it uses your Claude account.`
+              : "Ask needs AI: the test link uses your Claude account, and the website uses WorldGraph AI. Neither is available in this view.",
         retry: "Try again",
       };
     case "declined":
