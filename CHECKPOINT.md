@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 15 Oct 2026, 08:15 UTC.
+**Last updated:** 15 Oct 2026, 08:40 UTC (saved ahead of a usage limit).
 
 ## How to resume (any new session)
 
@@ -69,6 +69,7 @@ Session limits have stopped agents three times (11:12, 15:10, 20:20 UTC). Each t
 
 - Done: `DATABASE_URL` is set and live data works.
 - GitHub token in Supabase Vault named `github_dispatch_token` (the 15-minute trigger `wg-live-data` is applied and idle until then).
+  - The owner said (15 Oct) they will add it before the next session. **Next session:** check with `select count(*) from vault.secrets where name = 'github_dispatch_token'`, run `select ops.dispatch_live_data()` (expect 204), and confirm a new "Live data" run appears in GitHub Actions.
 - Optional cleanup: the old `worldgraph` branch in `amanakbar65/Others`.
 - Before a public launch:
   - feed terms for commercial use;
