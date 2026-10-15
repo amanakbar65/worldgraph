@@ -174,15 +174,18 @@ function Palette({ onDone }: { onDone: () => void }) {
     action.run();
   };
 
-  const results = searching ? (search.data?.results ?? []) : [];
+  const typedEnough = query.length >= MIN_QUERY;
+  const results = searching && typedEnough ? (search.data?.results ?? []) : [];
   const groups = groupResults(results);
   const loading = searching && search.isFetching;
-  const stale = searching && search.isPlaceholderData;
-  const waiting = query.length >= MIN_QUERY && (debounced !== query || (search.isPending && !search.isError));
+  // The rows answer what's in the box only once the pause is over and the
+  // answer for it is in. Until then they are the previous query's (or none).
+  const fresh = debounced === query && !search.isPlaceholderData;
+  const waiting = typedEnough && (!fresh || (search.isPending && !search.isError));
 
   // While typing, "Ask" stays on offer (the question may not match a name),
   // but only once results are in: until then Enter has nothing to open, so a
-  // quick Enter on a place name never lands in Ask instead.
+  // quick Enter never lands on the previous query's top result, or in Ask.
   const shownActions =
     waiting && results.length === 0
       ? []
@@ -192,8 +195,13 @@ function Palette({ onDone }: { onDone: () => void }) {
 
   // The highlighted row: each new set of results starts on its best match
   // (cmdk would keep whatever it highlighted while the results were loading).
-  const listKey = query ? `q:${results.map((r) => r.id).join(",")}` : "home";
-  const firstValue = query ? (groups[0]?.items[0]?.id ?? shownActions[0]?.id) : (recent[0]?.id ?? shownActions[0]?.id);
+  // While waiting, every row is disabled and nothing is highlighted.
+  const listKey = !query ? "home" : waiting ? `wait:${query}` : `q:${debounced}:${results.map((r) => r.id).join(",")}`;
+  const firstValue = waiting
+    ? undefined
+    : query
+      ? (groups[0]?.items[0]?.id ?? shownActions[0]?.id)
+      : (recent[0]?.id ?? shownActions[0]?.id);
   const [pick, setPick] = useState<{ key: string; value: string } | null>(null);
   const selected = pick?.key === listKey ? pick.value : (firstValue ?? "");
 
@@ -235,7 +243,8 @@ function Palette({ onDone }: { onDone: () => void }) {
 
       <Command.List
         aria-label="Results"
-        className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 transition-opacity", stale && "opacity-70")}
+        aria-busy={waiting || undefined}
+        className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 transition-opacity", waiting && "opacity-70")}
       >
         {!query && recent.length > 0 && (
           <Command.Group heading={<GroupHeading icon={Clock}>Recent</GroupHeading>}>
@@ -263,7 +272,7 @@ function Palette({ onDone }: { onDone: () => void }) {
             }
           >
             {group.items.map((item) => (
-              <ResultItem key={item.id} item={item} onSelect={() => go(item)} />
+              <ResultItem key={item.id} item={item} disabled={waiting} onSelect={() => go(item)} />
             ))}
           </Command.Group>
         ))}
@@ -284,6 +293,7 @@ function Palette({ onDone }: { onDone: () => void }) {
               <Command.Item
                 key={action.id}
                 value={action.id}
+                disabled={waiting}
                 onSelect={() => runAction(action)}
                 className={ITEM_CLASS}
               >
@@ -324,7 +334,7 @@ function Palette({ onDone }: { onDone: () => void }) {
 }
 
 const ITEM_CLASS =
-  "group flex min-h-12 cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 text-left outline-none data-[selected=true]:bg-surface-2";
+  "group flex min-h-12 cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 text-left outline-none data-[selected=true]:bg-surface-2 data-[disabled=true]:cursor-default";
 
 function GroupHeading({ icon: Icon, children }: { icon?: LucideIcon; children: ReactNode }) {
   return (
@@ -344,14 +354,23 @@ function EnterHint() {
   );
 }
 
-function ResultItem({ item, onSelect }: { item: RecentItem | SearchResult; onSelect: () => void }) {
+function ResultItem({
+  item,
+  disabled = false,
+  onSelect,
+}: {
+  item: RecentItem | SearchResult;
+  /** The previous query's row, shown while the new answer loads: it can't be opened. */
+  disabled?: boolean;
+  onSelect: () => void;
+}) {
   const context = resultContext(item);
   // Stories take their impact's colour (named with its icon in the line below); the rest their type's.
   const tone = context.impact ? IMPACT_TONES[context.impact] : entityTypeTone(item.type);
   const Icon = (ENTITY_TYPE_ICONS[item.type as EntityType] ?? ENTITY_TYPE_ICONS.story).icon;
   const ImpactIcon = context.impact ? IMPACT_ICONS[context.impact].icon : null;
   return (
-    <Command.Item value={item.id} onSelect={onSelect} className={ITEM_CLASS}>
+    <Command.Item value={item.id} disabled={disabled} onSelect={onSelect} className={ITEM_CLASS}>
       <span
         aria-hidden
         className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg border", tone.tint, tone.border)}
