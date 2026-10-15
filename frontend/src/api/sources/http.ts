@@ -32,8 +32,12 @@ export class HttpSource implements DataSource {
       data?: unknown;
       error?: string;
     } | null;
+    if (options.signal?.aborted) throw new DOMException("Aborted", "AbortError");
     if (!response.ok || !body || body.error) {
-      const kind = response.status >= 500 ? "unavailable" : "server_error";
+      // 500 with our own error: this one function failed (the panel says so, no retry).
+      // 502–504, or a 500 without one: the database or the host didn't answer.
+      const answered = response.status < 500 || (response.status === 500 && typeof body?.error === "string");
+      const kind = answered ? "server_error" : "unavailable";
       throw new DataError(
         kind,
         body?.error ?? `The server answered ${response.status}.`,

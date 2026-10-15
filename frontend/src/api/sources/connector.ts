@@ -35,6 +35,18 @@ function isApprovalRequired(error: unknown): boolean {
   return (error as Partial<Claude.mcp.McpError> | undefined)?.code === "approval_required";
 }
 
+/**
+ * The call was called off: its AbortSignal fired (react-query cancels a
+ * query when the viewer moves on). That isn't a data failure, so it must
+ * never reach the app-wide data status.
+ */
+function wasCancelled(error: unknown, signal?: AbortSignal): boolean {
+  const e = error as { code?: unknown; name?: unknown } | undefined;
+  return e?.code === "cancelled" || e?.name === "AbortError" || signal?.aborted === true;
+}
+
+const abortError = () => new DOMException("Aborted", "AbortError");
+
 /** Park a call that needs approval until the viewer taps the button. */
 function waitForApproval(
   run: () => Promise<Claude.mcp.CallToolResult>,
@@ -142,14 +154,14 @@ export class ConnectorSource implements DataSource {
     try {
       result = await run(options.fresh);
     } catch (error) {
+      if (wasCancelled(error, options.signal)) throw abortError();
       if (!isApprovalRequired(error)) throw toDataError(error);
       try {
         // Repeated after the viewer's tap: always ask the database itself.
         result = await waitForApproval(() => run(true), options.signal);
       } catch (retryError) {
-        if (retryError instanceof DataError || (retryError as Error | undefined)?.name === "AbortError") {
-          throw retryError;
-        }
+        if (wasCancelled(retryError, options.signal)) throw abortError();
+        if (retryError instanceof DataError) throw retryError;
         throw toDataError(retryError);
       }
     }

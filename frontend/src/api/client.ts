@@ -27,8 +27,26 @@ const FALL_BACK_TO_SNAPSHOT: ReadonlySet<DataError["kind"]> = new Set([
   "offline",
 ]);
 
+/**
+ * Failures of the data connection itself, which the status pill reports.
+ * One answer going wrong (an item that's gone, a function that raised an
+ * error, an odd shape) is that panel's own error state, and a cancelled
+ * call (not a DataError) is no failure at all.
+ */
+const CONNECTION_FAILURES: ReadonlySet<DataError["kind"]> = new Set([
+  "unavailable",
+  "offline",
+  "connector_missing",
+  "connector_reauth",
+  "not_allowed",
+]);
+
+export function isConnectionFailure(error: unknown): error is DataError {
+  return error instanceof DataError && CONNECTION_FAILURES.has(error.kind) && !/^not found/i.test(error.message);
+}
+
 /** Try the live source; when it can't run in this view, use the snapshot. */
-class LiveWithSnapshot implements DataSource {
+export class LiveWithSnapshot implements DataSource {
   readonly kind = "connector" as const;
   constructor(
     private readonly live: DataSource,
@@ -45,13 +63,13 @@ class LiveWithSnapshot implements DataSource {
         useConnection.getState().set({ status: "snapshot", reason: error });
         return this.snapshot.call(name, args, options);
       }
-      if (error instanceof DataError) useConnection.getState().set({ status: "error", reason: error });
+      if (isConnectionFailure(error)) useConnection.getState().set({ status: "error", reason: error });
       throw error;
     }
   }
 }
 
-class Tracked implements DataSource {
+export class Tracked implements DataSource {
   readonly kind: DataSource["kind"];
   constructor(private readonly inner: DataSource) {
     this.kind = inner.kind;
@@ -62,7 +80,7 @@ class Tracked implements DataSource {
       useConnection.getState().set({ status: "live", source: this.inner.kind });
       return data;
     } catch (error) {
-      if (error instanceof DataError) useConnection.getState().set({ status: "error", reason: error });
+      if (isConnectionFailure(error)) useConnection.getState().set({ status: "error", reason: error });
       throw error;
     }
   }
