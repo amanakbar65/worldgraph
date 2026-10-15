@@ -1,6 +1,536 @@
-import { Placeholder } from "@/components/Placeholder";
+import { List, Maximize2, Network, SlidersHorizontal, SearchX, X, ZoomIn, ZoomOut } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-/** Placeholder until this feature is built. */
+import type { GraphData, RpcArgs, TimeWindow } from "@/api/contract";
+import { useRpc } from "@/api/client";
+import { EmptyState } from "@/components/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
+import { SampleBadge } from "@/components/SampleBadge";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Segmented } from "@/components/ui/segmented";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useIsDesktop } from "@/lib/hooks";
+import { WINDOW_LABELS } from "@/lib/time";
+import { cn } from "@/lib/utils";
+import { currentPanel, useNav } from "@/state/nav";
+import { sampleArg, useCalm, useSettings } from "@/state/settings";
+
+import { GraphCanvas, type GraphCanvasHandle } from "./GraphCanvas";
+import {
+  activeFilterCount,
+  buildGraphArgs,
+  describeGraph,
+  filterGraph,
+  GRAPH_TYPES,
+  LIMIT_OPTIONS,
+  placeCard,
+  revealTimes,
+  shapeGraph,
+  typeCount,
+  type GraphWindow,
+  type VizGraph,
+  type VizLink,
+  type VizNode,
+} from "./graph-data";
+import { GraphFilters } from "./GraphFilters";
+import { useGraphState } from "./graph-state";
+import { LinkHoverCard, NodeHoverCard } from "./GraphHoverCard";
+import { GraphLegend } from "./GraphLegend";
+import { GraphList } from "./GraphList";
+import { GraphSearch, type SearchPick } from "./GraphSearch";
+import { GraphTimelapseBar } from "./GraphTimelapseBar";
+import { useElementSize, useGraphTheme } from "./use-graph-theme";
+import { useGraphNav } from "./use-graph-nav";
+import { useTimelapse } from "./use-timelapse";
+
+const WINDOW_OPTIONS: { value: GraphWindow; label: string; ariaLabel: string }[] = [
+  ...(["24h", "7d", "30d"] as const).map((w) => ({ value: w, label: WINDOW_LABELS[w].short, ariaLabel: WINDOW_LABELS[w].long })),
+  { value: "all", label: "All", ariaLabel: "All time" },
+];
+
+const DEPTH_OPTIONS = ([1, 2, 3] as const).map((d) => ({
+  value: String(d) as "1" | "2" | "3",
+  label: String(d),
+  ariaLabel: d === 1 ? "Direct links only" : `Up to ${d} steps away`,
+}));
+
+/** Side panel width on desktop plus its margins, so the camera can keep nodes clear of it. */
+const PANEL_INSET = 452;
+
+/** Where each node sat, so returning to the graph (or new data) doesn't reshuffle it. */
+const POSITIONS = new Map<string, { x: number; y: number }>();
+
+/**
+ * The knowledge graph: everything in the news and what it touches, as a
+ * force-directed network. Filter it, find a node, hover to light up a
+ * neighbourhood, tap to open, replay how it grew, or read it as a list.
+ */
 export default function GraphView() {
-  return <Placeholder title="Knowledge graph" />;
+  const scope = useGraphState((s) => s.scope);
+  const filters = useGraphState((s) => s.filters);
+  const pinned = useGraphState((s) => s.pinned);
+  const listView = useGraphState((s) => s.listView);
+  const navWindow = useNav((s) => s.window);
+  const sectors = useNav((s) => s.sectors);
+  const top = useNav(currentPanel);
+  const sample = useSettings((s) => s.sample);
+  const isDesktop = useIsDesktop();
+  const calm = useCalm();
+  const nav = useGraphNav();
+  const theme = useGraphTheme();
+  const [boxRef, size] = useElementSize<HTMLDivElement>();
+  const canvas = useRef<GraphCanvasHandle>(null);
+
+  const local = scope.kind === "local";
+  const focusId = scope.kind === "local" ? scope.id : null;
+  const noTypes = filters.types.length === 0;
+
+  // Data ------------------------------------------------------------------------
+  const globalArgs = useMemo(
+    () => buildGraphArgs(filters, { window: navWindow, sectors }, sampleArg(sample)),
+    [filters, navWindow, sectors, sample],
+  );
+  const globalQuery = useRpc("graph", globalArgs, {
+    enabled: !local && !noTypes,
+    placeholderData: (previous) => previous,
+    refetchInterval: 300_000,
+  });
+  const localArgs: RpcArgs["local_graph"] = {
+    id: scope.kind === "local" ? scope.id : "",
+    depth: scope.kind === "local" ? scope.depth : 1,
+    limit: 300,
+  };
+  const localQuery = useRpc("local_graph", localArgs, {
+    enabled: local,
+    placeholderData: (previous) => (previous && previous.focus === focusId ? previous : undefined),
+    refetchInterval: 300_000,
+  });
+  const query = local ? localQuery : globalQuery;
+
+  const raw = useMemo<GraphData | undefined>(() => {
+    if (!local) return noTypes ? { nodes: [], links: [] } : globalQuery.data;
+    if (!localQuery.data) return undefined;
+    return filterGraph(localQuery.data, { types: filters.types, minConfidence: filters.minConfidence, keep: focusId });
+  }, [local, noTypes, globalQuery.data, localQuery.data, filters.types, filters.minConfidence, focusId]);
+
+  const graph = useMemo<VizGraph | null>(() => {
+    if (!raw) return null;
+    const shaped = shapeGraph(raw, { focusId });
+    for (const node of shaped.nodes) {
+      const at = POSITIONS.get(node.id);
+      if (at) Object.assign(node, at);
+    }
+    return shaped;
+  }, [raw, focusId]);
+
+  const truncated = local ? (localQuery.data?.truncated ?? false) : (globalQuery.data?.truncated ?? false);
+  const times = useMemo(() => (raw ? revealTimes(raw.nodes, raw.links) : null), [raw]);
+  const timelapse = useTimelapse(times, calm);
+
+  // Interaction -------------------------------------------------------------------
+  const selectedId = top && "id" in top ? top.id : null;
+  const rightInset = isDesktop && top && top.kind !== "cascade" && top.kind !== "compare" ? PANEL_INSET : 0;
+  const [hover, setHover] = useState<{ node: VizNode; at: { left: number; top: number } } | null>(null);
+  const [linkHover, setLinkHover] = useState<{ link: VizLink; at: { left: number; top: number } } | null>(null);
+  const pinnedId = pinned && graph?.byId.has(pinned.id) ? pinned.id : null;
+  const litId = hover?.node.id ?? pinnedId;
+
+  // Re-centre for a new pin or new data, not when a panel opens or closes.
+  const inset = useRef(rightInset);
+  useEffect(() => {
+    inset.current = rightInset;
+  }, [rightInset]);
+  useEffect(() => {
+    if (!pinned || !graph || !graph.byId.has(pinned.id)) return;
+    canvas.current?.centerOn(pinned.id, { zoom: 2.2, offsetX: inset.current });
+  }, [pinned, graph]);
+
+  const onNodeHover = useCallback(
+    (node: VizNode | null) => {
+      if (!node) return setHover(null);
+      const p = canvas.current?.screenOf(node.id);
+      setHover(p ? { node, at: placeCard(p, size, 120) } : null);
+    },
+    [size],
+  );
+  const onLinkHover = useCallback(
+    (link: VizLink | null) => {
+      if (!link || !link.linkType || typeof link.source !== "object" || typeof link.target !== "object") {
+        return setLinkHover(null);
+      }
+      const a = canvas.current?.screenOf(link.source.id);
+      const b = canvas.current?.screenOf(link.target.id);
+      setLinkHover(a && b ? { link, at: placeCard({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, size, 130) } : null);
+    },
+    [size],
+  );
+  const onSettled = useCallback(() => {
+    if (!graph) return;
+    for (const n of graph.nodes) if (n.x !== undefined && n.y !== undefined) POSITIONS.set(n.id, { x: n.x, y: n.y });
+  }, [graph]);
+
+  const focusNode = (node: VizNode) => useGraphState.getState().pin(node.id);
+  const showAround = (pick: SearchPick) => useGraphState.getState().showAround({ id: pick.id, name: pick.name }, 1);
+
+  // Layout --------------------------------------------------------------------------
+  const loading = query.isPending && !raw;
+  const failed = query.isError && !query.data;
+  const empty = !!graph && graph.nodes.length === 0;
+  const shown = timelapse.visible ? timelapse.visible.size : (graph?.nodes.length ?? 0);
+  const description = graph ? describeGraph(graph, typeCount) : "";
+
+  return (
+    <div className="relative h-full overflow-hidden bg-bg-sunken">
+      <h1 className="sr-only">Knowledge graph</h1>
+
+      {/* The drawing (or the list) fills the screen; controls float over it. */}
+      <div ref={boxRef} className="absolute inset-0">
+        {graph && !listView && !empty && (
+          <div
+            role="img"
+            aria-label={`Knowledge graph${local && scope.kind === "local" ? ` around ${scope.name}` : ""}: ${description}. Use Find in graph or the list view to explore it with a keyboard.`}
+            className="absolute inset-0"
+            onMouseLeave={() => {
+              setHover(null);
+              setLinkHover(null);
+            }}
+          >
+            <GraphCanvas
+              handleRef={canvas}
+              graph={graph}
+              width={size.width}
+              height={size.height}
+              variant="full"
+              palette={theme.palette}
+              font={theme.font}
+              calm={calm}
+              visible={timelapse.visible}
+              growth={timelapse.growth}
+              selectedId={selectedId}
+              litId={litId}
+              onNodeClick={(node) => {
+                setHover(null);
+                nav.openNode(node);
+              }}
+              onNodeHover={onNodeHover}
+              onLinkHover={onLinkHover}
+              onBackgroundClick={() => useGraphState.getState().pin(null)}
+              onSettled={onSettled}
+              className="absolute inset-0"
+            />
+            {hover && <NodeHoverCard node={hover.node} at={hover.at} />}
+            {!hover && linkHover && <LinkHoverCard link={linkHover.link} at={linkHover.at} />}
+          </div>
+        )}
+      </div>
+
+      {graph && listView && !empty && (
+        <div className="absolute inset-0 overflow-y-auto px-3 pt-36 pb-6 sm:pt-32" style={{ paddingRight: rightInset || undefined }}>
+          <GraphList graph={graph} onOpen={nav.openNode} className="mx-auto max-w-3xl" />
+        </div>
+      )}
+
+      {loading && <GraphSkeleton />}
+      {failed && (
+        <CenterCard>
+          <ErrorState error={query.error!} onRetry={() => void query.refetch()} />
+        </CenterCard>
+      )}
+      {!loading && !failed && (noTypes || empty) && (
+        <CenterCard>
+          <NothingToShow noTypes={noTypes} local={local} />
+        </CenterCard>
+      )}
+
+      {/* Toolbar */}
+      <div
+        className="absolute top-3 left-3 z-10 flex max-w-[calc(100%-24px)] flex-col items-start gap-2"
+        style={rightInset ? { maxWidth: `calc(100% - ${rightInset + 24}px)` } : undefined}
+      >
+        <div className="flex w-full flex-wrap items-center gap-1.5 rounded-xl border border-line bg-glass p-1.5 shadow-panel backdrop-blur-xl sm:w-auto">
+          <GraphSearch graph={graph} onFocus={focusNode} onShowAround={showAround} className="min-w-0 flex-1 sm:w-64 sm:flex-none" />
+          <FiltersButton local={local} />
+          <ViewToggle />
+          {scope.kind === "local" ? <ScopeBar name={scope.name} depth={scope.depth} /> : <WindowSwitch />}
+        </div>
+        {graph && !empty && (
+          <Summary graph={graph} truncated={truncated} updating={query.isFetching && query.isPlaceholderData} />
+        )}
+      </div>
+
+      {/* Bottom controls */}
+      {graph && !empty && !listView && (
+        <>
+          <GraphLegend
+            key={isDesktop ? "desktop" : "phone"}
+            types={graph.types}
+            linkTypes={graph.linkTypes}
+            defaultOpen={isDesktop}
+            className={cn("absolute bottom-3 left-3 z-10", isDesktop ? "w-72" : "w-auto max-w-[calc(100%-120px)]")}
+          />
+          <GraphTimelapseBar
+            timelapse={timelapse}
+            shown={shown}
+            total={graph.nodes.length}
+            calm={calm}
+            className={cn(
+              "absolute z-10",
+              timelapse.active
+                ? "right-3 bottom-16 left-3 md:right-auto md:bottom-3 md:left-1/2 md:w-[min(560px,calc(100%-700px))] md:min-w-[400px] md:-translate-x-1/2"
+                : "bottom-3 left-1/2 -translate-x-1/2",
+            )}
+          />
+          <ZoomControls
+            onZoomIn={() => canvas.current?.zoomBy(1.5)}
+            onZoomOut={() => canvas.current?.zoomBy(1 / 1.5)}
+            onFit={() => canvas.current?.fit()}
+            style={{ right: 12 + rightInset }}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Toolbar parts
+// ---------------------------------------------------------------------------
+
+function WindowSwitch() {
+  const navWindow = useNav((s) => s.window);
+  const setWindow = useNav((s) => s.setWindow);
+  const allTime = useGraphState((s) => s.filters.allTime);
+  const setAllTime = useGraphState((s) => s.setAllTime);
+  return (
+    <Segmented<GraphWindow>
+      aria-label="Time window"
+      value={allTime ? "all" : navWindow}
+      onValueChange={(value) => {
+        if (value === "all") setAllTime(true);
+        else {
+          setAllTime(false);
+          setWindow(value as TimeWindow);
+        }
+      }}
+      options={WINDOW_OPTIONS}
+    />
+  );
+}
+
+function ScopeBar({ name, depth }: { name: string; depth: 1 | 2 | 3 }) {
+  const setScope = useGraphState((s) => s.setScope);
+  const setDepth = useGraphState((s) => s.setDepth);
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      <span className="flex h-10 min-w-0 items-center gap-1 rounded-lg border border-line-strong bg-surface-2 pr-1 pl-3 text-body text-fg">
+        <span className="shrink-0 text-fg-muted">Around</span>
+        <span className="max-w-40 truncate font-medium">{name}</span>
+        <button
+          type="button"
+          onClick={() => setScope({ kind: "global" })}
+          aria-label="Back to the whole graph"
+          title="Back to the whole graph"
+          className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-fg-muted hover:bg-surface hover:text-fg"
+        >
+          <X aria-hidden className="size-4" />
+        </button>
+      </span>
+      <Segmented<"1" | "2" | "3">
+        aria-label="How many steps away"
+        value={String(depth) as "1" | "2" | "3"}
+        onValueChange={(v) => setDepth(Number(v) as 1 | 2 | 3)}
+        options={DEPTH_OPTIONS}
+      />
+    </div>
+  );
+}
+
+function ViewToggle() {
+  const listView = useGraphState((s) => s.listView);
+  const setListView = useGraphState((s) => s.setListView);
+  return (
+    <Segmented<"graph" | "list">
+      aria-label="Show as"
+      value={listView ? "list" : "graph"}
+      onValueChange={(v) => setListView(v === "list")}
+      options={[
+        { value: "graph", label: <span className="sr-only sm:not-sr-only">Graph</span>, icon: Network, ariaLabel: "Graph" },
+        { value: "list", label: <span className="sr-only sm:not-sr-only">List</span>, icon: List, ariaLabel: "List" },
+      ]}
+    />
+  );
+}
+
+function FiltersButton({ local }: { local: boolean }) {
+  const filters = useGraphState((s) => s.filters);
+  const sectors = useNav((s) => s.sectors);
+  const count = activeFilterCount(filters) + (local ? 0 : sectors.length);
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="border-line px-3" aria-label={count ? `Filters, ${count} on` : "Filters"}>
+          <SlidersHorizontal aria-hidden />
+          <span className="hidden sm:inline">Filters</span>
+          {count > 0 && (
+            <span aria-hidden className="rounded-full bg-fg px-1.5 text-label text-bg tabular-nums">
+              {count}
+            </span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="max-h-[min(75vh,640px)] w-[min(380px,calc(100vw-24px))] overflow-y-auto p-4">
+        <GraphFilters local={local} />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function Summary({ graph, truncated, updating }: { graph: VizGraph; truncated: boolean; updating: boolean }) {
+  const filters = useGraphState((s) => s.filters);
+  const setLimit = useGraphState((s) => s.setLimit);
+  const next = LIMIT_OPTIONS.find((n) => n > filters.limit);
+  return (
+    <div className="flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-line bg-glass px-2.5 py-1 text-label text-fg-muted shadow-panel backdrop-blur-xl">
+      <span className="tabular-nums">
+        {graph.nodes.length} items · {graph.links.length} links
+      </span>
+      {graph.hasSample && <SampleBadge />}
+      {truncated && (
+        <>
+          <span aria-hidden>·</span>
+          <span>Most connected first</span>
+          {next && (
+            <button
+              type="button"
+              onClick={() => setLimit(next)}
+              className="relative cursor-pointer rounded px-1 font-medium text-fg underline-offset-2 before:absolute before:inset-x-0 before:top-1/2 before:h-10 before:-translate-y-1/2 hover:underline"
+            >
+              Show up to {next}
+            </button>
+          )}
+        </>
+      )}
+      <span role="status" aria-live="polite">
+        {updating ? "Updating…" : ""}
+      </span>
+    </div>
+  );
+}
+
+function ZoomControls({
+  onZoomIn,
+  onZoomOut,
+  onFit,
+  style,
+}: {
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onFit: () => void;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Zoom"
+      className="absolute bottom-3 z-10 flex flex-col overflow-hidden rounded-xl border border-line bg-glass shadow-panel backdrop-blur-xl"
+      style={style}
+    >
+      <Button variant="ghost" size="icon" onClick={onZoomIn} aria-label="Zoom in" className="rounded-none">
+        <ZoomIn aria-hidden />
+      </Button>
+      <Button variant="ghost" size="icon" onClick={onZoomOut} aria-label="Zoom out" className="rounded-none border-y border-line">
+        <ZoomOut aria-hidden />
+      </Button>
+      <Button variant="ghost" size="icon" onClick={onFit} aria-label="Fit the graph to the screen" className="rounded-none">
+        <Maximize2 aria-hidden />
+      </Button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// States
+// ---------------------------------------------------------------------------
+
+function CenterCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center p-4 pt-32">
+      <div className="w-full max-w-sm rounded-xl border border-line bg-glass shadow-panel backdrop-blur-xl">{children}</div>
+    </div>
+  );
+}
+
+function NothingToShow({ noTypes, local }: { noTypes: boolean; local: boolean }) {
+  const setTypes = useGraphState((s) => s.setTypes);
+  const resetFilters = useGraphState((s) => s.resetFilters);
+  const setAllTime = useGraphState((s) => s.setAllTime);
+  const allTime = useGraphState((s) => s.filters.allTime);
+  const clearSectors = useNav((s) => s.clearSectors);
+  if (noTypes) {
+    return (
+      <EmptyState
+        icon={SlidersHorizontal}
+        title="Pick something to show"
+        description="Every kind of item is switched off."
+        action={{ label: "Show the usual kinds", onClick: () => resetFilters() }}
+        secondaryAction={{ label: "Show everything", onClick: () => setTypes([...GRAPH_TYPES]) }}
+      />
+    );
+  }
+  return (
+    <EmptyState
+      icon={SearchX}
+      title="Nothing matches these filters"
+      description={local ? "Try more steps away or fewer filters." : "Try a longer time window or fewer filters."}
+      action={
+        !local && !allTime
+          ? { label: "Show all time", onClick: () => setAllTime(true) }
+          : {
+              label: "Reset filters",
+              onClick: () => {
+                resetFilters();
+                clearSectors();
+              },
+            }
+      }
+      secondaryAction={
+        !local && !allTime
+          ? {
+              label: "Reset filters",
+              onClick: () => {
+                resetFilters();
+                clearSectors();
+              },
+            }
+          : undefined
+      }
+    />
+  );
+}
+
+/** Loading: a few quiet circles where the network will be. */
+function GraphSkeleton() {
+  const dots = [
+    [50, 48, 64],
+    [34, 36, 40],
+    [64, 32, 34],
+    [70, 60, 44],
+    [38, 64, 36],
+    [24, 52, 24],
+    [80, 44, 22],
+    [56, 72, 26],
+    [44, 24, 20],
+  ];
+  return (
+    <div className="absolute inset-0" aria-busy="true" aria-label="Loading the graph">
+      {dots.map(([x, y, s], i) => (
+        <Skeleton
+          key={i}
+          className="absolute rounded-full"
+          style={{ left: `${x}%`, top: `${y}%`, width: s, height: s, transform: "translate(-50%, -50%)" }}
+        />
+      ))}
+    </div>
+  );
 }
