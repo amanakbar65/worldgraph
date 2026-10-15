@@ -276,7 +276,8 @@ export default function OpportunitiesView() {
 function Layout({ radar, list }: { radar: ReactNode; list: ReactNode }) {
   return (
     <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
-      <div>{radar}</div>
+      {/* Stays in view beside the list where the screen is tall enough to show all of it. */}
+      <div className="lg:top-4 lg:[@media(min-height:52rem)]:sticky">{radar}</div>
       <div className="min-w-0">{list}</div>
     </div>
   );
