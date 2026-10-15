@@ -108,10 +108,15 @@ export async function openApp(page: Page, hash = ""): Promise<void> {
   await expect(appStatus(page)).not.toHaveText(/Connecting/, { timeout: 30_000 });
 }
 
-/** The status pill at the bottom-left ("Sample data", "Live data", "Sample snapshot · …"). */
+/**
+ * The status pill at the bottom-left ("Sample data", "Live data", "Sample snapshot · …").
+ * It holds a short and a long form and hides one by screen width, so compare
+ * its text with `{ useInnerText: true }` when the exact wording matters.
+ */
 export function appStatus(page: Page): Locator {
   return page.locator("div[title] > span[role=status]").first();
 }
+export const statusLine = appStatus;
 
 const VIEW_LABELS = {
   globe: "Globe",

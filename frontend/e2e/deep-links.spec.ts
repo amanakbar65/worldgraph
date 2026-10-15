@@ -82,11 +82,24 @@ test.describe("deep links", () => {
     await expect(panel.getByRole("article", { name: HEADLINE })).toBeVisible();
   });
 
-  test("closing a panel goes back to the globe, and Back reopens it", async ({ page }) => {
+  test("closing a panel steps back to the globe, and Forward reopens it", async ({ page }) => {
     await openApp(page);
     await page.evaluate((id) => {
       window.location.hash = `story=${id}`;
     }, STORY);
+    const panel = detailsPanel(page);
+    await expect(panel.getByRole("heading", { level: 2, name: HEADLINE })).toBeVisible();
+    // The globe is the entry before, so closing goes back to it (no repeat in history).
+    await panel.getByRole("button", { name: "Close panel" }).click();
+    await expect(panel).toBeHidden();
+    await expect.poll(() => currentHash(page)).toMatch(/^(#globe)?$/);
+    await page.goForward();
+    await expect(panel.getByRole("heading", { level: 2, name: HEADLINE })).toBeVisible();
+    await expect.poll(() => currentHash(page)).toBe(`#story=${STORY}`);
+  });
+
+  test("closing a panel opened from a link goes to the globe, and Back reopens it", async ({ page }) => {
+    await openApp(page, `#story=${STORY}`);
     const panel = detailsPanel(page);
     await expect(panel.getByRole("heading", { level: 2, name: HEADLINE })).toBeVisible();
     await panel.getByRole("button", { name: "Close panel" }).click();
@@ -94,6 +107,7 @@ test.describe("deep links", () => {
     await expect.poll(() => currentHash(page)).toMatch(/^(#globe)?$/);
     await page.goBack();
     await expect(panel.getByRole("heading", { level: 2, name: HEADLINE })).toBeVisible();
+    await expect.poll(() => currentHash(page)).toBe(`#story=${STORY}`);
   });
 
   test("links the app doesn't understand are ignored", async ({ page }) => {

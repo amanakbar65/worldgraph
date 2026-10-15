@@ -114,7 +114,7 @@ test.describe("brief", () => {
     await page.getByRole("button", { name: "Copy as text" }).click();
     await expect(page.getByRole("button", { name: "Copied" })).toBeVisible();
     const text = await page.evaluate(() => navigator.clipboard.readText());
-    expect(text).toContain("Top risks");
+    expect(text).toMatch(/^TOP RISKS$/m);
     expect(text).toContain(card(brief, "top_risks").stories![0]!.headline);
     // Sample items are marked in the copy too, so they are never passed on as real news.
     expect(text).toMatch(/sample/i);

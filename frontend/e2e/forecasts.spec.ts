@@ -26,6 +26,9 @@ interface Forecast {
   category: string;
   provider_name: string;
   url: string | null;
+  change_24h: number | null;
+  end_date: string | null;
+  volume: number | null;
 }
 
 function list(page: Page) {
@@ -76,9 +79,16 @@ test.describe("forecasts", () => {
     await expect(list(page)).toHaveCount(all.length);
   });
 
-  test("each sort orders the list as the database does", async ({ page }) => {
+  test("each sort orders the list by what it names", async ({ page }) => {
     await openApp(page, "#forecasts");
     const sort = page.getByRole("combobox", { name: "Sort forecasts" });
+    // The key each sort orders by, smallest first, from the values the API sends
+    // (the list may break ties at the shown precision its own way).
+    const keys = {
+      moved: (f: Forecast) => (f.change_24h === null ? Infinity : -Math.abs(f.change_24h)),
+      ending: (f: Forecast) => (f.end_date ? Date.parse(f.end_date) : Infinity),
+      volume: (f: Forecast) => (f.volume === null ? Infinity : -f.volume),
+    };
     for (const [value, label] of [
       ["moved", "Biggest moves"],
       ["ending", "Ending soon"],
@@ -86,9 +96,18 @@ test.describe("forecasts", () => {
     ] as const) {
       await sort.selectOption({ label });
       const expected = await forecasts(page, { sort: value, include_thin: false });
+      const byId = new Map(expected.map((f) => [f.id, f]));
       await expect
-        .poll(() => shownTitles(page, expected), { message: `sorted by ${label}` })
-        .toEqual(expected.map((f) => f.id));
+        .poll(
+          async () => {
+            const shown = await shownTitles(page, expected);
+            const values = shown.map((id) => (byId.has(id) ? keys[value](byId.get(id)!) : NaN));
+            const outOfOrder = values.findIndex((v, i) => i > 0 && !(values[i - 1]! <= v));
+            return { same: [...shown].sort().join() === [...byId.keys()].sort().join(), outOfOrder };
+          },
+          { message: `sorted by ${label}` },
+        )
+        .toEqual({ same: true, outOfOrder: -1 });
     }
   });
 

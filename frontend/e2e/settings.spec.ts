@@ -36,7 +36,7 @@ test.describe("settings", () => {
     const html = page.locator("html");
     await expect(html).toHaveAttribute("data-wg-theme", "dark");
     const panel = await openSettings(page);
-    await expect.poll(() => page.evaluate(() => window.location.hash)).toBe("#globe&settings");
+    await expect.poll(() => page.evaluate(() => window.location.hash)).toBe("#settings");
     await snap(page, testInfo, "settings-dark");
 
     const theme = panel.getByRole("radiogroup", { name: "Theme" });

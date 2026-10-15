@@ -27,7 +27,7 @@ test.describe("ask", () => {
     // The website's engine is WorldGraph AI; the note says so before anything is sent.
     await expect(box).toHaveAccessibleDescription("Uses WorldGraph AI, which has a daily limit.");
     await expect(panel.getByRole("button", { name: "Ask", exact: true })).toBeDisabled();
-    await expect(page).toHaveURL(/#globe&ask$/);
+    await expect(page).toHaveURL(/\/#ask$/);
     await snap(page, testInfo, "ask-open");
   });
 

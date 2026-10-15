@@ -165,6 +165,18 @@ const STATES: State[] = [
     },
   },
   {
+    name: "cascade evidence",
+    hash: `#cascade=${STORY}`,
+    ready: async (page, isPhone) => {
+      const panel = detailsPanel(page);
+      if (isPhone) await panel.getByRole("radio", { name: "Flow" }).click();
+      const link = panel.getByRole("button", { name: /^Lengthens voyage times: .*Show the evidence\.$/ });
+      await link.focus();
+      await page.keyboard.press("Enter");
+      await expect(panel.getByRole("dialog", { name: "Why these are linked" })).toBeVisible();
+    },
+  },
+  {
     name: "region panel",
     hash: "#region=region:in-gj",
     ready: async (page) => {
@@ -202,6 +214,18 @@ const STATES: State[] = [
     name: "ask panel",
     hash: "#ask",
     ready: (page) => panelHeading(page, "Ask WorldGraph"),
+  },
+  {
+    name: "ask answer without AI",
+    hash: "#ask",
+    ready: async (page) => {
+      const panel = detailsPanel(page);
+      const box = panel.getByRole("textbox", { name: "Your question" });
+      await box.fill("How do Red Sea attacks affect shipping costs?");
+      await box.press("Enter");
+      await expect(panel.getByRole("alert")).toBeVisible();
+      await expect(panel.getByRole("region", { name: /^Closest stories in WorldGraph/ })).toBeVisible();
+    },
   },
   {
     name: "settings panel",
