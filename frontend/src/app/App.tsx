@@ -1,10 +1,11 @@
-import { Suspense, useEffect } from "react";
+import { Suspense } from "react";
 
 import { Header } from "./Header";
 import { MobileTabs } from "./MobileTabs";
 import { PanelHost } from "./PanelHost";
 import { StatusBar } from "./StatusBar";
 import { VIEW_COMPONENTS } from "./registry";
+import { useEscapeClosesPanel } from "./use-escape";
 import { CommandSearch } from "@/features/search/CommandSearch";
 import { useNav } from "@/state/nav";
 
@@ -12,16 +13,8 @@ export function App() {
   const view = useNav((s) => s.view);
   const View = VIEW_COMPONENTS[view];
 
-  // Escape closes the top panel; Alt+← goes back.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (target?.closest("input, textarea, [contenteditable=true], [role=dialog][data-modal]")) return;
-      if (e.key === "Escape") useNav.getState().back();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  // Escape closes the top panel (Alt+← goes back through the browser's history).
+  useEscapeClosesPanel();
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-bg">
