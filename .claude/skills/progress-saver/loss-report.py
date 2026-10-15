@@ -1,25 +1,11 @@
 #!/usr/bin/env python3
-"""How much of an interrupted workflow's work was retained vs lost.
+"""Retained vs lost tokens per agent for interrupted workflow runs.
 
-Usage (from inside the project's git repository):
-    loss-report.py <workflow-transcript-dir> [<more dirs>...]
-    loss-report.py --latest            # the newest run in this session
-    loss-report.py --session-latest N  # the newest N runs in this session
-
-A workflow transcript dir looks like
-~/.claude/projects/<project>/subagents/workflows/<run-id>/ and holds a
-journal.jsonl plus one agent-<id>.jsonl/.meta.json per agent.
-
-Measure, per agent (tokens counted as the Claude Code UI does: input +
-output + newly cached input, each API message once):
-  * finished agents (a result in the journal): 100% retained;
-  * interrupted agents: tokens spent up to the agent's last output that is
-    actually on the remote (a file it wrote that is in origin/wip/<worktree>,
-    or anything before a push it made itself) are retained; tokens spent after
-    it are lost. A save that holds none of the agent's files retains nothing;
-  * agents that never started: 0 tokens, ignored.
-Retained work is on GitHub; lost work has to be redone. Notes that were
-never saved can sometimes still be read from the agent's transcript.
+Usage (inside the repo): loss-report.py RUN_DIR... | --latest [N]
+Tokens = input + output + new cache writes, each API message once (as the UI counts).
+Finished agents are 100% retained. Others: retained = tokens up to the agent's last
+output that is on GitHub (a file it wrote present in origin/wip/WORKTREE, or its own
+push); the rest is lost and must be redone.
 """
 from __future__ import annotations
 
@@ -28,7 +14,7 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime
 
 
 def parse_ts(value: str) -> datetime:
@@ -126,19 +112,20 @@ def report(run_dir: str) -> tuple[int, int]:
             point = max(captured + pushes) if (captured or pushes) else None
             kept = sum(t for ts, t in msgs if point and ts <= point)
             unsaved_notes = sorted({os.path.basename(p) for ts, p in writes if p not in on_remote and (point is None or ts > point)})
-            note = f"output saved up to {point:%d %b %H:%M} UTC" if point else "no output on GitHub"
+            note = f"saved to {point:%H:%M} UTC" if point else "nothing saved"
             if unsaved_notes:
-                note += f"; unsaved files (readable in transcript): {', '.join(unsaved_notes[:4])}"
+                note += f"; unsaved (in transcript): {', '.join(unsaved_notes[:3])}"
         rows.append((label, total, kept, note))
         kept_total += kept
         lost_total += total - kept
-    print(f"Run {os.path.basename(run_dir.rstrip('/'))}")
-    print(f"  {'agent':28} {'tokens':>9} {'retained':>9} {'lost':>6}  note")
+    print(f"{os.path.basename(run_dir.rstrip('/'))} | tokens | retained | lost | note")
     for label, total, kept, note in rows:
-        print(f"  {label[:28]:28} {total/1e5:8.1f}L {100*kept/total:8.0f}% {100*(total-kept)/total:5.0f}%  {note}")
+        print(f"{label[:24]} | {total/1e5:.1f}L | {100*kept/total:.0f}% | {100*(total-kept)/total:.0f}% | {note}")
     spent = kept_total + lost_total
     if spent:
-        print(f"  {'TOTAL':28} {spent/1e5:8.1f}L {100*kept_total/spent:8.0f}% {100*lost_total/spent:5.0f}%")
+        print(f"TOTAL | {spent/1e5:.1f}L | {100*kept_total/spent:.0f}% | {100*lost_total/spent:.0f}% |")
+    else:
+        print("no tokens spent")
     return kept_total, lost_total
 
 
@@ -147,8 +134,8 @@ def main() -> None:
     if not args:
         sys.exit(__doc__)
     git("fetch", "-q", "origin")
-    if args[0] in ("--latest", "--session-latest"):
-        n = int(args[1]) if args[0] == "--session-latest" and len(args) > 1 else 1
+    if args[0] == "--latest":
+        n = int(args[1]) if len(args) > 1 else 1
         runs = sorted(glob.glob(os.path.expanduser("~/.claude/projects/*/*/subagents/workflows/wf_*")), key=os.path.getmtime)
         args = runs[-n:]
     kept = lost = 0
@@ -156,8 +143,9 @@ def main() -> None:
         k, l_ = report(run_dir)
         kept, lost = kept + k, lost + l_
     if len(args) > 1 and kept + lost:
-        print(f"ALL RUNS: {(kept+lost)/1e5:.1f}L spent, {100*kept/(kept+lost):.0f}% retained, {100*lost/(kept+lost):.0f}% lost")
-    print(f"(retained = tokens spent up to the agent's last output that is saved on GitHub; lost = tokens spent after it; report made {datetime.now(timezone.utc):%d %b %H:%M} UTC)")
+        print(f"ALL RUNS | {(kept+lost)/1e5:.1f}L | {100*kept/(kept+lost):.0f}% | {100*lost/(kept+lost):.0f}% |")
+    if not args:
+        print("no workflow transcripts found (new container?): report saved work from status.sh")
 
 
 if __name__ == "__main__":

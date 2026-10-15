@@ -83,6 +83,7 @@ Session limits have stopped agents three times (11:12, 15:10, 20:20 UTC). Each t
 | When | Run | Spent | Retained | Lost | Notes |
 | --- | --- | --- | --- | --- | --- |
 | 15 Oct 11:50 UTC limit | QA `wf_fe3c223c-34c` | 7.8 L | 45% | 55% | e2e 100% kept (1,167 lines of tests); correctness reviewer 0% kept (notes were in an ignored folder). Its 2 findings were rescued by hand from its transcript into `orchestration/qa-notes/`. The saver now keeps notes files. |
+| 15 Oct 12:45 UTC limit | QA `wf_4ef20849-b70` | 10.5 L | 93% | 7% | correctness finished (100%); e2e 87% kept on `wip/wf_4ef20849-b70-1`. The other 4 reviewers had not started. |
 
 ## Gotchas learned
 
