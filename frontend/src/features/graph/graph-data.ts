@@ -338,7 +338,7 @@ export function focusSet(graph: VizGraph, id: string | null): Set<string> | null
  */
 export function labelBudget(zoom: number, width: number, compact: boolean): number {
   const base = compact ? 6 : width < 900 ? 10 : 16;
-  return Math.max(3, Math.round(base * Math.max(0.5, zoom) ** 1.6));
+  return Math.min(40, Math.max(3, Math.round(base * Math.max(0.5, zoom) ** 1.3)));
 }
 
 // ---------------------------------------------------------------------------

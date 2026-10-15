@@ -265,10 +265,10 @@ export default function GraphView() {
       {/* Toolbar */}
       <div
         ref={toolbarRef}
-        className="absolute top-3 left-3 z-10 flex max-w-[calc(100%-24px)] flex-col items-start gap-2"
+        className="absolute top-3 left-3 z-20 flex max-w-[calc(100%-24px)] flex-col items-start gap-2"
         style={rightInset ? { maxWidth: `calc(100% - ${rightInset + 24}px)` } : undefined}
       >
-        <div className="flex w-full flex-wrap items-center gap-1.5 rounded-xl border border-line bg-glass p-1.5 shadow-panel backdrop-blur-xl sm:w-auto">
+        <div className="relative z-10 flex w-full flex-wrap items-center gap-1.5 rounded-xl border border-line bg-glass p-1.5 shadow-panel backdrop-blur-xl sm:w-auto">
           <GraphSearch graph={graph} onFocus={focusNode} onShowAround={showAround} className="min-w-0 flex-1 sm:w-64 sm:flex-none" />
           <FiltersButton local={local} />
           <ViewToggle />

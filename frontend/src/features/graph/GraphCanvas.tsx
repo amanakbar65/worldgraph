@@ -112,6 +112,8 @@ export function GraphCanvas({
 
   const data = useMemo(() => ({ nodes: graph.nodes as FgNode[], links: graph.links as FgLink[] }), [graph]);
   const lit = useMemo(() => focusSet(graph, litId), [graph, litId]);
+  /** Nodes by label priority (computed once per graph, not per frame). */
+  const ranked = useMemo(() => [...graph.nodes].sort((a, b) => a.rank - b.rank), [graph]);
 
   // A new graph lays itself out and fits again.
   useEffect(() => {
@@ -410,10 +412,20 @@ export function GraphCanvas({
           .sort((a, b) => a.rank - b.rank)
           .forEach(push);
       } else {
-        for (const n of graph.nodes.filter((x) => x.focus)) push(n);
-        // Only the most important nodes compete for labels.
-        const ranked = [...graph.nodes].sort((a, b) => a.rank - b.rank);
-        for (let i = 0; i < ranked.length && candidates.length < budget * 3; i++) push(ranked[i]);
+        // The most important nodes on screen compete for labels (the focus
+        // ranks first), so zooming into a corner labels what is there.
+        const t = ctx.getTransform();
+        const w = ctx.canvas.width;
+        const h = ctx.canvas.height;
+        const onScreen = (n: VizNode) => {
+          if (n.x === undefined || n.y === undefined) return false;
+          const sx = t.a * n.x + t.c * n.y + t.e;
+          const sy = t.b * n.x + t.d * n.y + t.f;
+          return sx >= -40 && sx <= w + 40 && sy >= -20 && sy <= h + 20;
+        };
+        for (let i = 0; i < ranked.length && candidates.length < budget * 3; i++) {
+          if (onScreen(ranked[i])) push(ranked[i]);
+        }
       }
 
       const placed: [number, number, number, number][] = [];
@@ -446,7 +458,7 @@ export function GraphCanvas({
       }
       ctx.restore();
     },
-    [mini, width, selectedId, litId, lit, graph, visible, font, color],
+    [mini, width, selectedId, litId, lit, graph, ranked, visible, font, color],
   );
 
   const nodeVisibility = useCallback((n: FgNode) => !visible || visible.has((n as VizNode).id), [visible]);
