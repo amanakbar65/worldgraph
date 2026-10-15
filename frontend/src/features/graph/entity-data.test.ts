@@ -56,6 +56,7 @@ describe("kindLine and readable", () => {
     expect(kindLine("commodity", null)).toBe("Commodity");
     expect(kindLine("policy", "export-control")).toBe("Policy · Export control");
     expect(kindLine("organization", "company")).toBe("Organisation · Company");
+    expect(kindLine("region", "country")).toBe("Place · Country");
     expect(readable("price_move")).toBe("Price move");
   });
 });

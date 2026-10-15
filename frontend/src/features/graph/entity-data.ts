@@ -90,7 +90,7 @@ export function shapeFacts(
 /** The line under an entity's name: "Organisation · Company", "Commodity", "Indicator · Monthly". */
 export function kindLine(type: EntityType, subtype: string | null): string {
   const kind = TYPE_NAMES[type]?.one ?? readable(type);
-  if (!subtype || type === "region") return kind;
+  if (!subtype) return kind;
   return `${kind} · ${readable(subtype)}`;
 }
 
