@@ -239,6 +239,26 @@ def test_meta_with_live_data(sdb):
     assert data["data"]["forecasts"] == 0
 
 
+def test_meta_last_ingest_is_the_last_finished_news_run(sdb):
+    add_story(sdb, "story:live-meta-run", hours_ago=30)
+    sdb.execute(
+        """insert into ingest_run (job, started_at, finished_at, ok) values
+           ('news', now() - interval '50 minutes', now() - interval '49 minutes', true),
+           ('news', now() - interval '20 minutes', now() - interval '19 minutes', true),
+           ('news', now() - interval '5 minutes', now() - interval '4 minutes', false),
+           ('news', now() - interval '1 minute', null, null),
+           ('forecasts', now() - interval '3 minutes', now() - interval '2 minutes', true)"""
+    )
+    data = check("meta", call(sdb, "meta"))
+    last_run = scalar(sdb, "select now() - interval '19 minutes' as t")
+    assert datetime.fromisoformat(data["data"]["last_ingest_at"]) == last_run
+    # Runs are what count, even before the first live story exists.
+    sdb.execute("delete from story where node_id = 'story:live-meta-run'")
+    data = check("meta", call(sdb, "meta"))
+    assert data["data"]["live_stories"] == 0
+    assert datetime.fromisoformat(data["data"]["last_ingest_at"]) == last_run
+
+
 # ---------------------------------------------------------------------------
 # api.globe
 # ---------------------------------------------------------------------------

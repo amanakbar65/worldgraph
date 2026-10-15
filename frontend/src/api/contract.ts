@@ -242,7 +242,7 @@ export const MetaResponse = z.object({
     sample_stories: z.number().int(),
     forecasts: z.number().int(),
     entities: z.number().int(),
-    last_ingest_at: Iso.nullable(),
+    last_ingest_at: Iso.nullable(), // when the last news run finished (else the newest live story)
     showing_sample: z.boolean(), // true while there is no live data yet
   }),
   sectors: z.array(z.object({ id: SectorId, name: z.string(), icon: z.string() })),
