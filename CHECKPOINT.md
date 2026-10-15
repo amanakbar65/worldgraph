@@ -2,13 +2,14 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 15 Oct 2026, 12:00 UTC.
+**Last updated:** 15 Oct 2026, 12:30 UTC.
 
 ## How to resume (any new session)
 
 1. `cd /home/user/worldgraph && git pull` (or clone `amanakbar65/worldgraph`), then `pg_ctlcluster 16 main start`.
 2. Read this file, then `CLAUDE.md`, `PLAN.md`, and the latest `PROGRESS.md` entry.
-3. Run `orchestration/status.sh`. It shows in one screen main vs GitHub, every agent worktree (label, commits, uncommitted files, when last saved) and whether the progress saver is running. If the saver is stopped, start it with `setsid nohup orchestration/checkpoint.sh 600 12 >/dev/null 2>&1 </dev/null &`. It runs detached for 12 hours, saves every agent's work to `wip/<worktree>` every 10 minutes, keeps saving after a usage limit stops the agents, and a lock stops a second copy.
+3. Run `orchestration/status.sh`; if the saver is STOPPED, start it: `setsid nohup .claude/skills/progress-saver/checkpoint.sh 600 12 >/dev/null 2>&1 </dev/null &`. The saver, status and loss report now live in the reusable skill `.claude/skills/progress-saver/`.
+   **After any usage limit or restart, first tell the owner how much was retained vs lost:** `python3 .claude/skills/progress-saver/loss-report.py <run dir>` for each interrupted workflow run (per agent and total, in %), then record it in the "Loss log" below.
 4. Look at "In flight" below. For each item: if its agent finished, merge its branch; if not, relaunch the script named there with the `args` shown. The script tells each agent to start from its `wip/` branch.
 5. Agent worktrees branch from `origin/main`: **push `main` before launching agents.**
 6. **`cd /home/user/worldgraph` before launching any workflow.** After a restart the shell starts in `/home/user`, and every agent then fails instantly with "not in a git repository".
@@ -76,6 +77,12 @@ Session limits have stopped agents three times (11:12, 15:10, 20:20 UTC). Each t
   - GDACS licence;
   - an Anthropic API key and budget;
   - the go-ahead to deploy on Netlify.
+
+## Loss log (retained vs lost after interruptions)
+
+| When | Run | Spent | Retained | Lost | Notes |
+| --- | --- | --- | --- | --- | --- |
+| 15 Oct 11:50 UTC limit | QA `wf_fe3c223c-34c` | 7.8 L | 45% | 55% | e2e 100% kept (1,167 lines of tests); correctness reviewer 0% kept (notes were in an ignored folder). Its 2 findings were rescued by hand from its transcript into `orchestration/qa-notes/`. The saver now keeps notes files. |
 
 ## Gotchas learned
 

@@ -10,6 +10,10 @@
 # A lock file makes a second copy exit at once, so starting it again is safe.
 # Set PUSH_MAIN=1 to also push the main checkout's branch when it is ahead.
 set -u
+# `checkpoint.sh --now`: save every worktree once, right away, and exit
+# (use it when a usage limit is near). It does not need or take the lock.
+ONCE=0
+if [ "${1:-}" = "--now" ]; then ONCE=1; shift; fi
 INTERVAL="${1:-600}"
 MAX_HOURS="${2:-12}"
 ROOT="$(git rev-parse --show-toplevel)" || exit 1
@@ -17,10 +21,12 @@ GITDIR="$(git -C "$ROOT" rev-parse --git-common-dir)"
 case "$GITDIR" in /*) ;; *) GITDIR="$ROOT/$GITDIR" ;; esac
 LOG="$GITDIR/progress-saver.log"
 
-exec 9>"$GITDIR/progress-saver.lock"
-if ! flock -n 9; then echo "Progress saver already running." >&2; exit 0; fi
+if [ "$ONCE" = 0 ]; then
+  exec 9>"$GITDIR/progress-saver.lock"
+  if ! flock -n 9; then echo "Progress saver already running." >&2; exit 0; fi
+fi
 END=$(( $(date +%s) + MAX_HOURS * 3600 ))
-echo "$(date -u +%FT%TZ) saver started (every ${INTERVAL}s for ${MAX_HOURS}h, pid $$)" >>"$LOG"
+[ "$ONCE" = 0 ] && echo "$(date -u +%FT%TZ) saver started (every ${INTERVAL}s for ${MAX_HOURS}h, pid $$)" >>"$LOG"
 
 snapshot() {
   local w="$1" name idx tree last commit
@@ -55,6 +61,7 @@ while [ "$(date +%s)" -lt "$END" ]; do
      && [ -n "$(git -C "$ROOT" log '@{u}..HEAD' --oneline 2>/dev/null)" ]; then
     git -C "$ROOT" push -q 2>>"$LOG" && echo "$(date -u +%FT%TZ) pushed main checkout" >>"$LOG"
   fi
+  [ "$ONCE" = 1 ] && { echo "Saved every worktree (see $LOG)."; exit 0; }
   sleep "$INTERVAL" 9>&-  # the sleep must not hold the lock
 done
 echo "$(date -u +%FT%TZ) saver stopped after ${MAX_HOURS}h" >>"$LOG"
