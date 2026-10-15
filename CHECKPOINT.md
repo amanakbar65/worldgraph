@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 15 Oct 2026, 12:30 UTC.
+**Last updated:** 15 Oct 2026, 12:35 UTC (saved ahead of a usage limit). QA run `wf_4ef20849-b70` in flight; all agents force-saved to `wip/wf_4ef20849-b70-<n>`. Next session: run the loss report on `wf_4ef20849-b70`, tell the owner retained vs lost, then relaunch unfinished QA agents with `args.resume` (e2e fallback `wip/wf_fe3c223c-34c-1`).
 
 ## How to resume (any new session)
 
