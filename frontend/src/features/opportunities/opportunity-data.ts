@@ -61,34 +61,40 @@ export function radarSectors(lens: readonly SectorId[]): SectorId[] {
 }
 
 /**
- * The one wedge a story sits in: its first sector that is also one of
- * yours, else its first sector on the radar. Null when none is on the radar.
+ * The one wedge a story sits in: its main (first) sector that is on the
+ * radar. Null when none is.
  */
-export function primarySector(
-  story: Pick<StorySummary, "sectors">,
-  onRadar: readonly SectorId[],
-  yours: readonly SectorId[] = [],
-): SectorId | null {
-  const shown = story.sectors.filter((s) => onRadar.includes(s));
-  return shown.find((s) => yours.includes(s)) ?? shown[0] ?? null;
+export function primarySector(story: Pick<StorySummary, "sectors">, onRadar: readonly SectorId[]): SectorId | null {
+  return story.sectors.find((s) => onRadar.includes(s)) ?? null;
 }
 
 /** The radar's input: each story once, in list order, in its wedge. */
-export function radarInputs(
-  items: readonly OpportunityItem[],
-  onRadar: readonly SectorId[],
-  yours: readonly SectorId[] = [],
-): RadarInput[] {
+export function radarInputs(items: readonly OpportunityItem[], onRadar: readonly SectorId[]): RadarInput[] {
   const seen = new Set<string>();
   const out: RadarInput[] = [];
   for (const item of items) {
     if (seen.has(item.story.id)) continue;
-    const sector = primarySector(item.story, onRadar, yours);
+    const sector = primarySector(item.story, onRadar);
     if (!sector) continue;
     seen.add(item.story.id);
     out.push({ id: item.story.id, sector, relevance: item.relevance, momentum: item.momentum });
   }
   return out;
+}
+
+const SHORT_LABELS: Partial<Record<SectorId, string>> = {
+  "agri-food": "Agri-food",
+  "logistics-trade": "Logistics",
+};
+
+/** Rough width of a label in pixels (to choose the long or the short name). */
+export const textWidth = (text: string, fontPx: number) => text.length * fontPx * 0.58;
+
+/** A sector's name on the rim: the full name when it fits the arc, else a short one. */
+export function rimLabel(sector: SectorId, roomPx: number, fontPx = 12): string {
+  const full = SECTORS[sector].label;
+  if (textWidth(full, fontPx) <= roomPx) return full;
+  return SHORT_LABELS[sector] ?? full;
 }
 
 /** How many stories sit in each wedge. */

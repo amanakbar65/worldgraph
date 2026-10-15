@@ -14,12 +14,12 @@ export type RadarMeasure = "relevance" | "momentum";
 export const R_INNER = 0.17;
 export const R_OUTER = 0.93;
 /** Smallest and largest dot radius. */
-export const DOT_MIN = 0.022;
-export const DOT_MAX = 0.052;
+export const DOT_MIN = 0.018;
+export const DOT_MAX = 0.046;
 /** Space kept between neighbouring dots. */
 export const DOT_GAP = 0.01;
 /** How far a dot may move in or out to make room (its value stays in the label). */
-export const RADIAL_SLACK = 0.045;
+export const RADIAL_SLACK = 0.07;
 /** Guide rings, as scores (they're drawn at the matching distance). */
 export const RING_VALUES = [0.75, 0.5, 0.25] as const;
 
@@ -64,7 +64,11 @@ export interface Wedge {
   mid: number;
 }
 
-/** Equal wedges for these sectors, in order, the first starting at the top. */
+/**
+ * Equal wedges for these sectors, in order, clockwise, the first one centred
+ * on the top (so two wedges sit top and bottom, not side by side). Angles
+ * may start below zero.
+ */
 export function wedgesFor(sectors: readonly SectorId[]): Wedge[] {
   const n = sectors.length;
   if (n === 0) return [];
@@ -72,9 +76,9 @@ export function wedgesFor(sectors: readonly SectorId[]): Wedge[] {
   return sectors.map((sector, index) => ({
     sector,
     index,
-    start: index * width,
-    end: (index + 1) * width,
-    mid: (index + 0.5) * width,
+    start: (index - 0.5) * width,
+    end: (index + 0.5) * width,
+    mid: index * width,
   }));
 }
 
@@ -112,14 +116,33 @@ export function wedgePath(wedge: Pick<Wedge, "start" | "end">, inner: number, ou
   ].join(" ");
 }
 
+/** Does a wedge's label read along the top of the circle (else along the bottom)? */
+export function labelOnTop(mid: number): boolean {
+  return Math.cos(mid) > -1e-9;
+}
+
 /**
- * Where a sector's label sits: just outside the rim at the wedge's middle,
- * as a percentage of a square box whose edge is `extent` × 2 wide (the
- * chart's own box, centred on the radar).
+ * The arc a sector's name is written along, just outside the rim: clockwise
+ * over the top half and anticlockwise under the bottom half, so the words
+ * are never upside down. A lone wedge gets an arc over the top.
  */
-export function labelPosition(mid: number, extent: number, at = 1.1): { left: number; top: number } {
-  const p = polar(mid, at);
-  return { left: ((p.x + extent) / (2 * extent)) * 100, top: ((p.y + extent) / (2 * extent)) * 100 };
+export function labelArc(wedge: Pick<Wedge, "start" | "end" | "mid">, radius: number): string {
+  const width = wedge.end - wedge.start;
+  const span = Math.min(width, (2 * Math.PI) / 3) * 0.94;
+  const mid = width >= TAU - 1e-9 ? 0 : wedge.mid;
+  const a0 = mid - span / 2;
+  const a1 = mid + span / 2;
+  const f = (n: number) => Number(n.toFixed(4));
+  const p0 = polar(a0, radius);
+  const p1 = polar(a1, radius);
+  return labelOnTop(mid)
+    ? `M ${f(p0.x)} ${f(p0.y)} A ${f(radius)} ${f(radius)} 0 0 1 ${f(p1.x)} ${f(p1.y)}`
+    : `M ${f(p1.x)} ${f(p1.y)} A ${f(radius)} ${f(radius)} 0 0 0 ${f(p0.x)} ${f(p0.y)}`;
+}
+
+/** Length of that arc, in the same units (to check a name fits). */
+export function labelArcLength(wedge: Pick<Wedge, "start" | "end">, radius: number): number {
+  return Math.min(wedge.end - wedge.start, (2 * Math.PI) / 3) * 0.94 * radius;
 }
 
 // ---------------------------------------------------------------------------
@@ -195,6 +218,8 @@ export function layoutRadar(
   items: readonly RadarInput[],
   sectors: readonly SectorId[],
   measure: RadarMeasure,
+  /** Grows the dots on small charts, so they stay easy to see and tap. */
+  dotScale = 1,
   iterations = 120,
 ): RadarDot[] {
   const wedges = new Map(wedgesFor(sectors).map((w) => [w.sector, w]));
@@ -205,7 +230,7 @@ export function layoutRadar(
     const distanceScore = clamp01(measure === "relevance" ? item.relevance : item.momentum);
     const sizeScore = clamp01(measure === "relevance" ? item.momentum : item.relevance);
     bodies.push({
-      dot: { id: item.id, sector: item.sector, order, x: 0, y: 0, r: dotSizeFor(sizeScore), distanceScore, sizeScore },
+      dot: { id: item.id, sector: item.sector, order, x: 0, y: 0, r: dotSizeFor(sizeScore) * dotScale, distanceScore, sizeScore },
       ideal: radiusFor(distanceScore),
       wedge,
     });
@@ -280,5 +305,7 @@ export function overlaps(dots: readonly RadarDot[], tolerance = 0): [string, str
 /** Which wedge an angle falls in (for tests and hit checks). */
 export function wedgeAt(angle: number, wedges: readonly Wedge[]): Wedge | null {
   const a = ((angle % TAU) + TAU) % TAU;
-  return wedges.find((w) => a >= w.start - 1e-9 && a < w.end + 1e-9) ?? null;
+  return (
+    wedges.find((w) => [a, a - TAU, a + TAU].some((x) => x >= w.start - 1e-9 && x < w.end - 1e-9)) ?? null
+  );
 }

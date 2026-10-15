@@ -133,7 +133,12 @@ export function OpportunityCard({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <ScoreMeter label={names.relevance} value={item.relevance} />
         <ScoreMeter label={names.momentum} value={item.momentum} />
-        {story.analysed && story.confidence !== null && <ConfidenceMeter confidence={story.confidence} />}
+        {story.analysed && story.confidence !== null && (
+          <span className="inline-flex items-center gap-1.5 text-label text-fg-muted">
+            <span aria-hidden>Confidence</span>
+            <ConfidenceMeter confidence={story.confidence} />
+          </span>
+        )}
       </div>
 
       {forecast && (

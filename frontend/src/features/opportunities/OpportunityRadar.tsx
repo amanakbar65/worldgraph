@@ -8,7 +8,6 @@ import { Segmented } from "@/components/ui/segmented";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatProbability } from "@/lib/format";
 import { SECTORS } from "@/lib/icons";
-import { useMediaQuery } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
 import {
@@ -16,14 +15,17 @@ import {
   primarySector,
   radarCaption,
   radarInputs,
+  rimLabel,
   scoreNames,
+  textWidth,
   wedgeCounts,
   type OpportunityItem,
 } from "./opportunity-data";
 import {
   R_INNER,
   RING_VALUES,
-  labelPosition,
+  labelArc,
+  labelArcLength,
   layoutRadar,
   polar,
   radiusFor,
@@ -31,12 +33,17 @@ import {
   wedgesFor,
   type RadarMeasure,
 } from "./radar";
+import { useWidth } from "./use-width";
+
+/** Half the chart's width, in radar units (the rim is 1): room for the names around it. */
+const EXTENT = 1.17;
+const LABEL_PX = 12;
 
 export interface OpportunityRadarProps {
   items: readonly OpportunityItem[];
   /** The wedges, in order (the sector lens, or all nine). */
   sectors: readonly SectorId[];
-  /** The profile's sectors: their wedges are marked and their stories sit there first. */
+  /** The profile's sectors: their wedges are shaded and their names bold. */
   yours: readonly SectorId[];
   /** Is the list ranked by fit to the profile? Changes the words, not the maths. */
   forYou: boolean;
@@ -48,40 +55,27 @@ export interface OpportunityRadarProps {
   active: string | null;
   onActive: (id: string | null) => void;
   onOpen: (id: string) => void;
-  /** Toggle the sector lens from a wedge label. */
-  onSector: (sector: SectorId) => void;
-  /** True while the lens narrows the radar. */
-  lensOn: boolean;
 }
 
 /**
  * The opportunity radar: one wedge per sector, one dot per opening.
  * Distance from the centre shows fit (or momentum), the dot's size the
- * other score. Dashed dots are projections, a violet ring marks a related
- * crowd forecast. A plain list shows the same thing for screen readers and
+ * other score. Dashed dots are projections; a violet ring marks a related
+ * crowd forecast. A plain list shows the same, for screen readers and for
  * anyone who prefers it.
  */
 export function OpportunityRadar(props: OpportunityRadarProps) {
-  const { items, forYou, measure, onMeasure, view, onView } = props;
+  const { forYou, measure, onMeasure, view, onView } = props;
   const headingId = useId();
   const names = scoreNames(forYou);
-  const sample = items.some((i) => i.story.is_sample);
 
   return (
-    <section
-      aria-labelledby={headingId}
-      className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4"
-    >
+    <section aria-labelledby={headingId} className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
       <SectionHeader
         id={headingId}
         title="Opportunity radar"
         icon={Radar}
-        description={
-          <span className="inline-flex flex-wrap items-center gap-1.5">
-            {radarCaption(measure, forYou)}
-            {sample && <SampleBadge compact />}
-          </span>
-        }
+        description={radarCaption(measure, forYou)}
         action={
           <Segmented<"chart" | "list">
             aria-label="Show the radar as"
@@ -96,15 +90,15 @@ export function OpportunityRadar(props: OpportunityRadarProps) {
         }
       />
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span className="text-label text-fg-muted">Distance from the centre shows</span>
+        <span className="text-label text-fg-muted">Closer to the centre means</span>
         <Segmented<RadarMeasure>
-          aria-label="Distance from the centre shows"
+          aria-label="Closer to the centre means"
           size="sm"
           value={measure}
           onValueChange={onMeasure}
           options={[
-            { value: "relevance", label: names.relevance },
-            { value: "momentum", label: names.momentum },
+            { value: "relevance", label: forYou ? "Better fit" : "More important", ariaLabel: names.relevance },
+            { value: "momentum", label: "Faster moving", ariaLabel: names.momentum },
           ]}
         />
       </div>
@@ -117,39 +111,32 @@ export function OpportunityRadar(props: OpportunityRadarProps) {
 // The chart
 // ---------------------------------------------------------------------------
 
-function RadarChart({
-  items,
-  sectors,
-  yours,
-  forYou,
-  measure,
-  active,
-  onActive,
-  onOpen,
-  onSector,
-  lensOn,
-}: OpportunityRadarProps) {
-  const wide = useMediaQuery("(min-width: 640px)");
-  // Room around the rim for the sector labels (words on wider screens, icons on phones).
-  const extent = wide ? 1.42 : 1.2;
+function RadarChart({ items, sectors, yours, forYou, measure, active, onActive, onOpen }: OpportunityRadarProps) {
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const [boxRef, width] = useWidth<HTMLDivElement>();
+  const pxPerUnit = width ? width / (2 * EXTENT) : 200;
+  const font = LABEL_PX / pxPerUnit;
+  const labelRadius = 1.035 + font * 0.55;
+
   const wedges = useMemo(() => wedgesFor(sectors), [sectors]);
-  const inputs = useMemo(() => radarInputs(items, sectors, yours), [items, sectors, yours]);
-  const dots = useMemo(() => layoutRadar(inputs, sectors, measure), [inputs, sectors, measure]);
+  const inputs = useMemo(() => radarInputs(items, sectors), [items, sectors]);
+  // Small charts (phones) get bigger dots, so they stay easy to see and tap.
+  const dotScale = Math.round(Math.min(1.4, Math.max(1, 200 / pxPerUnit)) * 10) / 10;
+  const dots = useMemo(
+    () => layoutRadar(inputs, sectors, measure, dotScale),
+    [inputs, sectors, measure, dotScale],
+  );
   const counts = wedgeCounts(inputs);
   const byId = useMemo(() => new Map(items.map((item, i) => [item.story.id, { item, rank: i + 1 }])), [items]);
   const refs = useRef(new Map<string, SVGGElement>());
   const focusId = active && dots.some((d) => d.id === active) ? active : (dots[0]?.id ?? null);
   const shown = (active ? byId.get(active) : undefined) ?? (dots[0] ? byId.get(dots[0].id) : undefined);
-  const hidden = items.length - dots.length;
+  const unplaced = items.length - dots.length;
 
   const move = (from: string, step: number | "first" | "last") => {
     const at = dots.findIndex((d) => d.id === from);
     const next =
-      step === "first"
-        ? dots[0]
-        : step === "last"
-          ? dots[dots.length - 1]
-          : dots[(at + step + dots.length) % dots.length];
+      step === "first" ? dots[0] : step === "last" ? dots[dots.length - 1] : dots[(at + step + dots.length) % dots.length];
     if (!next) return;
     onActive(next.id);
     refs.current.get(next.id)?.focus();
@@ -175,12 +162,12 @@ function RadarChart({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="relative mx-auto aspect-square w-full max-w-[520px]">
+      <div ref={boxRef} className="relative mx-auto aspect-square w-full max-w-[34rem]">
         <svg
-          viewBox={`${-extent} ${-extent} ${extent * 2} ${extent * 2}`}
-          className="absolute inset-0 size-full"
+          viewBox={`${-EXTENT} ${-EXTENT} ${EXTENT * 2} ${EXTENT * 2}`}
+          className="absolute inset-0 size-full select-none"
           role="group"
-          aria-label={`Opportunity radar: ${dots.length} ${dots.length === 1 ? "opening" : "openings"} by sector. Arrow keys move between them; Enter opens one.`}
+          aria-label={`Opportunity radar, ${dots.length} ${dots.length === 1 ? "opening" : "openings"} by sector. Arrow keys move between them; Enter opens one.`}
           onMouseLeave={() => onActive(null)}
         >
           <g aria-hidden>
@@ -188,9 +175,13 @@ function RadarChart({
               <path
                 key={w.sector}
                 d={wedgePath(w, R_INNER, 1)}
-                className={cn(
-                  yours.includes(w.sector) ? "fill-fg/[0.07]" : w.index % 2 ? "fill-surface-2/70" : "fill-surface-2/35",
-                )}
+                className={
+                  yours.includes(w.sector)
+                    ? "fill-fg/[0.08]"
+                    : w.index % 2
+                      ? "fill-surface-2/80"
+                      : "fill-surface-2/40"
+                }
               />
             ))}
             {RING_VALUES.map((v) => (
@@ -221,8 +212,33 @@ function RadarChart({
                   />
                 );
               })}
-            <circle r={R_INNER} className="fill-bg-sunken stroke-line-strong" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-            <Target x={-0.07} y={-0.07} width={0.14} height={0.14} className="text-fg-muted" />
+            <circle
+              r={R_INNER}
+              className="fill-bg-sunken stroke-line-strong"
+              strokeWidth={1}
+              vectorEffect="non-scaling-stroke"
+            />
+            <Target x={-0.065} y={-0.065} width={0.13} height={0.13} className="text-fg-muted" />
+            {wedges.map((w) => {
+              const n = counts[w.sector] ?? 0;
+              const room = labelArcLength(w, labelRadius) * pxPerUnit - textWidth(` ${n}`, LABEL_PX);
+              const mine = yours.includes(w.sector);
+              return (
+                <g key={w.sector}>
+                  <path id={`${uid}-rim-${w.sector}`} d={labelArc(w, labelRadius)} fill="none" />
+                  <text
+                    fontSize={font}
+                    dominantBaseline="central"
+                    className={cn(mine ? "fill-fg font-semibold" : "fill-fg-muted")}
+                  >
+                    <textPath href={`#${uid}-rim-${w.sector}`} startOffset="50%" textAnchor="middle">
+                      {rimLabel(w.sector, room, LABEL_PX)}
+                      <tspan className="fill-fg-subtle font-normal"> {n}</tspan>
+                    </textPath>
+                  </text>
+                </g>
+              );
+            })}
           </g>
           <g>
             {/* Drawn last = on top: the first-ranked dots win any overlap. */}
@@ -254,9 +270,9 @@ function RadarChart({
                   <circle r={Math.max(dot.r + 0.02, 0.05)} fill="transparent" />
                   {item.forecast && (
                     <circle
-                      r={dot.r + 0.017}
+                      r={dot.r + 0.016}
                       className="fill-none stroke-forecast"
-                      strokeWidth={1.5}
+                      strokeWidth={1.25}
                       vectorEffect="non-scaling-stroke"
                     />
                   )}
@@ -266,18 +282,18 @@ function RadarChart({
                     strokeDasharray={projected || draft ? "2 2" : undefined}
                     vectorEffect="non-scaling-stroke"
                     className={cn(
-                      "transition-[r,opacity] duration-300",
+                      "transition-opacity duration-200",
                       draft
                         ? "fill-surface stroke-fg-muted"
                         : projected
                           ? "fill-opportunity/25 stroke-opportunity"
                           : "fill-opportunity stroke-surface",
-                      active && !on && "opacity-60",
+                      active && !on && "opacity-55",
                     )}
                   />
                   {on && (
                     <circle
-                      r={dot.r + (item.forecast ? 0.036 : 0.022)}
+                      r={dot.r + (item.forecast ? 0.034 : 0.02)}
                       className="fill-none stroke-fg"
                       strokeWidth={2}
                       vectorEffect="non-scaling-stroke"
@@ -288,47 +304,15 @@ function RadarChart({
             })}
           </g>
         </svg>
-
-        {wedges.map((w) => {
-          const info = SECTORS[w.sector];
-          const pos = labelPosition(w.mid, extent, wedges.length === 1 ? 1.08 : 1.1);
-          const side = Math.sin(w.mid);
-          const mine = yours.includes(w.sector);
-          const n = counts[w.sector] ?? 0;
-          return (
-            <button
-              key={w.sector}
-              type="button"
-              aria-pressed={lensOn}
-              onClick={() => onSector(w.sector)}
-              aria-label={`${info.label}${mine ? ", your sector" : ""}: ${n} ${n === 1 ? "opening" : "openings"}. ${lensOn ? "Tap to change the sector lens." : "Tap to show only this sector."}`}
-              title={wide ? undefined : info.label}
-              style={{
-                left: `${pos.left}%`,
-                top: `${pos.top}%`,
-                transform: `translate(${side > 0.35 ? "0" : side < -0.35 ? "-100%" : "-50%"}, -50%)`,
-              }}
-              className={cn(
-                "absolute flex min-h-8 cursor-pointer items-center gap-1 rounded-md px-1.5 text-label transition-colors hover:bg-surface-2 hover:text-fg",
-                mine ? "font-semibold text-fg" : "text-fg-muted",
-                wide ? "max-w-28" : "min-w-8 justify-center",
-              )}
-            >
-              <info.icon aria-hidden className="size-3.5 shrink-0" />
-              {wide && <span className="leading-tight">{info.label}</span>}
-              <span className="text-fg-subtle tabular-nums">{n}</span>
-            </button>
-          );
-        })}
       </div>
 
-      {shown && <ActiveStrip item={shown.item} rank={shown.rank} sectors={sectors} yours={yours} forYou={forYou} onOpen={onOpen} />}
+      {shown && <ActiveStrip item={shown.item} rank={shown.rank} sectors={sectors} forYou={forYou} onOpen={onOpen} />}
 
-      <Legend />
-      {hidden > 0 && (
+      <Legend showYours={yours.length > 0} />
+      {unplaced > 0 && (
         <p className="text-label text-fg-muted">
-          {hidden} {hidden === 1 ? "opening has" : "openings have"} no sector yet and{" "}
-          {hidden === 1 ? "is" : "are"} only in the list.
+          {unplaced} {unplaced === 1 ? "opening has" : "openings have"} no sector yet, so{" "}
+          {unplaced === 1 ? "it is" : "they are"} only in the list.
         </p>
       )}
     </div>
@@ -340,18 +324,16 @@ function ActiveStrip({
   item,
   rank,
   sectors,
-  yours,
   forYou,
   onOpen,
 }: {
   item: OpportunityItem;
   rank: number;
   sectors: readonly SectorId[];
-  yours: readonly SectorId[];
   forYou: boolean;
   onOpen: (id: string) => void;
 }) {
-  const sector = primarySector(item.story, sectors, yours);
+  const sector = primarySector(item.story, sectors);
   const names = scoreNames(forYou);
   const SectorIcon = sector ? SECTORS[sector].icon : null;
   return (
@@ -378,20 +360,23 @@ function ActiveStrip({
           <span>
             {names.relevance} {formatProbability(item.relevance)}
           </span>
-          <span>Momentum {formatProbability(item.momentum)}</span>
+          <span>
+            {names.momentum} {formatProbability(item.momentum)}
+          </span>
           {item.forecast && (
             <span className="inline-flex items-center gap-1 text-forecast">
               <Users aria-hidden className="size-3.5" />
               {formatProbability(item.forecast.probability)} crowd forecast
             </span>
           )}
+          {item.story.is_sample && <SampleBadge iconOnly />}
         </span>
       </span>
     </button>
   );
 }
 
-function Legend() {
+function Legend({ showYours }: { showYours: boolean }) {
   return (
     <ul aria-label="Key" className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-label text-fg-muted">
       <li className="inline-flex items-center gap-1.5">
@@ -403,7 +388,14 @@ function Legend() {
       </li>
       <li className="inline-flex items-center gap-1.5">
         <svg aria-hidden viewBox="0 0 12 12" className="size-3">
-          <circle cx="6" cy="6" r="4.75" strokeWidth="1.5" strokeDasharray="2 2" className="fill-opportunity/25 stroke-opportunity" />
+          <circle
+            cx="6"
+            cy="6"
+            r="4.75"
+            strokeWidth="1.5"
+            strokeDasharray="2 2"
+            className="fill-opportunity/25 stroke-opportunity"
+          />
         </svg>
         <Telescope aria-hidden className="size-3.5" />
         Projected
@@ -411,11 +403,17 @@ function Legend() {
       <li className="inline-flex items-center gap-1.5">
         <svg aria-hidden viewBox="0 0 14 14" className="size-3.5">
           <circle cx="7" cy="7" r="3.5" className="fill-opportunity" />
-          <circle cx="7" cy="7" r="6" strokeWidth="1.5" className="fill-none stroke-forecast" />
+          <circle cx="7" cy="7" r="6" strokeWidth="1.25" className="fill-none stroke-forecast" />
         </svg>
         <Users aria-hidden className="size-3.5 text-forecast" />
         Has a crowd forecast
       </li>
+      {showYours && (
+        <li className="inline-flex items-center gap-1.5">
+          <span aria-hidden className="size-3 rounded-sm border border-line-strong bg-fg/10" />
+          Your sectors
+        </li>
+      )}
     </ul>
   );
 }
@@ -424,12 +422,12 @@ function Legend() {
 // The same, as a list
 // ---------------------------------------------------------------------------
 
-function RadarList({ items, sectors, yours, forYou, onOpen, active, onActive }: OpportunityRadarProps) {
+function RadarList({ items, sectors, forYou, onOpen, active, onActive }: OpportunityRadarProps) {
   const names = scoreNames(forYou);
   return (
-    <ol aria-label="Openings, best first" className="-mx-2 flex max-h-[34rem] flex-col overflow-y-auto">
+    <ol aria-label="Openings, best first" className="-mx-2 flex max-h-[36rem] flex-col overflow-y-auto">
       {items.map((item, i) => {
-        const sector = primarySector(item.story, sectors, yours) ?? item.story.sectors[0] ?? null;
+        const sector = primarySector(item.story, sectors) ?? item.story.sectors[0] ?? null;
         const SectorIcon = sector ? SECTORS[sector].icon : null;
         return (
           <li key={item.story.id} className="border-t border-line first:border-t-0">
@@ -462,7 +460,9 @@ function RadarList({ items, sectors, yours, forYou, onOpen, active, onActive }: 
                   <span>
                     {names.relevance} {formatProbability(item.relevance)}
                   </span>
-                  <span>Momentum {formatProbability(item.momentum)}</span>
+                  <span>
+                    {names.momentum} {formatProbability(item.momentum)}
+                  </span>
                   {item.forecast && (
                     <span className="inline-flex items-center gap-1 text-forecast">
                       <Users aria-hidden className="size-3.5" />
@@ -484,14 +484,17 @@ function RadarList({ items, sectors, yours, forYou, onOpen, active, onActive }: 
 /** While the first answer loads. */
 export function RadarSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading the radar" className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
+    <div
+      aria-busy="true"
+      aria-label="Loading the radar"
+      className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4"
+    >
       <Skeleton className="h-5 w-40" />
       <Skeleton className="h-3 w-3/4" />
-      <div className="mx-auto aspect-square w-4/5 max-w-[420px] rounded-full border border-line p-[12%]">
+      <div className="mx-auto aspect-square w-4/5 max-w-[26rem] rounded-full border border-line p-[12%]">
         <Skeleton className="size-full rounded-full" />
       </div>
       <Skeleton className="h-16 w-full rounded-lg" />
     </div>
   );
 }
-
