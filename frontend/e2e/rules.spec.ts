@@ -36,6 +36,7 @@ async function go(page: Page, hash: string) {
 
 test.describe("product rules", () => {
   test("every screen and panel loads only from the app's own origin", async ({ page, isPhone, baseURL }) => {
+    test.slow(); // every screen and panel in one go
     const hosts = new Map<string, string>();
     page.on("request", (r) => {
       const url = new URL(r.url());
@@ -106,6 +107,7 @@ test.describe("product rules", () => {
   });
 
   test("no betting or trading words in any forecast panel", async ({ page }) => {
+    test.slow(); // every forecast's panel
     await openApp(page, "#forecasts");
     const all = (
       await rpc<{ forecasts: Forecast[] }>(page, "forecasts", { sort: "relevance", include_thin: true })
