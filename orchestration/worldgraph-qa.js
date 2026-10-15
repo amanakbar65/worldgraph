@@ -11,7 +11,7 @@ export const meta = {
 const COMMON = `
 You are reviewing WorldGraph, a visual world-knowledge web app for businesses: a 3D globe, a knowledge graph, cause-and-effect cascades and crowd forecasts. The owner wants it sleek, professional, simple, accurate and convenient to use. It runs as a claude.ai Artifact (the owner's private test link) and later as a website on Netlify. Every screen is now built; your job is to find what is wrong before the owner sees it.
 
-Your working directory is an isolated git worktree of the repository at the current main. Read first: CLAUDE.md, PLAN.md, BUILD_BRIEF.md ("Visual design system", "Product principles"), CHECKPOINT.md, then the code relevant to your focus (frontend/src/**, frontend/server/**, frontend/netlify/**, frontend/scripts/**, backend/src/worldgraph/db/migrations/*.sql for api.* behaviour).
+Your working directory is an isolated git worktree of the repository at the current main. Read first: CLAUDE.md, PLAN.md, BUILD_BRIEF.md ("Visual design system", "Product principles"), then the code relevant to your focus (frontend/src/**, frontend/server/**, frontend/netlify/**, frontend/scripts/**, backend/src/worldgraph/db/migrations/*.sql for api.* behaviour).
 
 Environment
 - node_modules is NOT in your worktree: run \`ln -sfn /home/user/worldgraph/frontend/node_modules frontend/node_modules\` first. Never run npm install.
