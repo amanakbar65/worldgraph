@@ -129,7 +129,7 @@ function Palette({ onDone }: { onDone: () => void }) {
 
   const go = (item: RecentItem) => {
     onDone();
-    stored.setValue((prev) => addRecent(parseRecent(prev), item));
+    stored.setValue((prev: unknown) => addRecent(parseRecent(prev), item));
     open(panelFor(item));
     if (item.type === "region") flyTo({ regionId: item.id });
   };
