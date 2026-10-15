@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 15 Oct 2026, 12:35 UTC (saved ahead of a usage limit). QA run `wf_4ef20849-b70` in flight; all agents force-saved to `wip/wf_4ef20849-b70-<n>`. Next session: run the loss report on `wf_4ef20849-b70`, tell the owner retained vs lost, then relaunch unfinished QA agents with `args.resume` (e2e fallback `wip/wf_fe3c223c-34c-1`).
+**Last updated:** 15 Oct 2026, 17:00 UTC. QA run 3 `wf_5401d9b0-dd2` in flight (e2e resumed from `wip/wf_4ef20849-b70-1`, plus 4 reviewers). Saver running.
 
 ## How to resume (any new session)
 
@@ -32,27 +32,19 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 
 ## In flight
 
-**Screens: all 8 merged** (15 Oct, 08:10 UTC). On `main`:
-- 820 frontend tests, lint, types and build all pass;
-- the artifact build is 12.6 MB in 110 files.
+**Screens: all 8 merged** (820 frontend tests; the artifact build is 12.6 MB in 110 files). **Live data:** pg_cron `wg-live-data` dispatches `pipeline.yml` every 15 minutes (confirmed, status 204).
 
-**QA running:** run `wf_fe3c223c-34c` (launched 08:17 UTC, worktrees `wf_fe3c223c-34c-<n>`), `orchestration/worldgraph-qa.js` with no args: an e2e author plus 5 reviewers, in worktrees. Concerns from the agents to fold into the fixes:
-- `api.globe` events need an `analysed` flag (new migration, contract and pytest; rebuild the snapshot);
-- `api.globe` may not filter skipped stories;
-- the ForecastRow footer can wrap at 352 px;
-- a favicon link is missing.
+**QA run 3** `wf_5401d9b0-dd2` (launched 16:58 UTC): `orchestration/worldgraph-qa.js` with
+`{"only":["e2e","review:a11y-design","review:rules","review:artifact-security","review:polish"],"resume":{"e2e":"wip/wf_4ef20849-b70-1"}}`.
+Worktrees are `wf_5401d9b0-dd2-<n>`, saved to `wip/` of the same name. If it is interrupted, relaunch with `only` set to the labels that did not report, and `resume` pointing at their `wip/` branches.
 
-**If interrupted:**
-1. `cd /home/user/worldgraph`, then `git worktree list`.
-2. Merge finished branches after the checks.
-3. For QA: relaunch `orchestration/worldgraph-qa.js` with `args.only` = the labels that did not report. Reviewers report findings; only the e2e agent commits (to `wip/<worktree>`).
-4. Restart `orchestration/checkpoint.sh 600`.
+**Correctness findings already in** (run 2; 14 findings in `orchestration/qa-notes/review-correctness-run2.md`):
+- watchlist logic duplicated in RegionPanel.tsx:181 and ForecastPanel.tsx:253 (use `useWatchlist()`);
+- api.globe country counts come from the capped 1,500 events (migration 0004:282/302);
+- api.meta `last_ingest_at` should come from `ingest_run`;
+- plus run 1 notes (`orchestration/qa-notes/review-correctness-run1.md`).
 
-Session limits have stopped agents three times (11:12, 15:10, 20:20 UTC). Each time the saver kept the work.
-
-**Live data is on** (the owner added `DATABASE_URL` on 8 Oct). By 14 Oct: 23 news runs in 5 days on GitHub's patchy schedule, and 1,041 live stories (none analysed yet). First runs (8 Oct): Runs succeeded at 15:03 and 16:12: 411 live stories (all pending analysis), 859 articles and 73 Manifold forecasts. A news run takes about 7 minutes.
-
-**Problem:** GitHub's `*/15` schedule fired only about every 7 hours, and a run catches up at most 1 hour of GDELT. The proposed fix is `backend/supabase/ops_dispatch.sql` (pg_cron calls workflow_dispatch every 15 minutes, using a fine-grained token in Supabase Vault named `github_dispatch_token`). The owner approved it; it is **applied (pg_cron job `wg-live-data`) and idle until the token is in Vault**.
+**Known items:** api.globe `analysed` flag and skipped-story filter; favicon; ForecastRow wraps at 352 px; isError flicker; Not found → 500.
 
 ## Next
 
