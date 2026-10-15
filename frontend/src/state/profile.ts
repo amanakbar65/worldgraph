@@ -587,11 +587,6 @@ export function useLastVisit(): {
   };
 }
 
-/** Read the watchlist again (after a panel changed it). */
-export function refreshWatchlist(): void {
-  if (watchValue.store.getState().loaded) void watchValue.store.getState().refresh();
-}
-
 /** Tests only: forget everything loaded in this module. */
 export const __testing = {
   reset: () => {

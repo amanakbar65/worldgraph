@@ -14,7 +14,6 @@ import { cn } from "@/lib/utils";
 import { currentPanel, useNav } from "@/state/nav";
 import {
   isEmpty,
-  refreshWatchlist,
   toggleWatch,
   useAlertRules,
   useProfile,
@@ -119,7 +118,6 @@ function Dashboard({ profile, onEdit }: { profile: Profile; onEdit: (step: numbe
   const affects = useAffects();
   const watch = useWatchQueries(watchlist.value);
   const alerts = useBusinessAlerts(affects, watchlist.value, watch);
-  const panels = useNav((s) => s.panels.length);
   const [filter, setFilter] = useState<FeedFilter>(NO_FILTER);
   const [nodeName, setNodeName] = useState<string | null>(null);
   const empty = isEmpty(profile);
@@ -131,11 +129,6 @@ function Dashboard({ profile, onEdit }: { profile: Profile; onEdit: (step: numbe
     // Once per visit to the screen.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
-
-  // A panel (region, entity, forecast) may have changed the watchlist.
-  useEffect(() => {
-    refreshWatchlist();
-  }, [panels]);
 
   const toggle = (id: string) => watchlist.set((prev) => toggleWatch(prev, id));
   const remove = (id: string) => {

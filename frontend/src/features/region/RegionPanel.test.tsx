@@ -5,6 +5,7 @@ import type { RpcName } from "@/api/contract";
 import { DataError } from "@/api/source";
 import { __testing as storage } from "@/platform/storage";
 import { useNav } from "@/state/nav";
+import { __testing as profileStore } from "@/state/profile";
 
 import { REGION_AHMEDABAD, REGION_INDIA } from "./fixtures";
 import RegionPanel from "./RegionPanel";
@@ -33,6 +34,7 @@ beforeEach(() => {
   useNav.setState({ panels: [{ kind: "region", id: "region:in" }], focus: null, sectors: [], window: "7d", view: "globe" });
   localStorage.clear();
   storage.reset();
+  profileStore.reset();
 });
 afterEach(cleanup);
 
@@ -154,6 +156,20 @@ describe("RegionPanel (a country)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Watch India" }));
     expect(screen.getByText("India removed from your watchlist.")).toBeTruthy();
     await waitFor(() => expect(JSON.parse(localStorage.getItem("worldgraph.user.watchlist") ?? "[]")).toEqual([]));
+  });
+
+  it("edits the same watchlist as My Business, so a removal there sticks", async () => {
+    const panama = "forecast:panama-draft-limits-lifted";
+    profileStore.stores.watchlist.setState({ value: [panama, "region:us"], loaded: true, kind: "browser" });
+    renderPanel();
+    // My Business takes the US off while this panel is open...
+    profileStore.stores.watchlist.getState().set((prev) => prev.filter((id) => id !== "region:us"));
+    // ...then the viewer watches India here.
+    fireEvent.click(screen.getByRole("button", { name: "Watch India" }));
+    expect(profileStore.stores.watchlist.getState().value).toEqual([panama, "region:in"]);
+    await waitFor(() =>
+      expect(JSON.parse(localStorage.getItem("worldgraph.user.watchlist") ?? "[]")).toEqual([panama, "region:in"]),
+    );
   });
 
   it("starts fresh when it moves on to another place", () => {
