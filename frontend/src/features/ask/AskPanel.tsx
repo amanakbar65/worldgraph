@@ -148,6 +148,9 @@ function AskBody({ q, scope }: { q?: string; scope?: string }) {
             placeholder="How does X affect Y?"
             autoComplete="off"
             enterKeyHint="send"
+            // Desktop: ready to type (or to send a question passed in, with one Enter).
+            // Phones: no keyboard popping up over the sheet.
+            autoFocus={isDesktop}
             aria-describedby={noteId}
             className="h-12 w-full rounded-xl border border-line-strong bg-bg-sunken/70 pr-14 pl-4 text-body text-fg transition-colors placeholder:text-fg-subtle hover:border-fg-subtle/60"
           />

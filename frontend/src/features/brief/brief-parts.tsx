@@ -107,10 +107,10 @@ export function BriefStoryRow({
           </span>
         )}
         <span className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="line-clamp-2 text-body font-medium text-fg">{story.headline}</span>
+          <span className="line-clamp-3 text-body font-medium text-fg">{story.headline}</span>
           {story.analysed ? (
             <>
-              {story.so_what && <span className="line-clamp-2 text-body text-fg-muted">{story.so_what}</span>}
+              {story.so_what && <span className="line-clamp-3 text-body text-fg-muted">{story.so_what}</span>}
               <StoryMeta story={story} oneLine showSample={showSample} />
             </>
           ) : (
