@@ -1,0 +1,235 @@
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { RpcName, SearchResponse } from "@/api/contract";
+import { __testing as storage } from "@/platform/storage";
+import { useNav } from "@/state/nav";
+import { useSettings } from "@/state/settings";
+import { useUi } from "@/state/ui";
+
+import { CommandSearch } from "./CommandSearch";
+
+const RESULTS: SearchResponse["results"] = [
+  { id: "region:in", type: "region", subtype: "country", name: "India", context: "Country · Southern Asia", score: 1.15 },
+  {
+    id: "story:india-retail-inflation",
+    type: "story",
+    subtype: null,
+    name: "India's retail inflation rises as vegetable prices climb",
+    context: "Story · India · risk",
+    score: 0.9,
+  },
+  {
+    id: "forecast:india-peak-power",
+    type: "forecast",
+    subtype: null,
+    name: "India's peak power demand above 270 GW this season?",
+    context: "Forecast · 46%",
+    score: 0.85,
+  },
+  {
+    id: "policy:india-semiconductor-mission",
+    type: "policy",
+    subtype: "subsidy",
+    name: "India Semiconductor Mission",
+    context: "Policy · Subsidy",
+    score: 0.8,
+  },
+];
+
+const mocks = vi.hoisted(() => ({
+  results: [] as unknown[],
+  calls: [] as { name: string; args: unknown; enabled: boolean }[],
+}));
+
+vi.mock("@/api/client", () => ({
+  useRpc: (name: RpcName, args: unknown, options?: { enabled?: boolean }) => {
+    const enabled = options?.enabled !== false;
+    mocks.calls.push({ name, args, enabled });
+    const data = enabled ? { results: mocks.results } : undefined;
+    return {
+      data,
+      error: null,
+      isPending: !data,
+      isError: false,
+      isFetching: false,
+      isPlaceholderData: false,
+      refetch: vi.fn(),
+    };
+  },
+}));
+
+const searchCalls = () => mocks.calls.filter((c) => c.name === "search" && c.enabled).map((c) => c.args);
+const wait = (ms: number) => act(() => new Promise((r) => setTimeout(r, ms)));
+const input = () => screen.getByPlaceholderText("Search places, companies, stories, forecasts…");
+const top = () => useNav.getState().panels.at(-1);
+
+async function open() {
+  fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+  await wait(0);
+}
+
+async function type(text: string) {
+  fireEvent.change(input(), { target: { value: text } });
+  await wait(260);
+}
+
+beforeEach(() => {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  Element.prototype.scrollIntoView = vi.fn();
+  mocks.results = RESULTS;
+  mocks.calls = [];
+  useUi.setState({ searchOpen: false });
+  useNav.setState({ panels: [], view: "globe", focus: null });
+  useSettings.setState({ theme: "dark" });
+  document.documentElement.setAttribute("data-wg-theme", "dark");
+  localStorage.clear();
+  storage.reset();
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+describe("CommandSearch", () => {
+  it("opens with Ctrl+K and closes with it again", async () => {
+    render(<CommandSearch />);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await open();
+    expect(screen.getByRole("dialog", { name: "Search WorldGraph" })).toBeTruthy();
+    await open();
+    expect(useUi.getState().searchOpen).toBe(false);
+  });
+
+  it("offers quick actions before anything is typed", async () => {
+    render(<CommandSearch />);
+    await open();
+    const options = screen.getAllByRole("option").map((o) => o.textContent);
+    expect(options).toEqual([
+      "Ask a question",
+      "Go to Forecasts",
+      "Open the daily brief",
+      "Switch to light theme",
+      "Open settings",
+    ]);
+    expect(searchCalls()).toHaveLength(0);
+  });
+
+  it("waits for two letters and a pause before searching", async () => {
+    render(<CommandSearch />);
+    await open();
+    fireEvent.change(input(), { target: { value: "i" } });
+    await wait(260);
+    expect(screen.getByText("Keep typing: two letters or more.")).toBeTruthy();
+    expect(searchCalls()).toHaveLength(0);
+    fireEvent.change(input(), { target: { value: "ind" } });
+    fireEvent.change(input(), { target: { value: "india" } });
+    await wait(260);
+    expect(searchCalls()).toEqual([{ q: "india", limit: 20 }]);
+  });
+
+  it("groups results by type with their context", async () => {
+    render(<CommandSearch />);
+    await open();
+    await type("india");
+    const groups = screen
+      .getAllByRole("group")
+      .map((g) => document.getElementById(g.getAttribute("aria-labelledby") ?? "")?.textContent);
+    expect(groups).toEqual(["Places", "Stories", "Crowd forecasts", "Policies", "Actions"]);
+    const story = screen.getByRole("option", { name: /retail inflation/ });
+    expect(within(story).getByText("India")).toBeTruthy();
+    expect(within(story).getByText("Risk")).toBeTruthy();
+    expect(screen.getByRole("option", { name: /peak power/ }).textContent).toContain("46% crowd forecast");
+  });
+
+  it("opens a place with Enter, flies the globe there and remembers it", async () => {
+    render(<CommandSearch />);
+    await open();
+    await type("india");
+    fireEvent.keyDown(input(), { key: "Enter" });
+    await wait(0);
+    expect(top()).toEqual({ kind: "region", id: "region:in" });
+    expect(useNav.getState().focus).toMatchObject({ regionId: "region:in" });
+    expect(useUi.getState().searchOpen).toBe(false);
+
+    await open();
+    const recent = screen.getByRole("group", { name: /Recent/ });
+    expect(within(recent).getByRole("option", { name: /India/ })).toBeTruthy();
+  });
+
+  it("moves with the arrow keys and opens stories, forecasts and entities in their panels", async () => {
+    render(<CommandSearch />);
+    await open();
+    await type("india");
+    fireEvent.keyDown(input(), { key: "ArrowDown" });
+    fireEvent.keyDown(input(), { key: "Enter" });
+    expect(top()).toEqual({ kind: "story", id: "story:india-retail-inflation" });
+
+    await open();
+    await type("india");
+    fireEvent.click(screen.getByRole("option", { name: /Semiconductor Mission/ }));
+    expect(top()).toEqual({ kind: "entity", id: "policy:india-semiconductor-mission" });
+
+    await open();
+    await type("india");
+    fireEvent.click(screen.getByRole("option", { name: /peak power/ }));
+    expect(top()).toEqual({ kind: "forecast", id: "forecast:india-peak-power" });
+  });
+
+  it("does nothing on a quick Enter before results arrive, then opens the best match", async () => {
+    render(<CommandSearch />);
+    await open();
+    fireEvent.change(input(), { target: { value: "india" } });
+    await wait(0);
+    expect(screen.queryAllByRole("option")).toHaveLength(0);
+    fireEvent.keyDown(input(), { key: "Enter" });
+    expect(top()).toBeUndefined();
+    expect(useUi.getState().searchOpen).toBe(true);
+    await wait(260);
+    expect(screen.getByRole("option", { name: /^India/, selected: true })).toBeTruthy();
+    fireEvent.keyDown(input(), { key: "Enter" });
+    expect(top()).toEqual({ kind: "region", id: "region:in" });
+  });
+
+  it("offers to ask what was typed", async () => {
+    render(<CommandSearch />);
+    await open();
+    await type("why is diesel up");
+    fireEvent.click(screen.getByRole("option", { name: "Ask: “why is diesel up”" }));
+    expect(top()).toEqual({ kind: "ask", q: "why is diesel up" });
+  });
+
+  it("says so when nothing matches, and still offers Ask", async () => {
+    mocks.results = [];
+    render(<CommandSearch />);
+    await open();
+    await type("zzzz");
+    expect(screen.getByText("No matches for “zzzz”")).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Ask: “zzzz”" })).toBeTruthy();
+  });
+
+  it("runs quick actions: go to Forecasts and toggle the theme", async () => {
+    render(<CommandSearch />);
+    await open();
+    fireEvent.click(screen.getByRole("option", { name: "Go to Forecasts" }));
+    expect(useNav.getState().view).toBe("forecasts");
+
+    await open();
+    fireEvent.click(screen.getByRole("option", { name: "Switch to light theme" }));
+    expect(useSettings.getState().theme).toBe("light");
+  });
+
+  it("finds actions by their keywords", async () => {
+    render(<CommandSearch />);
+    await open();
+    await type("dark mode");
+    expect(screen.getByRole("option", { name: "Switch to light theme" })).toBeTruthy();
+  });
+});

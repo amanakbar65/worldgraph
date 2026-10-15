@@ -169,10 +169,6 @@ function Palette({ onDone }: { onDone: () => void }) {
       run: () => open({ kind: "settings" }),
     },
   ];
-  // While typing, "Ask" always stays on offer: the question may not match a name.
-  const shownActions = query
-    ? [...actions.filter((a) => a.id === "ask"), ...matchActions(actions, query).filter((a) => a.id !== "ask")]
-    : matchActions(actions, "");
   const runAction = (action: QuickAction) => {
     onDone();
     action.run();
@@ -184,8 +180,32 @@ function Palette({ onDone }: { onDone: () => void }) {
   const stale = searching && search.isPlaceholderData;
   const waiting = query.length >= MIN_QUERY && (debounced !== query || (search.isPending && !search.isError));
 
+  // While typing, "Ask" stays on offer (the question may not match a name),
+  // but only once results are in: until then Enter has nothing to open, so a
+  // quick Enter on a place name never lands in Ask instead.
+  const shownActions =
+    waiting && results.length === 0
+      ? []
+      : query
+        ? [...actions.filter((a) => a.id === "ask"), ...matchActions(actions, query).filter((a) => a.id !== "ask")]
+        : matchActions(actions, "");
+
+  // The highlighted row: each new set of results starts on its best match
+  // (cmdk would keep whatever it highlighted while the results were loading).
+  const listKey = query ? `q:${results.map((r) => r.id).join(",")}` : "home";
+  const firstValue = query ? (groups[0]?.items[0]?.id ?? shownActions[0]?.id) : (recent[0]?.id ?? shownActions[0]?.id);
+  const [pick, setPick] = useState<{ key: string; value: string } | null>(null);
+  const selected = pick?.key === listKey ? pick.value : (firstValue ?? "");
+
   return (
-    <Command shouldFilter={false} loop label="Search WorldGraph" className="flex min-h-0 flex-col">
+    <Command
+      shouldFilter={false}
+      loop
+      label="Search WorldGraph"
+      value={selected}
+      onValueChange={(value) => setPick({ key: listKey, value })}
+      className="flex min-h-0 flex-col"
+    >
       <div className="flex items-center gap-2 border-b border-line px-3">
         <Search aria-hidden className="size-4 shrink-0 text-fg-muted" />
         <Command.Input
