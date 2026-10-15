@@ -8,7 +8,8 @@ import { defineConfig, devices } from "@playwright/test";
  *
  *   npm run e2e                      both projects (desktop and phone)
  *   npm run e2e -- --project=phone   one project
- *   npm run e2e:artifact             the claude.ai test-link build (e2e/artifact.config.ts)
+ *   npm run e2e:artifact             builds the claude.ai test link, then tests it (e2e/artifact.config.ts)
+ *   npm run e2e:artifact:run         the same tests against the existing dist-artifact/
  *
  * The database needs the migrations and the sample data:
  *   cd backend && DATABASE_URL=… uv run wg db migrate && DATABASE_URL=… uv run wg seed load
@@ -43,10 +44,11 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  // The globe is WebGL on the CPU in headless Chromium: keep the workers few.
+  // The globe is WebGL on the CPU in headless Chromium: keep the workers few,
+  // and the time limits generous (a busy machine can take 30 s per test).
   workers: process.env.E2E_WORKERS ? Number(process.env.E2E_WORKERS) : 2,
-  timeout: 60_000,
-  expect: { timeout: 15_000 },
+  timeout: 120_000,
+  expect: { timeout: 30_000 },
   reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
   use: {
     baseURL: BASE_URL,

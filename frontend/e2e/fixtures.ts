@@ -45,10 +45,10 @@ interface Fixtures {
 export const test = base.extend<Fixtures>({
   settings: [{ theme: "dark", calm: true }, { option: true }],
   // eslint-disable-next-line no-empty-pattern
-  isPhone: async ({}, use, testInfo) => {
-    await use(isPhoneProject(testInfo));
+  isPhone: async ({}, provide, testInfo) => {
+    await provide(isPhoneProject(testInfo));
   },
-  outsideRequests: async ({ context, baseURL }, use) => {
+  outsideRequests: async ({ context, baseURL }, provide) => {
     const origin = new URL(baseURL ?? "http://127.0.0.1").origin;
     const seen: OutsideRequest[] = [];
     context.on("request", (request) => {
@@ -56,9 +56,9 @@ export const test = base.extend<Fixtures>({
       if (/^(data|blob|about):/.test(url)) return;
       if (new URL(url).origin !== origin) seen.push({ url, resourceType: request.resourceType() });
     });
-    await use(seen);
+    await provide(seen);
   },
-  pageErrors: async ({ context }, use) => {
+  pageErrors: async ({ context }, provide) => {
     const errors: string[] = [];
     const watch = (page: Page) =>
       page.on("pageerror", (error) => {
@@ -68,9 +68,9 @@ export const test = base.extend<Fixtures>({
       });
     context.pages().forEach(watch);
     context.on("page", watch);
-    await use(errors);
+    await provide(errors);
   },
-  page: async ({ page, settings, outsideRequests, pageErrors }, use) => {
+  page: async ({ page, settings, outsideRequests, pageErrors }, provide) => {
     await page.addInitScript(
       ([key, value]) => {
         try {
@@ -81,7 +81,7 @@ export const test = base.extend<Fixtures>({
       },
       [SETTINGS_KEY, JSON.stringify(settings)] as const,
     );
-    await use(page);
+    await provide(page);
     expect(pageErrors, "uncaught errors in the page").toEqual([]);
     expect(
       outsideRequests.map((r) => r.url),
@@ -142,7 +142,11 @@ export async function goToView(page: Page, view: ViewName): Promise<void> {
 
 /** Open Ctrl/Cmd+K search: the shortcut on desktop, the header button on phones. Returns its text box. */
 export async function openSearch(page: Page, isPhone: boolean): Promise<Locator> {
-  if (isPhone) await page.locator("header").getByRole("button", { name: /^Search/ }).click();
+  if (isPhone)
+    await page
+      .locator("header")
+      .getByRole("button", { name: /^Search/ })
+      .click();
   else await page.keyboard.press("Control+K");
   const box = page.getByPlaceholder("Search places, companies, stories, forecasts…");
   await expect(box).toBeFocused();
@@ -214,7 +218,9 @@ export async function seriousA11yProblems(page: Page, include?: string): Promise
       id: v.id,
       impact: v.impact,
       help: v.help,
-      targets: v.nodes.slice(0, 8).map((n) => `${n.target.join(" ")} :: ${n.failureSummary ?? ""}`.slice(0, 400)),
+      targets: v.nodes
+        .slice(0, 8)
+        .map((n) => `${n.target.join(" ")} :: ${n.failureSummary ?? ""}`.slice(0, 400)),
     }));
 }
 

@@ -30,28 +30,36 @@ test.describe("opportunities", () => {
     for (const [i, item] of data.items.entries()) {
       await expect(cards.nth(i)).toHaveAccessibleName(`${i + 1}. ${item.story.headline}`);
     }
-    await expect(page.getByRole("heading", { level: 2, name: `Strongest first ${data.items.length}` })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 2, name: `Strongest first ${data.items.length}` }),
+    ).toBeVisible();
 
     const radar = page.getByRole("group", { name: /^Opportunity radar, \d+ openings/ });
     await expect(radar.getByRole("button")).toHaveCount(data.items.length);
     await snap(page, testInfo, "opportunities");
 
-    await page.getByRole("radiogroup", { name: "Show the radar as" }).getByRole("radio", { name: "List" }).click();
+    await page
+      .getByRole("radiogroup", { name: "Show the radar as" })
+      .getByRole("radio", { name: "List" })
+      .click();
     await expect(radar).toHaveCount(0);
   });
 
   test("the sector lens narrows the openings", async ({ page }) => {
     await openApp(page, "#opportunities");
-    await page.getByRole("group", { name: "Sector lens" }).getByRole("button", { name: "Energy", exact: true }).click();
+    await page
+      .getByRole("group", { name: "Sector lens" })
+      .getByRole("button", { name: "Energy", exact: true })
+      .click();
     await expect.poll(() => currentHash(page)).toContain("s=energy");
 
     const data = await rpc<Opportunities>(page, "opportunities", { window: "7d", sectors: ["energy"] });
     for (const item of data.items) expect(item.story.sectors).toContain("energy");
     const cards = page.getByRole("list", { name: "Openings" }).getByRole("article");
     await expect(cards).toHaveCount(Math.min(10, data.items.length));
-    await expect(page.getByRole("group", { name: /^Opportunity radar, \d+ openings/ }).getByRole("button")).toHaveCount(
-      data.items.length,
-    );
+    await expect(
+      page.getByRole("group", { name: /^Opportunity radar, \d+ openings/ }).getByRole("button"),
+    ).toHaveCount(data.items.length);
     if (data.items[0]) await expect(cards.first()).toHaveAccessibleName(`1. ${data.items[0].story.headline}`);
   });
 
@@ -59,7 +67,10 @@ test.describe("opportunities", () => {
     await openApp(page, "#opportunities");
     const data = await rpc<Opportunities>(page, "opportunities", { window: "7d" });
     const first = data.items[0]!.story;
-    await page.getByRole("list", { name: "Openings" }).getByRole("button", { name: first.headline, exact: true }).click();
+    await page
+      .getByRole("list", { name: "Openings" })
+      .getByRole("button", { name: first.headline, exact: true })
+      .click();
     await expect(detailsPanel(page).getByRole("heading", { level: 2, name: first.headline })).toBeVisible();
     await expect.poll(() => currentHash(page)).toBe(`#opportunities&story=${first.id}`);
   });

@@ -5,14 +5,23 @@
  */
 import { currentHash, detailsPanel, expect, goToView, openApp, rpc, snap, test } from "./fixtures";
 
+interface BriefCard {
+  kind: string;
+  stories?: { id: string; headline: string; is_sample: boolean }[];
+  forecasts?: { id: string; short_title: string }[];
+  focus?: { id: string; headline: string } | null;
+  region?: { id: string; name: string } | null;
+}
 interface Brief {
   generated_at: string;
-  cards: (
-    | { kind: "top_risks" | "top_opportunities" | "biggest_movers"; stories: { id: string; headline: string; is_sample: boolean }[] }
-    | { kind: "odds_moved"; forecasts: { id: string; short_title: string }[] }
-    | { kind: "cascade_to_watch"; focus: { id: string; headline: string } | null; effects: unknown[] }
-    | { kind: "region_spotlight"; region: { id: string; name: string } | null; stories: { headline: string }[] }
-  )[];
+  cards: BriefCard[];
+}
+
+/** The card of one kind (the API sends each kind once). */
+function card(brief: Brief, kind: string): BriefCard {
+  const found = brief.cards.find((c) => c.kind === kind);
+  expect(found, `the ${kind} card`).toBeDefined();
+  return found!;
 }
 
 const TITLES = [
@@ -33,23 +42,32 @@ test.describe("brief", () => {
     await expect.poll(() => currentHash(page)).toBe("#brief");
 
     const brief = await rpc<Brief>(page, "brief", {});
-    const cards = page.locator("main section[aria-labelledby]").filter({ has: page.getByRole("heading", { level: 2 }) });
+    const cards = page
+      .locator("main section[aria-labelledby]")
+      .filter({ has: page.getByRole("heading", { level: 2 }) });
     await expect(page.getByRole("heading", { level: 2 })).toHaveText(TITLES);
 
-    const byKind = Object.fromEntries(brief.cards.map((c) => [c.kind, c]));
-    for (const kind of ["top_risks", "top_opportunities", "biggest_movers"] as const) {
-      const card = byKind[kind] as Extract<Brief["cards"][number], { kind: typeof kind }>;
-      const section = page.getByRole("region", { name: TITLES[["top_risks", "top_opportunities", "biggest_movers"].indexOf(kind)] });
-      for (const story of card.stories) await expect(section).toContainText(story.headline);
+    const storyCards = [
+      ["top_risks", "Top risks"],
+      ["top_opportunities", "Top opportunities"],
+      ["biggest_movers", "Most reported"],
+    ] as const;
+    for (const [kind, title] of storyCards) {
+      const section = page.getByRole("region", { name: title });
+      for (const story of card(brief, kind).stories ?? [])
+        await expect(section).toContainText(story.headline);
     }
-    const odds = byKind.odds_moved as Extract<Brief["cards"][number], { kind: "odds_moved" }>;
-    for (const f of odds.forecasts) {
-      await expect(page.getByRole("region", { name: "Crowd forecasts that moved" })).toContainText(f.short_title);
+    for (const f of card(brief, "odds_moved").forecasts ?? []) {
+      await expect(page.getByRole("region", { name: "Crowd forecasts that moved" })).toContainText(
+        f.short_title,
+      );
     }
-    const spotlight = byKind.region_spotlight as Extract<Brief["cards"][number], { kind: "region_spotlight" }>;
-    if (spotlight.region) {
-      await expect(page.getByRole("region", { name: "Region spotlight" })).toContainText(spotlight.region.name);
-    }
+    const focus = card(brief, "cascade_to_watch").focus;
+    if (focus)
+      await expect(page.getByRole("region", { name: "Cascade to watch" })).toContainText(focus.headline);
+    const region = card(brief, "region_spotlight").region;
+    if (region)
+      await expect(page.getByRole("region", { name: "Region spotlight" })).toContainText(region.name);
     expect(await cards.count()).toBe(6);
 
     // All sample: the header says so once.
@@ -60,9 +78,12 @@ test.describe("brief", () => {
   test("a story in the brief opens its card", async ({ page }) => {
     await openApp(page, "#brief");
     const brief = await rpc<Brief>(page, "brief", {});
-    const risks = brief.cards.find((c) => c.kind === "top_risks") as Extract<Brief["cards"][number], { kind: "top_risks" }>;
-    const first = risks.stories[0]!;
-    await page.getByRole("region", { name: "Top risks" }).getByRole("button").filter({ hasText: first.headline }).click();
+    const first = card(brief, "top_risks").stories![0]!;
+    await page
+      .getByRole("region", { name: "Top risks" })
+      .getByRole("button")
+      .filter({ hasText: first.headline })
+      .click();
     await expect(detailsPanel(page).getByRole("heading", { level: 2, name: first.headline })).toBeVisible();
     await expect.poll(() => currentHash(page)).toBe(`#brief&story=${first.id}`);
   });
@@ -70,11 +91,18 @@ test.describe("brief", () => {
   test("a forecast in the brief opens its panel", async ({ page }) => {
     await openApp(page, "#brief");
     const brief = await rpc<Brief>(page, "brief", {});
-    const odds = brief.cards.find((c) => c.kind === "odds_moved") as Extract<Brief["cards"][number], { kind: "odds_moved" }>;
-    test.skip(odds.forecasts.length === 0, "No forecast moved in this database.");
-    const first = odds.forecasts[0]!;
-    await page.getByRole("region", { name: "Crowd forecasts that moved" }).getByRole("button").filter({ hasText: first.short_title }).first().click();
-    await expect(detailsPanel(page).getByRole("heading", { level: 2, name: first.short_title })).toBeVisible();
+    const odds = card(brief, "odds_moved").forecasts ?? [];
+    expect(odds.length, "forecasts that moved").toBeGreaterThan(0);
+    const first = odds[0]!;
+    await page
+      .getByRole("region", { name: "Crowd forecasts that moved" })
+      .getByRole("button")
+      .filter({ hasText: first.short_title })
+      .first()
+      .click();
+    await expect(
+      detailsPanel(page).getByRole("heading", { level: 2, name: first.short_title }),
+    ).toBeVisible();
     await expect.poll(() => currentHash(page)).toBe(`#brief&forecast=${first.id}`);
   });
 
@@ -87,8 +115,7 @@ test.describe("brief", () => {
     await expect(page.getByRole("button", { name: "Copied" })).toBeVisible();
     const text = await page.evaluate(() => navigator.clipboard.readText());
     expect(text).toContain("Top risks");
-    const risks = brief.cards.find((c) => c.kind === "top_risks") as Extract<Brief["cards"][number], { kind: "top_risks" }>;
-    expect(text).toContain(risks.stories[0]!.headline);
+    expect(text).toContain(card(brief, "top_risks").stories![0]!.headline);
     // Sample items are marked in the copy too, so they are never passed on as real news.
     expect(text).toMatch(/sample/i);
   });

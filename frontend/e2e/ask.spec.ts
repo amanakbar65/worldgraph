@@ -16,7 +16,10 @@ interface AskContext {
 test.describe("ask", () => {
   test("the header opens Ask with suggestions and a note on what asking uses", async ({ page }, testInfo) => {
     await openApp(page);
-    await page.locator("header").getByRole("button", { name: /^Ask( a question)?$/ }).click();
+    await page
+      .locator("header")
+      .getByRole("button", { name: /^Ask( a question)?$/ })
+      .click();
     const panel = detailsPanel(page);
     await expect(panel.getByRole("heading", { level: 2, name: "Ask WorldGraph" })).toBeVisible();
     const box = panel.getByRole("textbox", { name: "Your question" });
@@ -41,7 +44,9 @@ test.describe("ask", () => {
     expect(aiCalls, "AI calls before the viewer asks").toEqual([]);
   });
 
-  test("without AI, the answer explains why and shows the closest stored stories", async ({ page }, testInfo) => {
+  test("without AI, the answer explains why and shows the closest stored stories", async ({
+    page,
+  }, testInfo) => {
     await openApp(page, "#ask");
     const panel = detailsPanel(page);
     const box = panel.getByRole("textbox", { name: "Your question" });
@@ -52,7 +57,9 @@ test.describe("ask", () => {
     const problem = panel.getByRole("alert");
     await expect(problem).toContainText("AI answers aren't available here", { timeout: 30_000 });
     // It says why, and where Ask does work.
-    await expect(problem).toContainText("On the website, Ask uses WorldGraph AI; in the test link, it uses your Claude account.");
+    await expect(problem).toContainText(
+      "On the website, Ask uses WorldGraph AI; in the test link, it uses your Claude account.",
+    );
     await expect(problem.getByRole("button", { name: "Try again" })).toBeVisible();
 
     // What WorldGraph has stored is still shown, as facts from sources.
@@ -65,7 +72,9 @@ test.describe("ask", () => {
 
     // A found story opens its card.
     await found.getByRole("button").filter({ hasText: context.stories[0]!.headline }).first().click();
-    await expect(detailsPanel(page).getByRole("heading", { level: 2, name: context.stories[0]!.headline })).toBeVisible();
+    await expect(
+      detailsPanel(page).getByRole("heading", { level: 2, name: context.stories[0]!.headline }),
+    ).toBeVisible();
   });
 
   test("Ask from a region suggests questions about that place", async ({ page }) => {
@@ -73,7 +82,11 @@ test.describe("ask", () => {
     const panel = detailsPanel(page);
     await expect(panel.getByRole("heading", { level: 2, name: "Ask WorldGraph" })).toBeVisible();
     const suggestions = panel.getByRole("region", { name: /^Try asking/ });
-    await expect(suggestions.getByRole("button", { name: "What's changing for business in India?" })).toBeVisible();
-    await expect(suggestions.getByRole("button", { name: "Where are the opportunities in India?" })).toBeVisible();
+    await expect(
+      suggestions.getByRole("button", { name: "What's changing for business in India?" }),
+    ).toBeVisible();
+    await expect(
+      suggestions.getByRole("button", { name: "Where are the opportunities in India?" }),
+    ).toBeVisible();
   });
 });

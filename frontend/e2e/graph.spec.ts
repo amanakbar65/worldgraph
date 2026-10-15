@@ -32,7 +32,10 @@ test.describe("graph and entities", () => {
     await expect(list.getByRole("listitem").first()).toBeVisible();
 
     // The first non-story node opens its entity page.
-    const button = list.locator(":scope > li > button").filter({ hasNotText: /^Story/ }).first();
+    const button = list
+      .locator(":scope > li > button")
+      .filter({ hasNotText: /^Story/ })
+      .first();
     const name = (await button.getAttribute("aria-label")) ?? (await button.innerText());
     await button.click();
     const panel = detailsPanel(page);
@@ -47,13 +50,23 @@ test.describe("graph and entities", () => {
     await expect(card.getByRole("heading", { level: 2, name: "Crude oil" })).toBeVisible();
     await expect(card.getByText("Sample data", { exact: true }).first()).toBeVisible();
     await expect(card.getByRole("region", { name: "Key facts" })).toContainText("HS code");
-    await expect(card.getByRole("region", { name: /^In the news/ }).getByRole("listitem").first()).toBeVisible();
-    await expect(card.getByRole("region", { name: /^Crowd forecasts/ })).toContainText("Not facts; for information only.");
+    await expect(
+      card
+        .getByRole("region", { name: /^In the news/ })
+        .getByRole("listitem")
+        .first(),
+    ).toBeVisible();
+    await expect(card.getByRole("region", { name: /^Crowd forecasts/ })).toContainText(
+      "Not facts; for information only.",
+    );
     await expect(card.getByRole("region", { name: "Linked from" })).toBeVisible();
     await snap(page, testInfo, "entity");
 
     // A fact links to another page.
-    await card.getByRole("region", { name: "Key facts" }).getByRole("button", { name: "Saudi Arabia, region" }).click();
+    await card
+      .getByRole("region", { name: "Key facts" })
+      .getByRole("button", { name: "Saudi Arabia, region" })
+      .click();
     await expect(detailsPanel(page).getByRole("heading", { level: 2, name: "Saudi Arabia" })).toBeVisible();
     await expect.poll(() => currentHash(page)).toBe("#region=region:sa");
   });
@@ -68,10 +81,9 @@ test.describe("graph and entities", () => {
     await expect(panel.getByText("Linked in your note")).toBeVisible();
     await expect(panel.getByRole("button", { name: /^Saudi Arabia/ }).last()).toBeVisible();
 
-    const stored = JSON.parse((await page.evaluate(() => localStorage.getItem("worldgraph.user.notes"))) ?? "{}") as Record<
-      string,
-      unknown
-    >;
+    const stored = JSON.parse(
+      (await page.evaluate(() => localStorage.getItem("worldgraph.user.notes"))) ?? "{}",
+    ) as Record<string, unknown>;
     expect(JSON.stringify(stored)).toContain("Hedge before [[OPEC+]]");
 
     await page.reload();

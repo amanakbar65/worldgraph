@@ -3,7 +3,16 @@
  * typing finds places, companies, stories and forecasts, Enter opens the
  * right panel, recent searches come back, and the quick actions work.
  */
-import { currentHash, detailsPanel, expect, openApp, openSearch, searchAndOpen, snap, test } from "./fixtures";
+import {
+  currentHash,
+  detailsPanel,
+  expect,
+  openApp,
+  openSearch,
+  searchAndOpen,
+  snap,
+  test,
+} from "./fixtures";
 
 test.describe("command search", () => {
   test("Ctrl+K opens it with quick actions, and Escape closes it", async ({ page, isPhone }, testInfo) => {
@@ -35,7 +44,10 @@ test.describe("command search", () => {
     await expect.poll(() => currentHash(page)).toBe("#entity=org:tsmc");
   });
 
-  test("arrow keys reach a story and a forecast, and Enter opens each", async ({ page, isPhone }, testInfo) => {
+  test("arrow keys reach a story and a forecast, and Enter opens each", async ({
+    page,
+    isPhone,
+  }, testInfo) => {
     await openApp(page);
     const box = await openSearch(page, isPhone);
     await box.fill("fed cut");
@@ -50,12 +62,19 @@ test.describe("command search", () => {
     await expect(forecast).toHaveAttribute("aria-selected", "true");
     await page.keyboard.press("Enter");
     await expect(dialog).toBeHidden();
-    await expect(detailsPanel(page).getByRole("heading", { level: 2, name: "Will the Fed cut rates at its next meeting?" })).toBeVisible();
+    await expect(
+      detailsPanel(page).getByRole("heading", {
+        level: 2,
+        name: "Will the Fed cut rates at its next meeting?",
+      }),
+    ).toBeVisible();
     await expect.poll(() => currentHash(page)).toBe("#forecast=forecast:fed-cut-next-meeting");
 
     await searchAndOpen(page, isPhone, "Bab-el-Mandeb", "Bab-el-Mandeb");
     // The best match for a place name is the place (here, the strait).
-    await expect(detailsPanel(page).getByRole("heading", { level: 2, name: "Bab-el-Mandeb Strait" })).toBeVisible();
+    await expect(
+      detailsPanel(page).getByRole("heading", { level: 2, name: "Bab-el-Mandeb Strait" }),
+    ).toBeVisible();
   });
 
   test("a search shows up under Recent next time", async ({ page, isPhone }) => {
@@ -64,7 +83,9 @@ test.describe("command search", () => {
     await expect(detailsPanel(page).getByRole("heading", { level: 2, name: "Mumbai" })).toBeVisible();
     await openSearch(page, isPhone);
     const dialog = page.getByRole("dialog", { name: "Search WorldGraph" });
-    await expect(dialog.getByRole("group", { name: "Recent" }).getByRole("option", { name: /Mumbai/ })).toBeVisible();
+    await expect(
+      dialog.getByRole("group", { name: "Recent" }).getByRole("option", { name: /Mumbai/ }),
+    ).toBeVisible();
   });
 
   test("no matches says so and still offers to ask", async ({ page, isPhone }) => {

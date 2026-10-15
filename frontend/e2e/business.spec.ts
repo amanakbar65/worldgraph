@@ -9,7 +9,11 @@ import { expect, goToView, openApp, rpc, snap, test } from "./fixtures";
 async function pick(page: Page, field: string, text: string, option: RegExp) {
   const box = page.getByRole("combobox", { name: field });
   await box.fill(text);
-  await page.getByRole("listbox", { name: `Matches for ${field.toLowerCase()}` }).getByRole("option", { name: option }).first().click();
+  await page
+    .getByRole("listbox", { name: `Matches for ${field.toLowerCase()}` })
+    .getByRole("option", { name: option })
+    .first()
+    .click();
 }
 
 async function setUpProfile(page: Page) {
@@ -49,7 +53,9 @@ test.describe("my business", () => {
     await expect(profile).toContainText("1 input");
     await snap(page, testInfo, "business-dashboard");
 
-    const saved = JSON.parse((await page.evaluate(() => localStorage.getItem("worldgraph.user.profile"))) ?? "null") as {
+    const saved = JSON.parse(
+      (await page.evaluate(() => localStorage.getItem("worldgraph.user.profile"))) ?? "null",
+    ) as {
       sectors: string[];
       locations: string[];
       inputs: string[];
@@ -66,10 +72,9 @@ test.describe("my business", () => {
   test("the Affects you feed lists the stories the database matches to the profile", async ({ page }) => {
     await openApp(page);
     await setUpProfile(page);
-    const profile = JSON.parse((await page.evaluate(() => localStorage.getItem("worldgraph.user.profile")))!) as Record<
-      string,
-      unknown
-    >;
+    const profile = JSON.parse(
+      (await page.evaluate(() => localStorage.getItem("worldgraph.user.profile")))!,
+    ) as Record<string, unknown>;
     const affects = await rpc<{ items: { story: { headline: string; impact: string } }[] }>(page, "affects", {
       profile,
       window: "7d",
@@ -85,7 +90,10 @@ test.describe("my business", () => {
     }
 
     // Only risks.
-    await page.getByRole("radiogroup", { name: "Show risks or opportunities" }).getByRole("radio", { name: /Risks/ }).click();
+    await page
+      .getByRole("radiogroup", { name: "Show risks or opportunities" })
+      .getByRole("radio", { name: /Risks/ })
+      .click();
     const risks = affects.items.filter((i) => i.story.impact === "risk");
     if (risks[0]) await expect(feed.getByRole("listitem").first()).toContainText(risks[0].story.headline);
     const opportunities = affects.items.filter((i) => i.story.impact === "opportunity");

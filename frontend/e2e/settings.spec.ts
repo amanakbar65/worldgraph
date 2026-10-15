@@ -5,7 +5,17 @@
  */
 import type { Page } from "@playwright/test";
 
-import { SETTINGS_KEY, appStatus, detailsPanel, expect, goToView, openApp, rpc, snap, test } from "./fixtures";
+import {
+  SETTINGS_KEY,
+  appStatus,
+  detailsPanel,
+  expect,
+  goToView,
+  openApp,
+  rpc,
+  snap,
+  test,
+} from "./fixtures";
 
 async function openSettings(page: Page) {
   await page.locator("header").getByRole("button", { name: "Settings" }).click();
@@ -15,7 +25,9 @@ async function openSettings(page: Page) {
 }
 
 async function stored(page: Page): Promise<Record<string, unknown>> {
-  return JSON.parse((await page.evaluate((key) => localStorage.getItem(key), SETTINGS_KEY)) ?? "{}") as Record<string, unknown>;
+  return JSON.parse(
+    (await page.evaluate((key) => localStorage.getItem(key), SETTINGS_KEY)) ?? "{}",
+  ) as Record<string, unknown>;
 }
 
 test.describe("settings", () => {
@@ -41,11 +53,16 @@ test.describe("settings", () => {
 
     await page.reload();
     await expect(html).toHaveAttribute("data-wg-theme", "light");
-    await expect(detailsPanel(page).getByRole("radiogroup", { name: "Theme" }).getByRole("radio", { name: "Light" })).toBeChecked();
+    await expect(
+      detailsPanel(page).getByRole("radiogroup", { name: "Theme" }).getByRole("radio", { name: "Light" }),
+    ).toBeChecked();
 
     // System follows the device.
     await page.emulateMedia({ colorScheme: "dark" });
-    await detailsPanel(page).getByRole("radiogroup", { name: "Theme" }).getByRole("radio", { name: "System" }).click();
+    await detailsPanel(page)
+      .getByRole("radiogroup", { name: "Theme" })
+      .getByRole("radio", { name: "System" })
+      .click();
     await expect(html).toHaveAttribute("data-wg-theme", "dark");
     await page.emulateMedia({ colorScheme: "light" });
     await expect(html).toHaveAttribute("data-wg-theme", "light");
@@ -68,21 +85,40 @@ test.describe("settings", () => {
     const sample = panel.getByRole("radiogroup", { name: "Sample data" });
 
     await sample.getByRole("radio", { name: "Off" }).click();
-    await expect(panel.getByText("Never shown. Some screens stay empty until live news arrives.")).toBeVisible();
+    await expect(
+      panel.getByText("Never shown. Some screens stay empty until live news arrives."),
+    ).toBeVisible();
     expect((await stored(page)).sample).toBe("off");
     // This database holds only sample data, so with it off the forecasts are gone.
-    const off = await rpc<{ forecasts: unknown[] }>(page, "forecasts", { sort: "relevance", include_thin: true, sample: false });
+    const off = await rpc<{ forecasts: unknown[] }>(page, "forecasts", {
+      sort: "relevance",
+      include_thin: true,
+      sample: false,
+    });
     await goToView(page, "forecasts");
-    await expect(page.getByRole("heading", { level: 2, name: `All forecasts ${off.forecasts.length}` })).toBeAttached();
+    await expect(
+      page.getByRole("heading", { level: 2, name: `All forecasts ${off.forecasts.length}` }),
+    ).toBeAttached();
     await snap(page, testInfo, "sample-off");
 
     await openSettings(page);
-    await detailsPanel(page).getByRole("radiogroup", { name: "Sample data" }).getByRole("radio", { name: "On" }).click();
-    await expect(detailsPanel(page).getByText("Always mixed in with live news, each item labelled “Sample data”.")).toBeVisible();
-    const on = await rpc<{ forecasts: unknown[] }>(page, "forecasts", { sort: "relevance", include_thin: false, sample: true });
+    await detailsPanel(page)
+      .getByRole("radiogroup", { name: "Sample data" })
+      .getByRole("radio", { name: "On" })
+      .click();
+    await expect(
+      detailsPanel(page).getByText("Always mixed in with live news, each item labelled “Sample data”."),
+    ).toBeVisible();
+    const on = await rpc<{ forecasts: unknown[] }>(page, "forecasts", {
+      sort: "relevance",
+      include_thin: false,
+      sample: true,
+    });
     expect(on.forecasts.length).toBeGreaterThan(0);
     await page.keyboard.press("Escape");
-    await expect(page.getByRole("heading", { level: 2, name: `All forecasts ${on.forecasts.length}` })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 2, name: `All forecasts ${on.forecasts.length}` }),
+    ).toBeVisible();
     await expect(appStatus(page)).toHaveText(/Sample/);
   });
 
@@ -97,17 +133,25 @@ test.describe("settings", () => {
     const borders = panel.getByRole("radiogroup", { name: "Map borders" });
 
     await borders.getByRole("radio", { name: "India's official view" }).click();
-    await expect(panel.getByText("Maps always show India's borders as India officially defines them.")).toBeVisible();
+    await expect(
+      panel.getByText("Maps always show India's borders as India officially defines them."),
+    ).toBeVisible();
     await expect.poll(() => geo).toContain("countries-in.json");
     expect((await stored(page)).borders).toBe("india");
 
     await borders.getByRole("radio", { name: "International" }).click();
-    await expect(panel.getByText("Maps always show the international default borders (Natural Earth).")).toBeVisible();
+    await expect(
+      panel.getByText("Maps always show the international default borders (Natural Earth)."),
+    ).toBeVisible();
     await expect.poll(() => geo).toContain("countries.json");
     expect((await stored(page)).borders).toBe("international");
 
     await page.reload();
-    await expect(detailsPanel(page).getByRole("radiogroup", { name: "Map borders" }).getByRole("radio", { name: "International" })).toBeChecked();
+    await expect(
+      detailsPanel(page)
+        .getByRole("radiogroup", { name: "Map borders" })
+        .getByRole("radio", { name: "International" }),
+    ).toBeChecked();
   });
 
   test("lists its data sources and the viewer's saved data", async ({ page }) => {

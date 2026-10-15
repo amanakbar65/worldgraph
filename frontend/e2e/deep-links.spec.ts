@@ -14,7 +14,10 @@ test.describe("deep links", () => {
     { hash: `#cascade=${STORY}`, heading: HEADLINE },
     { hash: "#region=region:in-gj", heading: "Gujarat" },
     { hash: "#entity=commodity:crude-oil", heading: "Crude oil" },
-    { hash: "#forecast=forecast:fed-cut-next-meeting", heading: "Will the Fed cut rates at its next meeting?" },
+    {
+      hash: "#forecast=forecast:fed-cut-next-meeting",
+      heading: "Will the Fed cut rates at its next meeting?",
+    },
     { hash: "#compare=region:in,region:cn", heading: "Compare" },
     { hash: "#settings", heading: "Settings" },
     { hash: "#ask", heading: "Ask WorldGraph" },
@@ -39,8 +42,15 @@ test.describe("deep links", () => {
   test("a link keeps the screen, the panel, the window and the sector lens together", async ({ page }) => {
     await openApp(page, `#forecasts&forecast=forecast:fed-cut-next-meeting&w=30d&s=finance`);
     await expect(page.getByRole("heading", { level: 1, name: "Crowd forecasts" })).toBeVisible();
-    await expect(detailsPanel(page).getByRole("heading", { level: 2, name: "Will the Fed cut rates at its next meeting?" })).toBeVisible();
-    await expect.poll(() => currentHash(page)).toBe("#forecasts&forecast=forecast:fed-cut-next-meeting&w=30d&s=finance");
+    await expect(
+      detailsPanel(page).getByRole("heading", {
+        level: 2,
+        name: "Will the Fed cut rates at its next meeting?",
+      }),
+    ).toBeVisible();
+    await expect
+      .poll(() => currentHash(page))
+      .toBe("#forecasts&forecast=forecast:fed-cut-next-meeting&w=30d&s=finance");
 
     await openApp(page, "#region=region:in&w=24h");
     await expect(detailsPanel(page).getByText("Activity in the last 24 hours")).toBeVisible();
@@ -89,7 +99,9 @@ test.describe("deep links", () => {
   test("links the app doesn't understand are ignored", async ({ page }) => {
     await openApp(page, "#story=not%20an%20id&w=99d&s=nonsense");
     await expect(detailsPanel(page)).toBeHidden();
-    await expect(page.getByRole("radiogroup", { name: "Time window" }).getByRole("radio", { name: "Last 7 days" })).toBeChecked();
+    await expect(
+      page.getByRole("radiogroup", { name: "Time window" }).getByRole("radio", { name: "Last 7 days" }),
+    ).toBeChecked();
 
     await openApp(page, "#story=story:does-not-exist");
     const panel = detailsPanel(page);

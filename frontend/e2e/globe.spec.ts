@@ -18,7 +18,9 @@ interface Globe {
 /** The rows of "Top 5 now": the side card on desktop, the swipe strip on phones. */
 function topStories(page: Page, isPhone: boolean) {
   return isPhone
-    ? page.getByRole("list", { name: "Top stories and crowd moves, swipe for more" }).locator(":scope > li > button")
+    ? page
+        .getByRole("list", { name: "Top stories and crowd moves, swipe for more" })
+        .locator(":scope > li > button")
     : page.getByRole("list", { name: "Top 5 now" }).locator(":scope > li > button");
 }
 
@@ -30,10 +32,16 @@ async function openList(page: Page, isPhone: boolean) {
 async function chooseSector(page: Page, isPhone: boolean, sector: string) {
   if (isPhone) {
     await page.getByRole("button", { name: /^Sector lens:/ }).click();
-    await page.getByRole("group", { name: "Sector lens" }).getByRole("button", { name: sector, exact: true }).click();
+    await page
+      .getByRole("group", { name: "Sector lens" })
+      .getByRole("button", { name: sector, exact: true })
+      .click();
     await page.keyboard.press("Escape");
   } else {
-    await page.getByRole("group", { name: "Sector lens" }).getByRole("button", { name: sector, exact: true }).click();
+    await page
+      .getByRole("group", { name: "Sector lens" })
+      .getByRole("button", { name: sector, exact: true })
+      .click();
   }
 }
 
@@ -88,8 +96,14 @@ test.describe("globe", () => {
     await expect.poll(() => currentHash(page)).toContain("s=energy");
     if (!isPhone) {
       const lens = page.getByRole("group", { name: "Sector lens" });
-      await expect(lens.getByRole("button", { name: "Energy", exact: true })).toHaveAttribute("aria-pressed", "true");
-      await expect(lens.getByRole("button", { name: "All sectors" })).toHaveAttribute("aria-pressed", "false");
+      await expect(lens.getByRole("button", { name: "Energy", exact: true })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      await expect(lens.getByRole("button", { name: "All sectors" })).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
     } else {
       await expect(page.getByRole("button", { name: "Sector lens: Energy" })).toBeVisible();
     }
@@ -106,10 +120,16 @@ test.describe("globe", () => {
     // "All sectors" turns the lens off again.
     if (isPhone) {
       await page.getByRole("button", { name: "Sector lens: Energy" }).click();
-      await page.getByRole("group", { name: "Sector lens" }).getByRole("button", { name: "All sectors" }).click();
+      await page
+        .getByRole("group", { name: "Sector lens" })
+        .getByRole("button", { name: "All sectors" })
+        .click();
       await page.keyboard.press("Escape");
     } else {
-      await page.getByRole("group", { name: "Sector lens" }).getByRole("button", { name: "All sectors" }).click();
+      await page
+        .getByRole("group", { name: "Sector lens" })
+        .getByRole("button", { name: "All sectors" })
+        .click();
     }
     await expect.poll(() => currentHash(page)).not.toContain("s=energy");
   });

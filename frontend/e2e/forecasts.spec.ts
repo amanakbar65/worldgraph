@@ -29,14 +29,19 @@ interface Forecast {
 }
 
 function list(page: Page) {
-  return page.getByRole("region", { name: /^All forecasts/ }).getByRole("listitem").getByRole("button");
+  return page
+    .getByRole("region", { name: /^All forecasts/ })
+    .getByRole("listitem")
+    .getByRole("button");
 }
 
 /** The forecasts the list shows, by their labels (each starts with the short title). */
 async function shownTitles(page: Page, expected: Forecast[]): Promise<string[]> {
   await expect(list(page)).toHaveCount(expected.length);
   const labels = await list(page).evaluateAll((els) => els.map((e) => e.getAttribute("aria-label") ?? ""));
-  return labels.map((label) => expected.find((f) => label.startsWith(`${f.short_title}.`))?.id ?? `?? ${label}`);
+  return labels.map(
+    (label) => expected.find((f) => label.startsWith(`${f.short_title}.`))?.id ?? `?? ${label}`,
+  );
 }
 
 async function forecasts(page: Page, args: Record<string, unknown>) {
@@ -48,7 +53,9 @@ test.describe("forecasts", () => {
     await openApp(page);
     await goToView(page, "forecasts");
     await expect(page.getByRole("heading", { level: 1, name: "Crowd forecasts" })).toBeVisible();
-    await expect(page.getByText("Crowd forecasts are what forecasters expect, not facts.", { exact: false })).toBeVisible();
+    await expect(
+      page.getByText("Crowd forecasts are what forecasters expect, not facts.", { exact: false }),
+    ).toBeVisible();
 
     const all = await forecasts(page, { sort: "relevance", include_thin: false });
     expect(all.length).toBeGreaterThan(0);
@@ -62,7 +69,10 @@ test.describe("forecasts", () => {
     expect(energy.every((f) => f.category === "energy")).toBe(true);
     expect(await shownTitles(page, energy)).toEqual(energy.map((f) => f.id));
 
-    await page.getByRole("group", { name: "Categories" }).getByRole("button", { name: "All", exact: true }).click();
+    await page
+      .getByRole("group", { name: "Categories" })
+      .getByRole("button", { name: "All", exact: true })
+      .click();
     await expect(list(page)).toHaveCount(all.length);
   });
 
@@ -76,7 +86,9 @@ test.describe("forecasts", () => {
     ] as const) {
       await sort.selectOption({ label });
       const expected = await forecasts(page, { sort: value, include_thin: false });
-      await expect.poll(() => shownTitles(page, expected), { message: `sorted by ${label}` }).toEqual(expected.map((f) => f.id));
+      await expect
+        .poll(() => shownTitles(page, expected), { message: `sorted by ${label}` })
+        .toEqual(expected.map((f) => f.id));
     }
   });
 
@@ -89,8 +101,14 @@ test.describe("forecasts", () => {
 
     const place = page.getByRole("combobox", { name: "Filter forecasts by place" });
     await place.fill("India");
-    await page.getByRole("listbox", { name: "Matching places" }).getByRole("option", { name: /^India/ }).first().click();
-    await expect(page.getByRole("group", { name: "Active filters" }).getByRole("button", { name: "Remove India" })).toBeVisible();
+    await page
+      .getByRole("listbox", { name: "Matching places" })
+      .getByRole("option", { name: /^India/ })
+      .first()
+      .click();
+    await expect(
+      page.getByRole("group", { name: "Active filters" }).getByRole("button", { name: "Remove India" }),
+    ).toBeVisible();
     const india = await forecasts(page, { sort: "relevance", include_thin: true, regions: ["region:in"] });
     expect(india.length).toBeGreaterThan(0);
     expect(await shownTitles(page, india)).toEqual(india.map((f) => f.id));
@@ -107,7 +125,9 @@ test.describe("forecasts", () => {
     const panel = detailsPanel(page);
     const card = panel.getByRole("article").first();
     await expect(card.getByRole("heading", { level: 2 })).toBeVisible();
-    expect(label.startsWith(`${(await card.getByRole("heading", { level: 2 }).textContent())!.trim()}.`)).toBe(true);
+    expect(
+      label.startsWith(`${(await card.getByRole("heading", { level: 2 }).textContent())!.trim()}.`),
+    ).toBe(true);
     await expect.poll(() => currentHash(page)).toMatch(/^#forecasts&forecast=forecast:/);
 
     const now = card.getByRole("region", { name: "The crowd's forecast now" });
@@ -159,7 +179,11 @@ test.describe("forecasts", () => {
     expect(bettingWords(await visibleText(page)), "forecasts view").toEqual([]);
 
     await page.getByRole("switch", { name: "Include thin markets" }).click();
-    for (const sample of ["forecast:opec-plus-extends-cuts", "forecast:us-india-trade-deal-three-months", "forecast:suez-transits-recover"]) {
+    for (const sample of [
+      "forecast:opec-plus-extends-cuts",
+      "forecast:us-india-trade-deal-three-months",
+      "forecast:suez-transits-recover",
+    ]) {
       await openApp(page, `#forecast=${sample}`);
       await expect(detailsPanel(page).getByRole("region", { name: "How it resolves" })).toBeVisible();
       expect(bettingWords(await visibleText(page)), sample).toEqual([]);

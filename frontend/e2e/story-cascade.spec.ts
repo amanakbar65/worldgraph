@@ -17,7 +17,9 @@ interface Cascade {
 
 /** Story nodes in the flow or rows in the list: their labels start with where they sit. */
 function cascadeNodes(page: Page) {
-  return detailsPanel(page).getByRole("button", { name: /^(This story|Cause, \d+ steps? back|Effect, \d+ steps? on): / });
+  return detailsPanel(page).getByRole("button", {
+    name: /^(This story|Cause, \d+ steps? back|Effect, \d+ steps? on): /,
+  });
 }
 
 test.describe("story and cascade", () => {
@@ -25,13 +27,18 @@ test.describe("story and cascade", () => {
     await openApp(page);
     if (isPhone) await page.getByRole("button", { name: "List of events" }).click();
     else await page.getByRole("radio", { name: "List of all events" }).click();
-    await page.getByRole("list", { name: "All events" }).getByRole("button", { name: new RegExp(`^${HEADLINE}`) }).click();
+    await page
+      .getByRole("list", { name: "All events" })
+      .getByRole("button", { name: new RegExp(`^${HEADLINE}`) })
+      .click();
 
     const panel = detailsPanel(page);
     const card = panel.getByRole("article", { name: HEADLINE });
     await expect(card.getByRole("heading", { level: 2, name: HEADLINE })).toBeVisible();
     await expect(card.getByText("Sample data", { exact: true }).first()).toBeVisible();
-    await expect(card.getByRole("region", { name: "What you could do" }).getByRole("listitem")).not.toHaveCount(0);
+    await expect(
+      card.getByRole("region", { name: "What you could do" }).getByRole("listitem"),
+    ).not.toHaveCount(0);
     await expect(card.getByRole("region", { name: "Causes and effects" })).toBeVisible();
     // Forecasts in the card are labelled as crowd forecasts, not facts.
     await expect(card.getByRole("region", { name: "What the crowd expects next" })).toContainText(
@@ -41,7 +48,10 @@ test.describe("story and cascade", () => {
     await snap(page, testInfo, "story-card");
   });
 
-  test("the cascade shows every linked story, as a flow and as a list", async ({ page, isPhone }, testInfo) => {
+  test("the cascade shows every linked story, as a flow and as a list", async ({
+    page,
+    isPhone,
+  }, testInfo) => {
     await openApp(page, `#story=${STORY}`);
     const cascade = await rpc<Cascade>(page, "cascade", { id: STORY, depth: 2 });
     const story = await rpc<{ causes: number; effects: number }>(page, "story", { id: STORY });
@@ -70,12 +80,18 @@ test.describe("story and cascade", () => {
     await snap(page, testInfo, "cascade-second");
 
     // Fewer steps, fewer stories.
-    await panel.getByRole("radiogroup", { name: "Steps each way" }).getByRole("radio", { name: "1 step each way" }).click();
+    await panel
+      .getByRole("radiogroup", { name: "Steps each way" })
+      .getByRole("radio", { name: "1 step each way" })
+      .click();
     const one = await rpc<Cascade>(page, "cascade", { id: STORY, depth: 1 });
     await expect(cascadeNodes(page)).toHaveCount(one.nodes.length);
   });
 
-  test("on desktop the flow fits the whole cascade in view when it opens", async ({ page, isPhone }, testInfo) => {
+  test("on desktop the flow fits the whole cascade in view when it opens", async ({
+    page,
+    isPhone,
+  }, testInfo) => {
     test.skip(isPhone, "Phones open the list.");
     await openApp(page, `#cascade=${STORY}`);
     const flow = detailsPanel(page).locator(".react-flow");
@@ -88,18 +104,26 @@ test.describe("story and cascade", () => {
       const b = await node.boundingBox();
       if (!b) continue;
       const inside =
-        b.x >= box.x - 1 && b.y >= box.y - 1 && b.x + b.width <= box.x + box.width + 1 && b.y + b.height <= box.y + box.height + 1;
+        b.x >= box.x - 1 &&
+        b.y >= box.y - 1 &&
+        b.x + b.width <= box.x + box.width + 1 &&
+        b.y + b.height <= box.y + box.height + 1;
       if (!inside) outside.push(((await node.getAttribute("aria-label")) ?? "").slice(0, 80));
     }
     await snap(page, testInfo, "cascade-fit");
     expect(outside, "story cards cut off at the edge of the flow").toEqual([]);
   });
 
-  test("a link's evidence opens beside the flow and Escape closes only it", async ({ page, isPhone }, testInfo) => {
+  test("a link's evidence opens beside the flow and Escape closes only it", async ({
+    page,
+    isPhone,
+  }, testInfo) => {
     await openApp(page, `#cascade=${STORY}`);
     const panel = detailsPanel(page);
     if (isPhone) await panel.getByRole("radio", { name: "Flow" }).click();
-    const label = panel.getByRole("button", { name: /^Lengthens voyage times: reported link, high confidence \(90%\)\. Show the evidence\.$/ });
+    const label = panel.getByRole("button", {
+      name: /^Lengthens voyage times: reported link, high confidence \(90%\)\. Show the evidence\.$/,
+    });
     if (isPhone) {
       // The half-height sheet shows only the top of the flow: use the keyboard route.
       await label.focus();
@@ -118,7 +142,10 @@ test.describe("story and cascade", () => {
     await expect.poll(() => currentHash(page)).toBe(`#cascade=${STORY}`);
   });
 
-  test("the list shows each link's type and confidence, and its evidence inline", async ({ page, isPhone }) => {
+  test("the list shows each link's type and confidence, and its evidence inline", async ({
+    page,
+    isPhone,
+  }) => {
     await openApp(page, `#cascade=${STORY}`);
     const panel = detailsPanel(page);
     if (!isPhone) await panel.getByRole("radio", { name: "View as list" }).click();

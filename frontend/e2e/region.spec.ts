@@ -23,7 +23,9 @@ test.describe("region", () => {
 
     const data = await rpc<Region>(page, "region", { id: "region:in-gj", window: "7d" });
     const crumbs = card.getByRole("navigation", { name: "Where this is" });
-    await expect(crumbs.getByRole("listitem")).toHaveCount(data.region.breadcrumb.filter((b) => b.id !== "region:world").length + 1);
+    await expect(crumbs.getByRole("listitem")).toHaveCount(
+      data.region.breadcrumb.filter((b) => b.id !== "region:world").length + 1,
+    );
     await expect(crumbs.getByRole("button", { name: "India" })).toBeVisible();
     await expect(crumbs.locator("[aria-current=page]")).toHaveText("Gujarat");
 
@@ -49,7 +51,10 @@ test.describe("region", () => {
     await openApp(page, "#region=region:in");
     const panel = detailsPanel(page);
     await expect(panel.getByText("Activity in the last 7 days")).toBeVisible();
-    await panel.getByRole("radiogroup", { name: "Time window" }).getByRole("radio", { name: "Last 30 days" }).click();
+    await panel
+      .getByRole("radiogroup", { name: "Time window" })
+      .getByRole("radio", { name: "Last 30 days" })
+      .click();
     await expect(panel.getByText("Activity in the last 30 days")).toBeVisible();
     await expect.poll(() => currentHash(page)).toBe("#region=region:in&w=30d");
   });
@@ -64,7 +69,11 @@ test.describe("region", () => {
 
     const picker = panel.getByRole("combobox", { name: "Add a region" });
     await picker.fill("China");
-    await panel.getByRole("listbox", { name: "Matching places" }).getByRole("option", { name: /^China/ }).first().click();
+    await panel
+      .getByRole("listbox", { name: "Matching places" })
+      .getByRole("option", { name: /^China/ })
+      .first()
+      .click();
     await expect(chosen.getByRole("button", { name: "Remove China" })).toBeVisible();
     await expect.poll(() => currentHash(page)).toBe("#compare=region:in,region:cn");
 
