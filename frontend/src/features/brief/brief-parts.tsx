@@ -67,9 +67,11 @@ export function BriefCardFrame({
   );
 }
 
-/** A card with nothing in it: says so and offers a next tap. */
+/** A card with nothing in it: says so and offers a quiet next tap. */
 export function EmptyCard({ kind, action }: { kind: BriefKind; action?: StateAction }) {
-  return <EmptyState compact title={CARD_INFO[kind].empty} action={action} className="flex-1 justify-center" />;
+  return (
+    <EmptyState compact title={CARD_INFO[kind].empty} secondaryAction={action} className="flex-1 justify-center" />
+  );
 }
 
 // ---------------------------------------------------------------------------

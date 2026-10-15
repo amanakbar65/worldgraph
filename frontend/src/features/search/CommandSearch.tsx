@@ -25,8 +25,8 @@ import { ErrorState } from "@/components/ErrorState";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ENTITY_TYPE_ICONS } from "@/lib/icons";
-import { entityTypeTone } from "@/lib/meaning";
+import { ENTITY_TYPE_ICONS, IMPACT_ICONS } from "@/lib/icons";
+import { IMPACT_TONES, entityTypeTone } from "@/lib/meaning";
 import { cn } from "@/lib/utils";
 import { useUserValue } from "@/platform/storage";
 import { useNav, type View } from "@/state/nav";
@@ -37,11 +37,11 @@ import {
   MIN_QUERY,
   SEARCH_LIMIT,
   addRecent,
-  contextLabel,
   groupResults,
   matchActions,
   panelFor,
   parseRecent,
+  resultContext,
   type ActionInfo,
   type RecentItem,
   type SearchResult,
@@ -325,9 +325,11 @@ function EnterHint() {
 }
 
 function ResultItem({ item, onSelect }: { item: RecentItem | SearchResult; onSelect: () => void }) {
-  const tone = entityTypeTone(item.type);
+  const context = resultContext(item);
+  // Stories take their impact's colour (named with its icon in the line below); the rest their type's.
+  const tone = context.impact ? IMPACT_TONES[context.impact] : entityTypeTone(item.type);
   const Icon = (ENTITY_TYPE_ICONS[item.type as EntityType] ?? ENTITY_TYPE_ICONS.story).icon;
-  const context = contextLabel(item);
+  const ImpactIcon = context.impact ? IMPACT_ICONS[context.impact].icon : null;
   return (
     <Command.Item value={item.id} onSelect={onSelect} className={ITEM_CLASS}>
       <span
@@ -338,7 +340,18 @@ function ResultItem({ item, onSelect }: { item: RecentItem | SearchResult; onSel
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-body text-fg">{item.name}</span>
-        {context && <span className="truncate text-label text-fg-muted">{context}</span>}
+        {(context.text || context.impact) && (
+          <span className="flex min-w-0 items-center gap-1.5 text-label text-fg-muted">
+            {context.text && <span className="truncate">{context.text}</span>}
+            {context.text && context.impact && <span aria-hidden>·</span>}
+            {context.impact && ImpactIcon && (
+              <span className={cn("inline-flex shrink-0 items-center gap-1 font-medium", tone.text)}>
+                <ImpactIcon aria-hidden className="size-3.5" />
+                {IMPACT_TONES[context.impact].label}
+              </span>
+            )}
+          </span>
+        )}
       </span>
       <EnterHint />
     </Command.Item>

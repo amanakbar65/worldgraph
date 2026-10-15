@@ -3,7 +3,7 @@
  * short context line under each result, where Enter takes you, recent
  * searches, and matching quick actions.
  */
-import type { EntityType, SearchResponse } from "@/api/contract";
+import type { EntityType, Impact, SearchResponse } from "@/api/contract";
 import type { Panel } from "@/state/nav";
 
 export type SearchResult = SearchResponse["results"][number];
@@ -56,26 +56,43 @@ export function groupResults(results: readonly SearchResult[]): ResultGroup[] {
     .map(({ type, label, items }) => ({ type, label, items }));
 }
 
-const capitalise = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-const IMPACT_WORDS = new Set(["risk", "opportunity", "neutral"]);
+const IMPACTS: readonly Impact[] = ["risk", "opportunity", "neutral"];
+const isImpact = (word: string): word is Impact => (IMPACTS as readonly string[]).includes(word);
+
+export interface ResultContext {
+  /** The line under the name, without repeating the group, e.g. "India" or "46% crowd forecast". */
+  text: string | null;
+  /** A story's impact, shown with its icon and colour. */
+  impact: Impact | null;
+}
 
 /**
- * The line under a result, without repeating its group: "Story · India ·
- * risk" → "India · Risk"; "Forecast · 46%" → "46% crowd forecast".
+ * What to show under a result: "Story · India · risk" → "India" plus the
+ * risk impact; "Projected · India · risk" keeps "Projected"; "Forecast ·
+ * 46%" → "46% crowd forecast"; anything else as the database wrote it.
  */
-export function contextLabel(result: Pick<SearchResult, "type" | "context">): string | null {
+export function resultContext(result: Pick<SearchResult, "type" | "context">): ResultContext {
   const context = result.context?.trim();
-  if (!context) return null;
+  if (!context) return { text: result.type === "forecast" ? "Crowd forecast" : null, impact: null };
   const parts = context.split(" · ").map((p) => p.trim()).filter(Boolean);
   if (result.type === "story") {
     if (parts[0] === "Story") parts.shift();
-    return parts.map((p) => (IMPACT_WORDS.has(p) ? capitalise(p) : p)).join(" · ") || null;
+    const impact = parts.find(isImpact) ?? null;
+    const rest = parts.filter((p) => !isImpact(p));
+    return { text: rest.join(" · ") || null, impact };
   }
   if (result.type === "forecast") {
     const pct = parts.find((p) => /^\d+%$/.test(p));
-    return pct ? `${pct} crowd forecast` : "Crowd forecast";
+    return { text: pct ? `${pct} crowd forecast` : "Crowd forecast", impact: null };
   }
-  return parts.join(" · ");
+  return { text: parts.join(" · "), impact: null };
+}
+
+/** The context as one line of plain text (for accessible names and tests). */
+export function contextLabel(result: Pick<SearchResult, "type" | "context">): string | null {
+  const { text, impact } = resultContext(result);
+  const words = [text, impact && impact.charAt(0).toUpperCase() + impact.slice(1)].filter(Boolean);
+  return words.length ? words.join(" · ") : null;
 }
 
 /** Where Enter takes you: regions, stories and forecasts have their own panels; the rest open as entities. */

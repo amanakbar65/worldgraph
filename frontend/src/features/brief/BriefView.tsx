@@ -15,7 +15,9 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import type { BriefResponse } from "@/api/contract";
 import { useRpc } from "@/api/client";
+import { snapshotKey, useSnapshot } from "@/api/sources/static";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
 import { SampleBadge } from "@/components/SampleBadge";
@@ -70,7 +72,11 @@ export default function BriefView() {
   const stored = useUserValue<unknown>("profile", null);
   const profile = useMemo(() => usableProfile(stored.value), [stored.value]);
   const args = useMemo(() => (profile ? { profile, sample } : { sample }), [profile, sample]);
-  const query = useRpc("brief", args);
+  // The first frame (no profile) comes from the bundled snapshot in the test
+  // link; when a saved profile arrives, the general brief stays on screen
+  // until the tuned one is ready instead of flashing back to skeletons.
+  const snapshot = useSnapshot((s) => s.data.get(snapshotKey("brief", args)) as BriefResponse | undefined);
+  const query = useRpc("brief", args, { placeholderData: (previous) => previous ?? snapshot });
   const brief = query.data;
 
   const openStory = (id: string) => open({ kind: "story", id });
