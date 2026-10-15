@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, type Ref } from "react";
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, type MutableRefObject, type Ref } from "react";
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from "react-force-graph-2d";
 
 import { LINK_TYPES } from "@/lib/meaning";
@@ -13,8 +13,8 @@ type FgMethods = ForceGraphMethods<FgNode, FgLink>;
 
 /** What a parent can ask of the canvas. */
 export interface GraphCanvasHandle {
-  /** Centre on a node (and zoom in a little). `offsetX` shifts it left of a side panel, in px. */
-  centerOn: (id: string, options?: { zoom?: number; offsetX?: number }) => boolean;
+  /** Centre on a node in the free part of the canvas (and zoom in a little). */
+  centerOn: (id: string, options?: { zoom?: number }) => boolean;
   zoomBy: (factor: number) => void;
   fit: () => void;
   /** Where a node is on screen, in px from the canvas's top left. */
@@ -47,12 +47,24 @@ export interface GraphCanvasProps {
   onUserMove?: () => void;
   /** The layout settled (first time for this graph). */
   onSettled?: () => void;
+  /** Parts of the canvas covered by toolbars or panels, in px: fitting and centring keep clear of them. */
+  insets?: Insets;
   handleRef?: Ref<GraphCanvasHandle>;
   className?: string;
 }
 
+export interface Insets {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+const NO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
 const GROW_MS = 700;
 const LABEL_PX = 12;
+const MIN_ZOOM = 0.15;
+const MAX_ZOOM = 10;
 
 /**
  * The force-directed knowledge graph on a canvas. Entities are icon badges
@@ -80,6 +92,7 @@ export function GraphCanvas({
   onBackgroundClick,
   onUserMove,
   onSettled,
+  insets,
   handleRef,
   className,
 }: GraphCanvasProps) {
@@ -89,7 +102,13 @@ export function GraphCanvas({
   const settled = useRef(false);
   const tickedOnce = useRef(false);
   const userMoved = useRef(false);
-  const pendingCenter = useRef<{ id: string; zoom?: number; offsetX?: number } | null>(null);
+  const pendingCenter = useRef<{ id: string; zoom?: number } | null>(null);
+
+  // The latest insets and visible set, for camera moves started by timers and the engine.
+  const live = useRef({ insets: insets ?? NO_INSETS, visible, width, height });
+  useEffect(() => {
+    live.current = { insets: insets ?? NO_INSETS, visible, width, height };
+  }, [insets, visible, width, height]);
 
   const data = useMemo(() => ({ nodes: graph.nodes as FgNode[], links: graph.links as FgLink[] }), [graph]);
   const lit = useMemo(() => focusSet(graph, litId), [graph, litId]);
@@ -106,24 +125,58 @@ export function GraphCanvas({
     onUserMove?.();
   }, [onUserMove]);
 
-  // Forces: a little more room than the defaults, tighter for cause and effect.
-  useEffect(() => {
-    const instance = fg.current;
-    if (!instance) return;
-    const charge = instance.d3Force("charge");
-    charge?.strength?.(mini ? -55 : -42);
-    charge?.distanceMax?.(mini ? 200 : 320);
-    const link = instance.d3Force("link");
-    link?.distance?.((l: VizLink) => (l.linkType ? 34 : l.type === "mentions" ? 26 : 30));
-  }, [graph, mini]);
+  // Forces are set as soon as the graph exists, before it lays out its first
+  // data: a little more room than the defaults, tighter for cause and
+  // effect, and a gentle pull to the middle so loose clusters stay near.
+  const attach = useCallback(
+    (instance: FgMethods | null) => {
+      fg.current = instance ?? undefined;
+      if (!instance) return;
+      const charge = instance.d3Force("charge");
+      charge?.strength?.(mini ? -60 : -42);
+      charge?.distanceMax?.(mini ? 200 : 320);
+      const link = instance.d3Force("link");
+      link?.distance?.((l: VizLink) => (l.linkType ? 34 : l.type === "mentions" ? 26 : 30));
+      instance.d3Force("gravity", gravity(mini ? 0.06 : 0.05));
+    },
+    [mini],
+  );
+
+  /** Frame the drawn nodes inside the free part of the canvas (clear of toolbars and panels). */
+  const fitView = useCallback(
+    (ms: number) => {
+      const instance = fg.current;
+      const { insets: ins, visible: shown, width: w, height: h } = live.current;
+      if (!instance || w <= 0 || h <= 0) return;
+      const box = graphBox(graph.nodes, shown);
+      if (!box) return;
+      const pad = mini ? 10 : 24;
+      const labelRoom = 18; // the lowest node's label
+      const freeW = Math.max(60, w - ins.left - ins.right - pad * 2);
+      const freeH = Math.max(60, h - ins.top - ins.bottom - pad * 2 - labelRoom);
+      const k = Math.min(
+        mini ? 3 : 4,
+        Math.max(MIN_ZOOM, Math.min(freeW / Math.max(1, box.x1 - box.x0), freeH / Math.max(1, box.y1 - box.y0))),
+      );
+      const sx = ins.left + pad + freeW / 2 - w / 2;
+      const sy = ins.top + pad + freeH / 2 - h / 2;
+      instance.centerAt((box.x0 + box.x1) / 2 - sx / k, (box.y0 + box.y1) / 2 - sy / k, ms);
+      instance.zoom(k, ms);
+    },
+    [graph, mini],
+  );
 
   const centerNow = useCallback(
-    (node: VizNode, options: { zoom?: number; offsetX?: number } = {}) => {
+    (node: VizNode, options: { zoom?: number } = {}) => {
       const instance = fg.current;
       if (!instance || node.x === undefined || node.y === undefined) return false;
+      const { insets: ins } = live.current;
       const k = Math.max(instance.zoom(), options.zoom ?? 0);
       const ms = calm ? 0 : 600;
-      instance.centerAt(node.x + (options.offsetX ?? 0) / 2 / k, node.y, ms);
+      // The middle of the free area, not of the canvas.
+      const sx = (ins.left - ins.right) / 2;
+      const sy = (ins.top - ins.bottom) / 2;
+      instance.centerAt(node.x - sx / k, node.y - sy / k, ms);
       if (options.zoom && instance.zoom() < options.zoom) instance.zoom(options.zoom, ms);
       return true;
     },
@@ -136,17 +189,14 @@ export function GraphCanvas({
       centerOn: (id, options) => {
         const node = graph.byId.get(id);
         if (!node) return false;
-        if (!settled.current || !centerNow(node, options)) {
-          pendingCenter.current = { id, ...options };
-          return true;
-        }
+        if (!settled.current || !centerNow(node, options)) pendingCenter.current = { id, ...options };
         return true;
       },
       zoomBy: (factor) => {
         const instance = fg.current;
-        if (instance) instance.zoom(instance.zoom() * factor, calm ? 0 : 250);
+        if (instance) instance.zoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, instance.zoom() * factor)), calm ? 0 : 250);
       },
-      fit: () => fg.current?.zoomToFit(calm ? 0 : 400, mini ? 16 : 48),
+      fit: () => fitView(calm ? 0 : 400),
       screenOf: (id) => {
         const node = graph.byId.get(id);
         const instance = fg.current;
@@ -154,15 +204,15 @@ export function GraphCanvas({
         return instance.graph2ScreenCoords(node.x, node.y);
       },
     }),
-    [graph, calm, mini, centerNow],
+    [graph, calm, centerNow, fitView],
   );
 
   const handleTick = useCallback(() => {
     if (tickedOnce.current) return;
     tickedOnce.current = true;
     // Frame the drawing straight away; it is refined when the layout settles.
-    fg.current?.zoomToFit(0, mini ? 16 : 48);
-  }, [mini]);
+    if (!userMoved.current) fitView(0);
+  }, [fitView]);
 
   const handleStop = useCallback(() => {
     if (settled.current) return;
@@ -172,9 +222,9 @@ export function GraphCanvas({
     const node = pending ? graph.byId.get(pending.id) : undefined;
     const centred = node ? centerNow(node, pending ?? {}) : false;
     // Frame the settled drawing, unless the viewer has already moved it.
-    if (!centred && !userMoved.current) fg.current?.zoomToFit(calm ? 0 : 500, mini ? 16 : 48);
+    if (!centred && !userMoved.current) fitView(calm ? 0 : 500);
     onSettled?.();
-  }, [graph, calm, mini, centerNow, onSettled]);
+  }, [graph, calm, centerNow, fitView, onSettled]);
 
   // ---------------------------------------------------------------------------
   // Drawing
@@ -412,7 +462,8 @@ export function GraphCanvas({
     <div className={className} onWheel={markMoved} onPointerDown={mini ? undefined : markMoved}>
       {host}
       <ForceGraph2D<VizNode, VizLink>
-        ref={fg}
+        // A callback ref, so the forces are in place before the first layout.
+        ref={attach as unknown as MutableRefObject<FgMethods | undefined>}
         graphData={data}
         width={width}
         height={height}
@@ -435,8 +486,8 @@ export function GraphCanvas({
         cooldownTicks={calm ? 0 : 400}
         cooldownTime={calm ? 0 : mini ? 2500 : 5000}
         d3VelocityDecay={0.32}
-        minZoom={0.15}
-        maxZoom={10}
+        minZoom={MIN_ZOOM}
+        maxZoom={MAX_ZOOM}
         enableNodeDrag={!mini}
         enableZoomInteraction={!mini}
         enablePanInteraction={!mini}
@@ -450,6 +501,41 @@ export function GraphCanvas({
       />
     </div>
   );
+}
+
+/**
+ * A weak pull towards the middle (like d3's forceX/forceY at the origin), so
+ * clusters that link to nothing else don't drift off.
+ */
+function gravity(strength: number) {
+  let nodes: VizNode[] = [];
+  const force = (alpha: number) => {
+    for (const n of nodes) {
+      if (n.x === undefined || n.y === undefined) continue;
+      n.vx = (n.vx ?? 0) - n.x * strength * alpha;
+      n.vy = (n.vy ?? 0) - n.y * strength * alpha;
+    }
+  };
+  force.initialize = (next: VizNode[]) => {
+    nodes = next;
+  };
+  return force;
+}
+
+/** The box around the drawn nodes, in graph units (null when none have a place yet). */
+function graphBox(nodes: readonly VizNode[], visible: ReadonlySet<string> | null) {
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let y0 = Infinity;
+  let y1 = -Infinity;
+  for (const n of nodes) {
+    if (n.x === undefined || n.y === undefined || (visible && !visible.has(n.id))) continue;
+    x0 = Math.min(x0, n.x - n.r);
+    x1 = Math.max(x1, n.x + n.r);
+    y0 = Math.min(y0, n.y - n.r);
+    y1 = Math.max(y1, n.y + n.r);
+  }
+  return Number.isFinite(x0) ? { x0, x1, y0, y1 } : null;
 }
 
 function overlaps(a: [number, number, number, number], b: [number, number, number, number]): boolean {

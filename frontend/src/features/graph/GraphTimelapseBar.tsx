@@ -12,27 +12,32 @@ export interface GraphTimelapseBarProps {
   shown: number;
   total: number;
   calm: boolean;
+  /** A shorter button label (phones). */
+  compact?: boolean;
   className?: string;
 }
 
 /**
  * Replays how the graph grew. Off: one button. On: play/pause, a scrubber
  * with the date and how many nodes have appeared, and a close button.
+ * Under reduced motion it steps instead of gliding.
  */
-export function GraphTimelapseBar({ timelapse, shown, total, calm, className }: GraphTimelapseBarProps) {
+export function GraphTimelapseBar({ timelapse, shown, total, calm, compact = false, className }: GraphTimelapseBarProps) {
   const { active, playing, range, cursor } = timelapse;
   if (!range) return null;
 
   if (!active) {
+    const long = calm ? "Step through how the graph grew" : "Replay how the graph grew";
     return (
       <Button
         variant="outline"
         onClick={timelapse.start}
-        className={cn("border-line bg-glass shadow-panel backdrop-blur-xl", className)}
-        title={calm ? "Step through how the graph grew" : "Replay how the graph grew"}
+        className={cn("border-line bg-glass shadow-panel backdrop-blur-xl", compact && "px-3", className)}
+        title={long}
+        aria-label={long}
       >
         <History aria-hidden />
-        {calm ? "Step through growth" : "Replay growth"}
+        {compact ? (calm ? "Steps" : "Replay") : calm ? "Step through growth" : "Replay growth"}
       </Button>
     );
   }

@@ -15,14 +15,15 @@ export interface GraphLegendProps {
   /** Start open (desktop) or closed (phones). */
   defaultOpen?: boolean;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 /** What the colours, shapes and lines mean. Opens and closes; drawn the way the graph draws them. */
-export function GraphLegend({ types, linkTypes, defaultOpen = true, className }: GraphLegendProps) {
+export function GraphLegend({ types, linkTypes, defaultOpen = true, className, style }: GraphLegendProps) {
   const [open, setOpen] = useState(defaultOpen);
   const id = useId();
   return (
-    <div className={cn("rounded-xl border border-line bg-glass shadow-panel backdrop-blur-xl", className)}>
+    <div className={cn("rounded-xl border border-line bg-glass shadow-panel backdrop-blur-xl", className)} style={style}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}

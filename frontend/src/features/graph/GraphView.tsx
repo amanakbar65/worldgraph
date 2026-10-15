@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { currentPanel, useNav } from "@/state/nav";
 import { sampleArg, useCalm, useSettings } from "@/state/settings";
 
-import { GraphCanvas, type GraphCanvasHandle } from "./GraphCanvas";
+import { GraphCanvas, type GraphCanvasHandle, type Insets } from "./GraphCanvas";
 import {
   activeFilterCount,
   buildGraphArgs,
@@ -57,6 +57,11 @@ const DEPTH_OPTIONS = ([1, 2, 3] as const).map((d) => ({
 
 /** Side panel width on desktop plus its margins, so the camera can keep nodes clear of it. */
 const PANEL_INSET = 452;
+/** Room for the app's status pill at the bottom left (desktop / phone). */
+const STATUS_SPACE = 52;
+const PHONE_STATUS_SPACE = 44;
+/** On desktop the replay control starts right of the status pill. */
+const DESKTOP_BAR_LEFT = 340;
 
 /** Where each node sat, so returning to the graph (or new data) doesn't reshuffle it. */
 const POSITIONS = new Map<string, { x: number; y: number }>();
@@ -80,6 +85,7 @@ export default function GraphView() {
   const nav = useGraphNav();
   const theme = useGraphTheme();
   const [boxRef, size] = useElementSize<HTMLDivElement>();
+  const [toolbarRef, toolbar] = useElementSize<HTMLDivElement>();
   const canvas = useRef<GraphCanvasHandle>(null);
 
   const local = scope.kind === "local";
@@ -136,14 +142,23 @@ export default function GraphView() {
   const pinnedId = pinned && graph?.byId.has(pinned.id) ? pinned.id : null;
   const litId = hover?.node.id ?? pinnedId;
 
+  // What covers the canvas: the toolbar, the bottom controls (or the bottom
+  // sheet on phones) and the side panel. Fitting and centring keep clear.
+  const sheetOpen = !isDesktop && top !== null;
+  const insets = useMemo<Insets>(
+    () => ({
+      top: toolbar.height ? toolbar.height + 20 : 0,
+      right: rightInset,
+      bottom: sheetOpen ? Math.round(size.height * 0.5) : isDesktop ? 56 : PHONE_STATUS_SPACE + 48,
+      left: 0,
+    }),
+    [toolbar.height, rightInset, sheetOpen, size.height, isDesktop],
+  );
+
   // Re-centre for a new pin or new data, not when a panel opens or closes.
-  const inset = useRef(rightInset);
-  useEffect(() => {
-    inset.current = rightInset;
-  }, [rightInset]);
   useEffect(() => {
     if (!pinned || !graph || !graph.byId.has(pinned.id)) return;
-    canvas.current?.centerOn(pinned.id, { zoom: 2.2, offsetX: inset.current });
+    canvas.current?.centerOn(pinned.id, { zoom: 2.2 });
   }, [pinned, graph]);
 
   const onNodeHover = useCallback(
@@ -217,6 +232,7 @@ export default function GraphView() {
               onLinkHover={onLinkHover}
               onBackgroundClick={() => useGraphState.getState().pin(null)}
               onSettled={onSettled}
+              insets={insets}
               className="absolute inset-0"
             />
             {hover && <NodeHoverCard node={hover.node} at={hover.at} />}
@@ -226,7 +242,10 @@ export default function GraphView() {
       </div>
 
       {graph && listView && !empty && (
-        <div className="absolute inset-0 overflow-y-auto px-3 pt-36 pb-6 sm:pt-32" style={{ paddingRight: rightInset || undefined }}>
+        <div
+          className="absolute inset-0 overflow-y-auto px-3 pt-36 pb-16 sm:pt-32"
+          style={{ paddingTop: toolbar.height ? toolbar.height + 24 : undefined, paddingRight: rightInset || undefined }}
+        >
           <GraphList graph={graph} onOpen={nav.openNode} className="mx-auto max-w-3xl" />
         </div>
       )}
@@ -245,6 +264,7 @@ export default function GraphView() {
 
       {/* Toolbar */}
       <div
+        ref={toolbarRef}
         className="absolute top-3 left-3 z-10 flex max-w-[calc(100%-24px)] flex-col items-start gap-2"
         style={rightInset ? { maxWidth: `calc(100% - ${rightInset + 24}px)` } : undefined}
       >
@@ -259,35 +279,74 @@ export default function GraphView() {
         )}
       </div>
 
-      {/* Bottom controls */}
-      {graph && !empty && !listView && (
+      {/* Bottom controls, clear of the app's status pill (bottom left). */}
+      {graph && !empty && !listView && isDesktop && (
         <>
           <GraphLegend
-            key={isDesktop ? "desktop" : "phone"}
+            key="desktop"
             types={graph.types}
             linkTypes={graph.linkTypes}
-            defaultOpen={isDesktop}
-            className={cn("absolute bottom-3 left-3 z-10", isDesktop ? "w-72" : "w-auto max-w-[calc(100%-120px)]")}
+            defaultOpen
+            className="absolute left-3 z-10 w-72"
+            style={{ bottom: STATUS_SPACE }}
           />
-          <GraphTimelapseBar
-            timelapse={timelapse}
-            shown={shown}
-            total={graph.nodes.length}
-            calm={calm}
-            className={cn(
-              "absolute z-10",
-              timelapse.active
-                ? "right-3 bottom-16 left-3 md:right-auto md:bottom-3 md:left-1/2 md:w-[min(560px,calc(100%-700px))] md:min-w-[400px] md:-translate-x-1/2"
-                : "bottom-3 left-1/2 -translate-x-1/2",
-            )}
-          />
+          <div
+            className="pointer-events-none absolute bottom-3 z-10 flex justify-center"
+            style={{ left: DESKTOP_BAR_LEFT, right: 64 + rightInset }}
+          >
+            <GraphTimelapseBar
+              timelapse={timelapse}
+              shown={shown}
+              total={graph.nodes.length}
+              calm={calm}
+              className={cn("pointer-events-auto", timelapse.active && "w-full max-w-[560px]")}
+            />
+          </div>
           <ZoomControls
             onZoomIn={() => canvas.current?.zoomBy(1.5)}
             onZoomOut={() => canvas.current?.zoomBy(1 / 1.5)}
             onFit={() => canvas.current?.fit()}
+            className="bottom-3 flex-col"
             style={{ right: 12 + rightInset }}
           />
         </>
+      )}
+      {graph && !empty && !listView && !isDesktop && (
+        <div className="pointer-events-none absolute inset-x-3 z-10 flex items-end gap-2" style={{ bottom: PHONE_STATUS_SPACE }}>
+          {timelapse.active ? (
+            <GraphTimelapseBar
+              timelapse={timelapse}
+              shown={shown}
+              total={graph.nodes.length}
+              calm={calm}
+              className="pointer-events-auto w-full"
+            />
+          ) : (
+            <>
+              <GraphLegend
+                key="phone"
+                types={graph.types}
+                linkTypes={graph.linkTypes}
+                defaultOpen={false}
+                className="pointer-events-auto max-w-[calc(100%-180px)] min-w-0"
+              />
+              <GraphTimelapseBar
+                timelapse={timelapse}
+                shown={shown}
+                total={graph.nodes.length}
+                calm={calm}
+                compact
+                className="pointer-events-auto"
+              />
+              <ZoomControls
+                onZoomIn={() => canvas.current?.zoomBy(1.5)}
+                onZoomOut={() => canvas.current?.zoomBy(1 / 1.5)}
+                onFit={() => canvas.current?.fit()}
+                className="pointer-events-auto relative ml-auto flex-row"
+              />
+            </>
+          )}
+        </div>
       )}
     </div>
   );
@@ -391,15 +450,14 @@ function Summary({ graph, truncated, updating }: { graph: VizGraph; truncated: b
   const setLimit = useGraphState((s) => s.setLimit);
   const next = LIMIT_OPTIONS.find((n) => n > filters.limit);
   return (
-    <div className="flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-line bg-glass px-2.5 py-1 text-label text-fg-muted shadow-panel backdrop-blur-xl">
+    <div className="flex max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-line bg-glass px-2.5 py-1 text-label text-fg-muted shadow-panel backdrop-blur-xl">
       <span className="tabular-nums">
         {graph.nodes.length} items · {graph.links.length} links
       </span>
       {graph.hasSample && <SampleBadge />}
       {truncated && (
-        <>
-          <span aria-hidden>·</span>
-          <span>Most connected first</span>
+        <span className="inline-flex items-center gap-1">
+          Most connected first
           {next && (
             <button
               type="button"
@@ -409,7 +467,7 @@ function Summary({ graph, truncated, updating }: { graph: VizGraph; truncated: b
               Show up to {next}
             </button>
           )}
-        </>
+        </span>
       )}
       <span role="status" aria-live="polite">
         {updating ? "Updating…" : ""}
@@ -422,24 +480,36 @@ function ZoomControls({
   onZoomIn,
   onZoomOut,
   onFit,
+  className,
   style,
 }: {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onFit: () => void;
+  /** Placement and direction (`flex-col` or `flex-row`). */
+  className?: string;
   style?: React.CSSProperties;
 }) {
   return (
     <div
       role="group"
       aria-label="Zoom"
-      className="absolute bottom-3 z-10 flex flex-col overflow-hidden rounded-xl border border-line bg-glass shadow-panel backdrop-blur-xl"
+      className={cn(
+        "absolute z-10 flex overflow-hidden rounded-xl border border-line bg-glass shadow-panel backdrop-blur-xl",
+        className,
+      )}
       style={style}
     >
       <Button variant="ghost" size="icon" onClick={onZoomIn} aria-label="Zoom in" className="rounded-none">
         <ZoomIn aria-hidden />
       </Button>
-      <Button variant="ghost" size="icon" onClick={onZoomOut} aria-label="Zoom out" className="rounded-none border-y border-line">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onZoomOut}
+        aria-label="Zoom out"
+        className="rounded-none border-line [.flex-col>&]:border-y [.flex-row>&]:border-x"
+      >
         <ZoomOut aria-hidden />
       </Button>
       <Button variant="ghost" size="icon" onClick={onFit} aria-label="Fit the graph to the screen" className="rounded-none">

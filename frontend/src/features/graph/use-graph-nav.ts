@@ -42,6 +42,7 @@ export function useGraphNav() {
       },
       ask: (scope: string) => open({ kind: "ask", scope }),
       openBusiness: () => setView("business"),
+      openForecasts: () => setView("forecasts"),
     }),
     [open, setView, flyTo],
   );
