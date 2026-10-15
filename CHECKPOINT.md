@@ -35,7 +35,7 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 - 820 frontend tests, lint, types and build all pass;
 - the artifact build is 12.6 MB in 110 files.
 
-**Next: QA** with `orchestration/worldgraph-qa.js` (no args): an e2e author plus 5 reviewers, in worktrees. Concerns from the agents to fold into the fixes:
+**QA running:** run `wf_fe3c223c-34c` (launched 08:17 UTC, worktrees `wf_fe3c223c-34c-<n>`), `orchestration/worldgraph-qa.js` with no args: an e2e author plus 5 reviewers, in worktrees. Concerns from the agents to fold into the fixes:
 - `api.globe` events need an `analysed` flag (new migration, contract and pytest; rebuild the snapshot);
 - `api.globe` may not filter skipped stories;
 - the ForecastRow footer can wrap at 352 px;
