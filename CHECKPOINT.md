@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 15 Oct 2026, 17:00 UTC. QA run 3 `wf_5401d9b0-dd2` in flight (e2e resumed from `wip/wf_4ef20849-b70-1`, plus 4 reviewers). Saver running.
+**Last updated:** 19 Oct 2026, 08:40 UTC. **Test link published:** https://claude.ai/artifact/XfUP7NoqKsf471epDNFRJN (version 1). Fix run 1 merged. Weekly usage limit almost spent: nothing in flight.
 
 ## How to resume (any new session)
 
@@ -32,21 +32,13 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 
 ## In flight
 
-**Screens: all 8 merged** (820 frontend tests; the artifact build is 12.6 MB in 110 files). **Live data:** pg_cron `wg-live-data` dispatches `pipeline.yml` every 15 minutes (confirmed, status 204).
+Nothing is running. Main has all 8 screens plus QA fix run 1 (850 frontend + 451 backend tests pass). Live data comes in every 15 minutes (2,578 live stories on 19 Oct). Migrations 0010-0013 are applied by the next pipeline run (`wg db migrate`). Check with `select version from schema_migrations order by version desc limit 4`.
 
-**QA run 3** `wf_5401d9b0-dd2` (launched 16:58 UTC): `orchestration/worldgraph-qa.js` with
-`{"only":["e2e","review:a11y-design","review:rules","review:artifact-security","review:polish"],"resume":{"e2e":"wip/wf_4ef20849-b70-1"}}`.
-Worktrees are `wf_5401d9b0-dd2-<n>`, saved to `wip/` of the same name. If it is interrupted, relaunch with `only` set to the labels that did not report, and `resume` pointing at their `wip/` branches.
+**To republish the test link:** `cd frontend && npm run build:artifact`, then use the Artifact tool with url https://claude.ai/artifact/XfUP7NoqKsf471epDNFRJN, file `dist-artifact/index.html`, `root` dist-artifact, and every path in `dist-artifact/artifact-files.json` as `files`. Omit capabilities to keep them.
 
-**Fix run 1** `wf_46134b48-10a` (launched 17:05 UTC): `orchestration/worldgraph-qa-fix.js` with 2 groups, `backend` and `shell`, fixing the correctness findings below plus the known items. The full args are in that run's transcript. If it is interrupted, merge the `wip/wf_46134b48-10a-<n>` branches or relaunch the same group with a resume note.
-
-**Correctness findings already in** (run 2; 14 findings in `orchestration/qa-notes/review-correctness-run2.md`):
-- watchlist logic duplicated in RegionPanel.tsx:181 and ForecastPanel.tsx:253 (use `useWatchlist()`);
-- api.globe country counts come from the capped 1,500 events (migration 0004:282/302);
-- api.meta `last_ingest_at` should come from `ingest_run`;
-- plus run 1 notes (`orchestration/qa-notes/review-correctness-run1.md`).
-
-**Known items:** api.globe `analysed` flag and skipped-story filter; favicon; ForecastRow wraps at 352 px; isError flicker; Not found → 500.
+**QA left (next week):** rerun `orchestration/worldgraph-qa.js` with
+`{"only":["e2e","review:a11y-design","review:rules","review:artifact-security","review:polish"],"resume":{"e2e":"wip/wf_5401d9b0-dd2-1"}}`. The a11y reviewer's notes from 16 Oct were lost.
+Then fix the remaining items with `worldgraph-qa-fix.js`: the shell agent did not reach the globe minute clock, the forecasts empty state, the favicon and the ForecastRow wrap at 352 px.
 
 ## Next
 
@@ -77,6 +69,7 @@ Worktrees are `wf_5401d9b0-dd2-<n>`, saved to `wip/` of the same name. If it is 
 | When | Run | Spent | Retained | Lost | Notes |
 | --- | --- | --- | --- | --- | --- |
 | 15 Oct 11:50 UTC limit | QA `wf_fe3c223c-34c` | 7.8 L | 45% | 55% | e2e 100% kept (1,167 lines of tests); correctness reviewer 0% kept (notes were in an ignored folder). Its 2 findings were rescued by hand from its transcript into `orchestration/qa-notes/`. The saver now keeps notes files. |
+| 15 Oct 21:50 UTC limit | QA `wf_5401d9b0-dd2` + fixes `wf_46134b48-10a` | 15.8 L | 54% | 46% | Fixers 99% kept and merged; e2e 50%; a11y reviewer 0% (notes unsaved). |
 | 15 Oct 12:45 UTC limit | QA `wf_4ef20849-b70` | 10.5 L | 93% | 7% | correctness finished (100%); e2e 87% kept on `wip/wf_4ef20849-b70-1`. The other 4 reviewers had not started. |
 
 ## Gotchas learned

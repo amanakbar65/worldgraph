@@ -18,6 +18,11 @@ See `CHECKPOINT.md` for the live state and resume steps.
 
 ## Log
 
+### 19 Oct 2026: test link published
+- Merged QA fix run 1 (backend + shell): 14 correctness findings fixed, plus `analysed`/`truncated` on api.globe. 850 frontend tests, 451 backend tests pass. Migrations 0010-0013 apply on the next pipeline run.
+- Published the test link: https://claude.ai/artifact/XfUP7NoqKsf471epDNFRJN (mcp Supabase execute_sql, sample, db, user).
+- Left for next week: the a11y/design, rules, security and polish reviews; finish e2e tests; favicon; ForecastRow wrap; forecasts empty state; globe minute clock.
+
 ### 8 Oct 2026: UI kit, test-link plumbing, screens under way
 
 - **UI kit** merged: tokens with a contrast and colour-blindness tested palette (both themes), icons and meaning helpers, primitives, and domain components (story card, forecast row, probability ring and bar, KPI tile, charts, states, sources), all shown in `DesignPreview`.

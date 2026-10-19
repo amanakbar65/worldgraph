@@ -2,7 +2,7 @@
 
 A visual map of what's happening in the world and what it means for a business: a 3D globe of events, a knowledge graph of who and what is connected, cause-and-effect cascades, and crowd forecasts.
 
-**Try it:** _the private test link is added here when it's published._
+**Try it:** [https://claude.ai/artifact/XfUP7NoqKsf471epDNFRJN](https://claude.ai/artifact/XfUP7NoqKsf471epDNFRJN) (private to you; open it while signed in to claude.ai, and connect the Supabase connector for live data).
 
 ## What you can do
 
