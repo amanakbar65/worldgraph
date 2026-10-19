@@ -37,7 +37,7 @@ Nothing is running. Main has all 8 screens plus QA fix run 1 (850 frontend + 451
 **To republish the test link:** `cd frontend && npm run build:artifact`, then use the Artifact tool with url https://claude.ai/artifact/XfUP7NoqKsf471epDNFRJN, file `dist-artifact/index.html`, `root` dist-artifact, and every path in `dist-artifact/artifact-files.json` as `files`. Omit capabilities to keep them.
 
 **QA left (next week):** rerun `orchestration/worldgraph-qa.js` with
-`{"only":["e2e","review:a11y-design","review:rules","review:artifact-security","review:polish"],"resume":{"e2e":"wip/wf_5401d9b0-dd2-1"}}`. The a11y reviewer's notes from 16 Oct were lost.
+`{"only":["e2e","review:a11y-design","review:rules","review:artifact-security","review:polish"],"resume":{"e2e":"wip/wf_5401d9b0-dd2-1"}}`. The a11y reviewer's notes were recovered into `orchestration/qa-notes/review-a11y-design-run3.md`: 4 findings plus the passing checks. Run it again only for the 4 unfinished checks listed there.
 Then fix the remaining items with `worldgraph-qa-fix.js`: the shell agent did not reach the globe minute clock, the forecasts empty state, the favicon and the ForecastRow wrap at 352 px.
 
 ## Next
