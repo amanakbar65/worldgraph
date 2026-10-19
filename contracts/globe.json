@@ -85,6 +85,9 @@
                 "type": "null"
               }
             ]
+          },
+          "analysed": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -101,6 +104,9 @@
         ],
         "additionalProperties": false
       }
+    },
+    "truncated": {
+      "type": "boolean"
     },
     "arcs": {
       "type": "array",

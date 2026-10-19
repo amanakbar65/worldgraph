@@ -1184,6 +1184,92 @@ def test_opportunities_forecast_visibility(sdb: psycopg.Connection) -> None:
     )
 
 
+def test_opportunity_forecasts_need_more_than_the_country(sdb: psycopg.Connection) -> None:
+    # An opening at a plant in Gujarat that mentions crude oil.
+    add_story(
+        sdb,
+        "story:test-opp-plant",
+        impact="opportunity",
+        sectors=("manufacturing", "energy"),
+        mentions=("commodity:crude-oil",),
+    )
+
+    def best() -> dict[str, Any] | None:
+        items = call(sdb, "opportunities", {"sample": False})["items"]
+        assert story_ids(items) == ["story:test-opp-plant"]
+        return items[0]["forecast"]
+
+    # Only the country in common (no shared sector): no forecast.
+    add_forecast(sdb, "forecast:test-in-rates", category="finance", about=("region:in",), volume=900000)
+    # A forecast about two countries needs a story about both.
+    add_forecast(
+        sdb, "forecast:test-in-us", category="commodities", about=("region:in", "region:us"), volume=900000
+    )
+    # A shared entity alone (no shared place or sector) is not enough either.
+    add_forecast(sdb, "forecast:test-oil-vote", category="politics", about=("commodity:crude-oil",))
+    assert best() is None
+    # Its own state (so its country) and a sector in common.
+    add_forecast(sdb, "forecast:test-gujarat", category="commodities", about=("region:in-gj",), volume=60000)
+    assert best()["id"] == "forecast:test-gujarat"
+    # A shared entity with a sector in common ranks first, even with less volume.
+    add_forecast(
+        sdb, "forecast:test-oil-energy", category="energy", about=("commodity:crude-oil",), volume=1000
+    )
+    assert best()["id"] == "forecast:test-oil-energy"
+
+
+def test_opportunity_forecasts_match_places_through_cities_and_blocs(sdb: psycopg.Connection) -> None:
+    # A story in Surat (a city of Gujarat) with an EU market: the state's
+    # forecast and an EU-wide one both fit by place.
+    add_story(
+        sdb,
+        "story:test-opp-surat",
+        impact="opportunity",
+        sectors=("logistics-trade",),
+        country="region:in",
+        admin1=None,
+        region="region:in-gj.surat",
+        mentions=("region:in-gj.surat", "region:de"),
+    )
+    add_forecast(sdb, "forecast:test-gujarat-port", category="trade", about=("region:in-gj",))
+    items = call(sdb, "opportunities", {"sample": False})["items"]
+    assert items[0]["forecast"]["id"] == "forecast:test-gujarat-port"
+    add_forecast(
+        sdb, "forecast:test-eu-india", category="trade", about=("region:eu", "region:in"), volume=900000
+    )
+    items = call(sdb, "opportunities", {"sample": False})["items"]
+    assert items[0]["forecast"]["id"] == "forecast:test-eu-india"  # two places shared, not one
+
+
+def test_opportunity_forecasts_on_the_sample_share_more_than_a_country(sdb: psycopg.Connection) -> None:
+    items = call(sdb, "opportunities", {"window": "7d", "sample": True})["items"]
+    with_forecast = [(i["story"], i["forecast"]["id"]) for i in items if i["forecast"]]
+    assert with_forecast
+    for story, fid in with_forecast:
+        row = sdb.execute(
+            """select exists (select 1 from causal_link where dst_story = %(s)s and forecast_id = %(f)s)
+                      or exists (select 1 from edge where src = %(f)s and dst = %(s)s and type = 'relates_to')
+                      as direct,
+                      exists (select 1 from edge m join edge a on a.dst = m.dst and a.src = %(f)s
+                              and a.type = 'about' join node n on n.id = m.dst
+                              where m.src = %(s)s and m.type = 'mentions'
+                                and n.type not in ('region', 'sector')) as entity,
+                      (select sectors from story where node_id = %(s)s)
+                      && (api._c_category_sectors((select category from forecast where node_id = %(f)s))
+                          || array(select substr(dst, 8) from edge
+                                   where src = %(f)s and type = 'about' and dst like 'sector:%%'))
+                      as sector""",
+            {"s": story["id"], "f": fid},
+        ).fetchone()
+        assert row is not None
+        assert row["direct"] or row["entity"] or row["sector"], (story["id"], fid)
+    # The reported case: the Fed forecast sat on ten US cards about ports and foundries.
+    fed = [s["id"] for s, fid in with_forecast if fid == "forecast:fed-cut-next-meeting"]
+    assert "story:ohio-castings-supplier-wins-orders" not in fed
+    assert "story:west-coast-ports-rail-gain" not in fed
+    assert len(fed) <= 4
+
+
 def test_opportunities_projected_from_events_in_window(sdb: psycopg.Connection) -> None:
     # A risk event in the window can lead to a projected opportunity.
     add_story(sdb, "story:test-risk-event", impact="risk", hours_ago=10, sources=10)

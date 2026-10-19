@@ -242,7 +242,7 @@ export const MetaResponse = z.object({
     sample_stories: z.number().int(),
     forecasts: z.number().int(),
     entities: z.number().int(),
-    last_ingest_at: Iso.nullable(),
+    last_ingest_at: Iso.nullable(), // when the last news run finished (else the newest live story)
     showing_sample: z.boolean(), // true while there is no live data yet
   }),
   sectors: z.array(z.object({ id: SectorId, name: z.string(), icon: z.string() })),
@@ -276,8 +276,16 @@ export const GlobeResponse = z.object({
       first_seen: Iso,
       headline: z.string(),
       country_id: Id.nullable(),
+      // AI analysis done (or sample); false marks a draft from the news
+      // pipeline. api.globe always sends it (optional here until the
+      // globe's test fixtures carry it).
+      analysed: z.boolean().optional(),
     }),
   ),
+  // True when `events` holds only the 1,500 most important events of the
+  // window; `countries` always counts every event. api.globe always sends
+  // it (optional here until the globe's test fixtures carry it).
+  truncated: z.boolean().optional(),
   arcs: z.array(
     z.object({
       id: z.number().int(), // causal_link id

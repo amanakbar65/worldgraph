@@ -37,6 +37,10 @@ pipeline = [
     "numpy>=2.5.3",
 ]
 
+[tool.uv]
+# `uv sync` installs the pipeline group too, as CI does: its tests need it.
+default-groups = ["dev", "pipeline"]
+
 [build-system]
 requires = ["uv_build>=0.11,<0.13"]
 build-backend = "uv_build"
