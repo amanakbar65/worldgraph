@@ -49,8 +49,29 @@ export async function handleRpc(pool: Pool, rawBody: string, ctx: RpcContext): P
     ]);
     return { status: 200, body: { data: result.rows[0]?.data ?? null } };
   } catch (error) {
-    const message = (error as Error).message ?? "Database error.";
-    const userFacing = /invalid|not found|must|unknown/i.test(message) ? message : "Database error.";
-    return { status: 500, body: { error: userFacing } };
+    return rpcFailure(error);
   }
+}
+
+/**
+ * The HTTP answer for a failed call, so the app can tell them apart:
+ * - 404: the item doesn't exist (api.* raises "Not found: <id>");
+ * - 400: the arguments were refused ("… must be …", "invalid …");
+ * - 503: the database didn't answer (no connection, too busy, timed out),
+ *   which is worth a retry;
+ * - 500: the function itself failed.
+ * Only our own messages are passed on; anything else says "Database error.".
+ */
+export function rpcFailure(error: unknown): RpcResult {
+  const e = (error ?? {}) as { message?: unknown; code?: unknown; severity?: unknown };
+  const message = typeof e.message === "string" && e.message ? e.message : "Database error.";
+  // Errors the server sent carry a severity and a SQLSTATE; connection failures don't.
+  const sqlstate = typeof e.severity === "string" && typeof e.code === "string" ? e.code : null;
+  // 08 connection, 53 resources (too many connections), 57 cancelled / shutting down.
+  if (sqlstate === null || /^(08|53|57)/.test(sqlstate)) {
+    return { status: 503, body: { error: "The database didn't answer. It may be waking up." } };
+  }
+  if (/^not found/i.test(message)) return { status: 404, body: { error: message } };
+  if (/invalid|must|unknown|needs/i.test(message)) return { status: 400, body: { error: message } };
+  return { status: 500, body: { error: "Database error." } };
 }

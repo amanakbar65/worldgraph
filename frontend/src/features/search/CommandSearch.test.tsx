@@ -39,25 +39,61 @@ const RESULTS: SearchResponse["results"] = [
 
 const mocks = vi.hoisted(() => ({
   results: [] as unknown[],
+  /** Answers for particular queries (others get `results`). */
+  byQuery: {} as Record<string, unknown[]>,
+  /** Queries whose answer hasn't arrived yet: the last answer shows as a placeholder (keepPreviousData). */
+  pending: new Set<string>(),
+  last: undefined as unknown,
   calls: [] as { name: string; args: unknown; enabled: boolean }[],
+  listeners: new Set<() => void>(),
+  version: 0,
 }));
 
-vi.mock("@/api/client", () => ({
-  useRpc: (name: RpcName, args: unknown, options?: { enabled?: boolean }) => {
-    const enabled = options?.enabled !== false;
-    mocks.calls.push({ name, args, enabled });
-    const data = enabled ? { results: mocks.results } : undefined;
-    return {
-      data,
-      error: null,
-      isPending: !data,
-      isError: false,
-      isFetching: false,
-      isPlaceholderData: false,
-      refetch: vi.fn(),
-    };
-  },
-}));
+vi.mock("@/api/client", async () => {
+  const { useSyncExternalStore } = await import("react");
+  const subscribe = (listener: () => void) => {
+    mocks.listeners.add(listener);
+    return () => mocks.listeners.delete(listener);
+  };
+  return {
+    useRpc: (name: RpcName, args: { q?: string }, options?: { enabled?: boolean }) => {
+      useSyncExternalStore(subscribe, () => mocks.version);
+      const enabled = options?.enabled !== false;
+      mocks.calls.push({ name, args, enabled });
+      const q = args.q ?? "";
+      if (enabled && mocks.pending.has(q)) {
+        const placeholder = mocks.last;
+        return {
+          data: placeholder,
+          error: null,
+          isPending: placeholder === undefined,
+          isError: false,
+          isFetching: true,
+          isPlaceholderData: placeholder !== undefined,
+          refetch: vi.fn(),
+        };
+      }
+      const data = enabled ? { results: mocks.byQuery[q] ?? mocks.results } : undefined;
+      if (data) mocks.last = data;
+      return {
+        data,
+        error: null,
+        isPending: !data,
+        isError: false,
+        isFetching: false,
+        isPlaceholderData: false,
+        refetch: vi.fn(),
+      };
+    },
+  };
+});
+
+/** The answer for `q` arrives. */
+async function answer(q: string) {
+  mocks.pending.delete(q);
+  mocks.version += 1;
+  await act(async () => mocks.listeners.forEach((listener) => listener()));
+}
 
 const searchCalls = () => mocks.calls.filter((c) => c.name === "search" && c.enabled).map((c) => c.args);
 const wait = (ms: number) => act(() => new Promise((r) => setTimeout(r, ms)));
@@ -85,6 +121,9 @@ beforeEach(() => {
   );
   Element.prototype.scrollIntoView = vi.fn();
   mocks.results = RESULTS;
+  mocks.byQuery = {};
+  mocks.pending.clear();
+  mocks.last = undefined;
   mocks.calls = [];
   useUi.setState({ searchOpen: false });
   useNav.setState({ panels: [], view: "globe", focus: null });
@@ -196,6 +235,39 @@ describe("CommandSearch", () => {
     expect(screen.getByRole("option", { name: /^India/, selected: true })).toBeTruthy();
     fireEvent.keyDown(input(), { key: "Enter" });
     expect(top()).toEqual({ kind: "region", id: "region:in" });
+  });
+
+  it("never opens the previous query's top result while the new answer loads", async () => {
+    const INDONESIA = { id: "region:id", type: "region", subtype: "country", name: "Indonesia", context: "Country", score: 1.2 };
+    mocks.byQuery = { ind: RESULTS, indonesia: [INDONESIA] };
+    render(<CommandSearch />);
+    await open();
+    await type("ind");
+    expect(screen.getByRole("option", { name: /^IndiaCountry/, selected: true })).toBeTruthy();
+
+    mocks.pending.add("indonesia");
+    fireEvent.change(input(), { target: { value: "indonesia" } });
+    await wait(0);
+    // Still in the pause: the "ind" rows stay on screen but can't be opened.
+    expect(screen.getAllByRole("option").every((o) => o.getAttribute("aria-disabled") === "true")).toBe(true);
+    expect(screen.queryByRole("option", { selected: true })).toBeNull();
+    fireEvent.keyDown(input(), { key: "Enter" });
+    expect(top()).toBeUndefined();
+
+    // The search for "indonesia" has gone out but not come back: still nothing to open.
+    await wait(260);
+    expect(searchCalls()).toContainEqual({ q: "indonesia", limit: 20 });
+    expect(screen.queryByRole("option", { selected: true })).toBeNull();
+    fireEvent.keyDown(input(), { key: "Enter" });
+    fireEvent.click(screen.getByRole("option", { name: /^IndiaCountry/ }));
+    expect(top()).toBeUndefined();
+    expect(useUi.getState().searchOpen).toBe(true);
+
+    // The answer arrives: its best match is highlighted and Enter opens it.
+    await answer("indonesia");
+    expect(screen.getByRole("option", { name: /^Indonesia/, selected: true })).toBeTruthy();
+    fireEvent.keyDown(input(), { key: "Enter" });
+    expect(top()).toEqual({ kind: "region", id: "region:id" });
   });
 
   it("offers to ask what was typed", async () => {

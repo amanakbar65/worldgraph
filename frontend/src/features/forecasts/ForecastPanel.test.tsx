@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ForecastResponse, RpcName } from "@/api/contract";
 import { getUserStore, __testing as storage } from "@/platform/storage";
 import { useNav } from "@/state/nav";
+import { __testing as profileStore } from "@/state/profile";
 
 import ForecastPanel from "./ForecastPanel";
 import { DUBLIN, ECB, FED, FED_BRANCHES, NOW, detail } from "./fixtures";
@@ -38,6 +39,7 @@ beforeEach(() => {
   useNav.setState({ panels: [], focus: null, sectors: [], window: "7d", view: "forecasts" });
   localStorage.clear();
   storage.reset();
+  profileStore.reset();
 });
 afterEach(() => {
   cleanup();
@@ -194,6 +196,25 @@ describe("ForecastPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Watching" }));
     expect(screen.getByText("Removed from your watchlist.")).toBeTruthy();
     await waitFor(async () => expect(await (await getUserStore()).get("watchlist")).toEqual([]));
+  });
+
+  it("edits the same watchlist as My Business, so a removal there sticks", async () => {
+    const panama = "forecast:panama-draft-limits-lifted";
+    profileStore.stores.watchlist.setState({ value: [panama, "region:in"], loaded: true, kind: "browser" });
+    renderPanel();
+    // My Business takes India off while this panel is open...
+    profileStore.stores.watchlist.getState().set((prev) => prev.filter((id) => id !== "region:in"));
+    // ...then the viewer watches this forecast.
+    fireEvent.click(screen.getByRole("button", { name: "Watch" }));
+    expect(profileStore.stores.watchlist.getState().value).toEqual([panama, FED.id]);
+    await waitFor(async () => expect(await (await getUserStore()).get("watchlist")).toEqual([panama, FED.id]));
+  });
+
+  it("keeps the forecast on screen when a background refresh fails", () => {
+    mocks.errors = { forecast: new Error("The database didn't answer.") };
+    renderPanel();
+    expect(screen.getByRole("heading", { level: 2, name: FED.short_title })).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("asks about this forecast", () => {

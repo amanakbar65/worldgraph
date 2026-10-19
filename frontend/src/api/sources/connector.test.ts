@@ -85,6 +85,25 @@ describe("ConnectorSource", () => {
     expect(error).toBeInstanceOf(DataError);
     expect((error as DataError).kind).toBe(kind);
   });
+
+  it("passes a cancelled call on as an AbortError, not a data failure", async () => {
+    const controller = new AbortController();
+    fakeMcp(async () => {
+      controller.abort();
+      return Promise.reject(mcpError("cancelled"));
+    });
+    const error = await new ConnectorSource()
+      .call("meta", {}, { signal: controller.signal })
+      .catch((e: unknown) => e);
+    expect(error).not.toBeInstanceOf(DataError);
+    expect((error as Error).name).toBe("AbortError");
+  });
+
+  it("treats a cancelled code as an abort even before the signal is seen", async () => {
+    fakeMcp(async () => Promise.reject(mcpError("cancelled")));
+    const error = await new ConnectorSource().call("meta", {}).catch((e: unknown) => e);
+    expect((error as Error).name).toBe("AbortError");
+  });
 });
 
 describe("approval_required", () => {
@@ -125,7 +144,7 @@ describe("approval_required", () => {
     const call = new ConnectorSource().call("meta", {}, { signal: controller.signal });
     await vi.waitFor(() => expect(useConnectorApproval.getState().waiting).toHaveLength(1));
     controller.abort();
-    await expect(call).rejects.toBeDefined();
+    await expect(call).rejects.toMatchObject({ name: "AbortError" });
     expect(useConnectorApproval.getState().waiting).toHaveLength(0);
   });
 });

@@ -5,15 +5,7 @@ import { impactTone, kpiChangeImpact } from "@/lib/meaning";
 import { formatDate } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
-/** Digits that suit the size of the number: 81.24, 412.6, 1,284, 1.4M. */
-function formatValue(value: number, locale?: string): string {
-  const abs = Math.abs(value);
-  if (abs >= 100_000) {
-    return new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(value);
-  }
-  const digits = abs >= 1000 ? 0 : abs >= 100 ? 1 : 2;
-  return new Intl.NumberFormat(locale, { maximumFractionDigits: digits, minimumFractionDigits: 0 }).format(value);
-}
+import { formatKpiNumber, shownChange } from "./kpi-format";
 
 const isPercent = (unit: string) => unit.trim() === "%";
 
@@ -33,21 +25,23 @@ export interface KpiTileProps {
  * amber, up on a "better" one is opportunity teal), and a quiet sparkline.
  */
 export function KpiTile({ kpi, locale, onClick, className }: KpiTileProps) {
-  const impact = kpiChangeImpact(kpi.change, kpi.higher_is);
+  const change = shownChange(kpi.change, kpi.latest);
+  const impact = kpiChangeImpact(change, kpi.higher_is);
   const tone = impactTone(impact);
   const percent = isPercent(kpi.unit);
-  const value = formatValue(kpi.latest, locale);
-  const change = kpi.change;
+  const value = formatKpiNumber(kpi.latest, locale);
   const changeText =
     change === null
       ? null
-      : `${change > 0 ? "▲" : change < 0 ? "▼" : "•"} ${formatValue(Math.abs(change), locale)}${percent ? " pts" : ""}`;
+      : change === 0
+        ? "• 0"
+        : `${change > 0 ? "▲" : "▼"} ${formatKpiNumber(Math.abs(change), locale)}${percent ? " pts" : ""}`;
   const changeWords =
     change === null
       ? ""
       : change === 0
         ? "unchanged"
-        : `${change > 0 ? "up" : "down"} ${formatValue(Math.abs(change), locale)}${percent ? " points" : ` ${kpi.unit}`}`;
+        : `${change > 0 ? "up" : "down"} ${formatKpiNumber(Math.abs(change), locale)}${percent ? " points" : ` ${kpi.unit}`}`;
   const asOf = formatDate(kpi.as_of, undefined, locale);
   const summary = `${kpi.name}: ${value}${percent ? "%" : ` ${kpi.unit}`}${changeWords ? `, ${changeWords}` : ""}${
     impact !== "neutral" ? ` (${tone.label.toLowerCase()})` : ""

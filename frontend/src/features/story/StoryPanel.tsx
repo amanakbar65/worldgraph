@@ -53,7 +53,8 @@ export default function StoryPanel({ panel }: { panel: Extract<Panel, { kind: "s
   const nav = useStoryNav();
 
   if (query.isPending) return <StorySkeleton />;
-  if (query.isError) {
+  // A failed background refresh keeps the card on screen.
+  if (query.isError && !query.data) {
     return (
       <div className="p-4">
         <ErrorState error={query.error} onRetry={() => void query.refetch()} />
@@ -265,7 +266,7 @@ function CausesEffects({ story, nav }: { story: Story; nav: Nav }) {
         ))}
       </div>
     );
-  } else if (query.isError) {
+  } else if (query.isError && !query.data) {
     body = <ErrorState compact error={query.error} onRetry={() => void query.refetch()} />;
   } else {
     const { causes, effects } = directLinks(query.data);

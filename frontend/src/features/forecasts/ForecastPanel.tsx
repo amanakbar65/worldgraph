@@ -31,8 +31,8 @@ import { formatCompact } from "@/lib/format";
 import { safeHttpUrl } from "@/lib/links";
 import { formatDate, formatDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
-import { useUserValue } from "@/platform/storage";
 import type { Panel } from "@/state/nav";
+import { toggleWatch, useWatchlist } from "@/state/profile";
 
 import {
   CATEGORIES,
@@ -65,7 +65,8 @@ export default function ForecastPanel({ panel }: { panel: Extract<Panel, { kind:
   const nav = useForecastNav();
 
   if (query.isPending) return <ForecastSkeleton />;
-  if (query.isError) {
+  // A failed background refresh keeps the forecast on screen.
+  if (query.isError && !query.data) {
     return (
       <div className="p-4">
         <ErrorState error={query.error} onRetry={() => void query.refetch()} />
@@ -250,12 +251,13 @@ function SourceLine({ forecast: f }: { forecast: Detail }) {
  * provider is allowed for this viewer, so with no URL there is no link.
  */
 function Actions({ forecast: f, nav }: { forecast: Detail; nav: Nav }) {
-  const watchlist = useUserValue<string[]>("watchlist", []);
+  // The one shared watchlist (My Business shows and edits the same list).
+  const watchlist = useWatchlist();
   const watching = watchlist.value.includes(f.id);
   const [note, setNote] = useState("");
   const url = safeHttpUrl(f.url);
-  const toggleWatch = () => {
-    watchlist.setValue((prev) => (prev.includes(f.id) ? prev.filter((x) => x !== f.id) : [...prev, f.id]));
+  const toggle = () => {
+    watchlist.set((prev) => toggleWatch(prev, f.id));
     setNote(watching ? "Removed from your watchlist." : "Added to your watchlist.");
   };
   return (
@@ -263,8 +265,8 @@ function Actions({ forecast: f, nav }: { forecast: Detail; nav: Nav }) {
       <div className="flex flex-wrap gap-2">
         <Button
           variant="secondary"
-          onClick={toggleWatch}
-          disabled={watchlist.loading}
+          onClick={toggle}
+          disabled={!watchlist.loaded}
           aria-pressed={watching}
           title={watchlist.kind === "memory" ? "Saved for this visit only" : undefined}
           className="aria-pressed:bg-fg/15 aria-pressed:text-fg"

@@ -170,6 +170,17 @@ describe("BusinessView: the dashboard", () => {
     expect(mocks.calls.some((c) => c.name === "cascade" && (c.args as { id: string }).id === FREIGHT.id)).toBe(true);
   });
 
+  it("keeps the chain on screen when a refresh of it fails", () => {
+    mocks.errors = { cascade: new DataError("unavailable", "The database didn't answer.", true) };
+    seed();
+    view();
+    const knock = card(FREIGHT.headline);
+    fireEvent.click(within(knock).getByRole("button", { name: "How it reaches you" }));
+    const chain = within(knock).getByRole("list", { name: "From the story that touches you to this one" });
+    expect(within(chain).getByText("longer shipping routes")).toBeTruthy();
+    expect(within(knock).queryByRole("alert")).toBeNull();
+  });
+
   it("filters by impact, route and the part of the business it reaches", () => {
     seed();
     view();

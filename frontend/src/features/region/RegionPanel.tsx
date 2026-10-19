@@ -27,8 +27,8 @@ import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { formatCompact } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useNav, type Panel } from "@/state/nav";
+import { toggleWatch, useWatchlist } from "@/state/profile";
 import { sampleArg, useSettings } from "@/state/settings";
-import { useUserValue } from "@/platform/storage";
 
 import { ConnectionsGraph } from "./ConnectionsGraph";
 import {
@@ -178,11 +178,12 @@ function RegionHeader({
 }
 
 function RegionActions({ regionId, regionName, nav }: { regionId: string; regionName: string; nav: RegionNav }) {
-  const watchlist = useUserValue<string[]>("watchlist", []);
+  // The one shared watchlist (My Business shows and edits the same list).
+  const watchlist = useWatchlist();
   const watching = watchlist.value.includes(regionId);
   const [note, setNote] = useState("");
-  const toggleWatch = () => {
-    watchlist.setValue((prev) => (prev.includes(regionId) ? prev.filter((x) => x !== regionId) : [...prev, regionId]));
+  const toggle = () => {
+    watchlist.set((prev) => toggleWatch(prev, regionId));
     setNote(watching ? `${regionName} removed from your watchlist.` : `${regionName} added to your watchlist.`);
   };
   const action = "h-14 flex-col gap-1 px-2 text-label";
@@ -211,8 +212,8 @@ function RegionActions({ regionId, regionName, nav }: { regionId: string; region
         <Button
           variant="secondary"
           className={cn(action, "aria-pressed:bg-fg/15 aria-pressed:text-fg aria-pressed:shadow-[inset_0_0_0_1px_var(--line-strong)]")}
-          onClick={toggleWatch}
-          disabled={watchlist.loading}
+          onClick={toggle}
+          disabled={!watchlist.loaded}
           aria-pressed={watching}
           aria-label={`Watch ${regionName}`}
           title={
