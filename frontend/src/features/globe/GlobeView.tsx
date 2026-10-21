@@ -650,11 +650,13 @@ export default function GlobeView() {
             </div>
 
             {!mapError && (
+              // Right of the left column, so the key never runs under the status pill
+              // (bottom left) on narrower desktops; it wraps instead.
               <div
-                className="pointer-events-auto absolute bottom-3 flex items-end gap-2"
-                style={{ right: rightSpace + 12 }}
+                className="pointer-events-auto absolute bottom-3 flex items-end justify-end gap-2"
+                style={{ right: rightSpace + 12, left: COLUMN + 24 }}
               >
-                <div className={cn(GLASS, "flex h-10 items-center gap-3 rounded-lg px-3")}>
+                <div className={cn(GLASS, "flex min-h-10 min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg px-3 py-2")}>
                   {sample && <SampleBadge compact={sample === "some"} />}
                   <MapKey />
                 </div>
@@ -662,6 +664,7 @@ export default function GlobeView() {
                 <ZoomControls
                   onZoom={(delta) => fly({ kind: "zoom", delta })}
                   onReset={() => fly({ kind: "reset" })}
+                  className="shrink-0"
                 />
               </div>
             )}
