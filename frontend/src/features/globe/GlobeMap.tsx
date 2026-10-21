@@ -16,6 +16,7 @@ import type { ForecastSummary } from "@/api/contract";
 import { toCss, withAlpha, type GlobePalette } from "@/lib/globe-color";
 import type { CountryCollection, StateCollection } from "@/lib/geo";
 
+import { attachIdleSpin, type SpinHandle } from "./idle-spin";
 import { buildLayers, PICK_PASSES, type LayerInput } from "./layers";
 import {
   angularDistance,
@@ -83,8 +84,13 @@ export interface GlobeMapProps {
   initialCamera?: { center: LngLat; zoom: number } | null;
   camera: CameraRequest | null;
   calm: boolean;
-  /** Turn slowly until the viewer touches the map. */
-  autoRotate: boolean;
+  /**
+   * A panel, selection or list covers the globe: no slow turn after idle
+   * time, and one that is turning stops (see idle-spin.ts).
+   */
+  turnBlocked: boolean;
+  /** The pointer is on something: the slow turn holds still meanwhile. */
+  turnPaused: boolean;
   onHover: (info: PickInfo | null) => void;
   /** A click or tap; null for empty space. */
   onPick: (info: PickInfo | null) => void;
@@ -215,8 +221,8 @@ export function GlobeMap(props: GlobeMapProps) {
   const ready = useRef(false);
   const hovered = useRef<{ source: "countries" | "states"; id: string } | null>(null);
   const interacted = useRef(false);
-  /** True while the slow auto-turn moves the camera (not worth reporting every frame). */
-  const autoMoving = useRef(false);
+  /** The slow turn after Home or idle time (it moves the camera itself, outside React). */
+  const spinRef = useRef<SpinHandle | null>(null);
   const [placed, setPlaced] = useState<LabelCandidate[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -395,7 +401,7 @@ export function GlobeMap(props: GlobeMapProps) {
     };
 
     const reportView = () => {
-      if (autoMoving.current) return;
+      if (spinRef.current?.moving) return;
       const c = map.getCenter();
       const zoom = map.getZoom();
       let centerCountry: string | null = null;
@@ -446,7 +452,7 @@ export function GlobeMap(props: GlobeMapProps) {
     map.on("load", placeRim);
     // A flight moves the globe under a still pointer: drop the hover card.
     map.on("movestart", () => {
-      if (!autoMoving.current) onOut();
+      if (!spinRef.current?.moving) onOut();
     });
     map.on("error", (e) => {
       // Worker or WebGL failures stop the map; a bad shape in a source doesn't.
@@ -454,9 +460,20 @@ export function GlobeMap(props: GlobeMapProps) {
       if (/worker|webgl|context/i.test(message)) propsRef.current.onError(new Error(message));
     });
     relabelRef.current = relabel;
+    const spin = attachIdleSpin(map, el, {
+      // Names that turn into view appear once a second.
+      onTurn: relabel,
+      // Where the turn left the camera is where the viewer comes back to.
+      onStop: reportView,
+      isPaused: () => propsRef.current.turnPaused,
+    });
+    spinRef.current = spin;
+    if (import.meta.env.DEV) Object.assign((window as unknown as { __wgGlobe: object }).__wgGlobe, { spin });
 
     return () => {
       cancelAnimationFrame(frame);
+      spin.dispose();
+      spinRef.current = null;
       relabelRef.current = null;
       try {
         if (ready.current) map.removeControl(overlay);
@@ -587,7 +604,7 @@ export function GlobeMap(props: GlobeMapProps) {
     const map = mapRef.current;
     if (!map || !camera) return;
     const duration = calm ? 0 : FLIGHT_MS;
-    // A requested move counts as the viewer taking over: no auto-turn, no re-framing.
+    // A requested move counts as the viewer taking over: no re-framing to home.
     if (!interacted.current) {
       interacted.current = true;
       propsRef.current.onInteract();
@@ -595,6 +612,9 @@ export function GlobeMap(props: GlobeMapProps) {
     // Settle the padding first (a panel may have just opened): MapLibre fits
     // inside the map's padding plus the margin given here.
     map.setPadding(propsRef.current.padding);
+    // Home turns the globe slowly once it lands; any other move ends a turn.
+    if (camera.kind === "reset") spinRef.current?.home();
+    else spinRef.current?.stop();
     switch (camera.kind) {
       case "bounds": {
         const canvas = map.getCanvas();
@@ -628,35 +648,11 @@ export function GlobeMap(props: GlobeMapProps) {
     }
   }, [camera, calm]);
 
-  // A slow turn of the globe until the viewer takes over (never when calm).
-  const { autoRotate } = props;
+  // The slow turn: never when calm (the setting or reduced motion), nor before the map is ready.
+  const { turnBlocked } = props;
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !autoRotate || calm || !loaded) return;
-    let raf = 0;
-    let last = performance.now();
-    let lastLabels = last;
-    const step = (now: number) => {
-      raf = requestAnimationFrame(step);
-      const dt = Math.min(100, now - last);
-      last = now;
-      if (interacted.current || document.hidden || map.isMoving() || map.getZoom() > 3) return;
-      const c = map.getCenter();
-      autoMoving.current = true;
-      map.setCenter([c.lng + (dt / 1000) * 2, c.lat]);
-      autoMoving.current = false;
-      // Names that turn into view appear once a second.
-      if (now - lastLabels > 1000) {
-        lastLabels = now;
-        relabelRef.current?.();
-      }
-    };
-    raf = requestAnimationFrame(step);
-    return () => {
-      cancelAnimationFrame(raf);
-      relabelRef.current?.();
-    };
-  }, [autoRotate, calm, loaded]);
+    spinRef.current?.update({ blocked: turnBlocked, allowed: !calm && loaded });
+  }, [turnBlocked, calm, loaded]);
 
   // MapLibre's stylesheet makes its container position: relative, so it sits in a sized wrapper.
   return (
