@@ -20,6 +20,18 @@ export interface ForecastRowProps {
   className?: string;
 }
 
+/** One fact in the footer, kept on one line, with its "·" in the gap before it. */
+function Fact({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <span className={cn("relative inline-flex items-center pl-3 whitespace-nowrap", className)}>
+      <span aria-hidden className="absolute left-[0.3rem]">
+        ·
+      </span>
+      {children}
+    </span>
+  );
+}
+
 /** "12.4K MANA volume", or a plain note when the provider gives none. */
 function volumeText(forecast: ForecastSummary, locale?: string): string {
   if (forecast.volume === null) return "Volume not reported";
@@ -75,37 +87,42 @@ export function ForecastRow({ forecast, onOpen, short = false, locale, className
         label={forecast.short_title}
       />
 
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-label text-fg-muted">
-        {forecast.thin && (
-          <span className="rounded-full border border-dashed border-line-strong px-1.5">Thin market</span>
-        )}
-        <span className="tabular-nums">{volumeText(forecast, locale)}</span>
-        {forecast.end_date && (
-          <>
-            <span aria-hidden>·</span>
-            <TimeAgo value={forecast.end_date} prefix="Ends" pastPrefix="Ended" />
-          </>
-        )}
-        {forecast.updated_at && (
-          <>
-            <span aria-hidden>·</span>
-            <TimeAgo value={forecast.updated_at} prefix="Updated" />
-          </>
-        )}
-        <span aria-hidden>·</span>
-        <span>Source: {forecast.provider_name}</span>
-        {url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            className="relative z-10 -my-2 inline-flex h-10 items-center gap-1 rounded-md px-1.5 font-medium text-fg-muted underline-offset-2 hover:text-fg hover:underline"
-          >
-            Open on {forecast.provider_name}
-            <ExternalLink aria-hidden className="size-3.5" />
-            <span className="sr-only">(new tab)</span>
-          </a>
-        )}
+      {/* Each fact keeps its words together and brings its own "·"; the one
+          that starts a line has it clipped, so none dangles where it wraps. */}
+      <div className="overflow-x-clip text-label text-fg-muted">
+        <div className="-ml-3 flex flex-wrap items-center gap-y-1">
+          {forecast.thin && (
+            <Fact>
+              <span className="rounded-full border border-dashed border-line-strong px-1.5">Thin market</span>
+            </Fact>
+          )}
+          <Fact className="tabular-nums">{volumeText(forecast, locale)}</Fact>
+          {forecast.end_date && (
+            <Fact>
+              <TimeAgo value={forecast.end_date} prefix="Ends" pastPrefix="Ended" />
+            </Fact>
+          )}
+          {forecast.updated_at && (
+            <Fact>
+              <TimeAgo value={forecast.updated_at} prefix="Updated" />
+            </Fact>
+          )}
+          <Fact>Source: {forecast.provider_name}</Fact>
+          {url && (
+            <Fact>
+              <a
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                className="relative z-10 -my-2 inline-flex h-10 items-center gap-1 rounded-md px-1.5 font-medium text-fg-muted underline-offset-2 hover:text-fg hover:underline"
+              >
+                Open on {forecast.provider_name}
+                <ExternalLink aria-hidden className="size-3.5" />
+                <span className="sr-only">(new tab)</span>
+              </a>
+            </Fact>
+          )}
+        </div>
       </div>
     </article>
   );
