@@ -28,7 +28,9 @@ interface SegmentedProps<T extends string> {
 
 /**
  * A segmented control (one choice out of a few), e.g. 24 h / 7 d / 30 d.
- * Arrow keys move between segments; one is always selected.
+ * Arrow keys move between segments; one is always selected. Each segment
+ * is at least 40 px wide, and its ::before layer makes it 40 px tall to the
+ * touch at either size.
  */
 export function Segmented<T extends string>({
   value,
@@ -61,9 +63,10 @@ export function Segmented<T extends string>({
             value={option.value}
             aria-label={option.ariaLabel}
             className={cn(
-              "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md text-fg-muted tabular-nums transition-colors",
+              "relative inline-flex min-w-10 cursor-pointer items-center justify-center gap-1.5 rounded-md text-fg-muted tabular-nums transition-colors",
+              "before:absolute before:inset-x-0 before:content-['']",
               "hover:text-fg data-[state=on]:bg-surface-2 data-[state=on]:text-fg data-[state=on]:shadow-[inset_0_0_0_1px_var(--line-strong)]",
-              size === "md" ? "px-3 text-body" : "px-2.5 text-label",
+              size === "md" ? "px-3 text-body before:-inset-y-[3px]" : "px-2.5 text-label before:-inset-y-[7px]",
               fill && "min-w-0 flex-1",
             )}
           >

@@ -46,7 +46,7 @@ interface ChipButtonProps extends Omit<React.ComponentProps<"button">, "onChange
 
 /**
  * A clickable chip. Its hit area reaches 40 px tall even when the chip looks
- * smaller, so it is easy to tap.
+ * smaller, and it is never narrower than 40 px ("All"), so it is easy to tap.
  */
 function ChipButton({ className, tone, size = "md", selected, type = "button", ...props }: ChipButtonProps) {
   return (
@@ -56,7 +56,7 @@ function ChipButton({ className, tone, size = "md", selected, type = "button", .
       aria-pressed={selected}
       className={cn(
         chipVariants({ tone, size }),
-        "relative cursor-pointer transition-colors before:absolute before:inset-x-0 before:top-1/2 before:h-10 before:-translate-y-1/2 before:content-['']",
+        "relative min-w-10 cursor-pointer justify-center transition-colors before:absolute before:inset-x-0 before:top-1/2 before:h-10 before:-translate-y-1/2 before:content-['']",
         "hover:border-line-strong hover:text-fg disabled:pointer-events-none disabled:opacity-50",
         "aria-pressed:border-fg/60 aria-pressed:bg-fg/15 aria-pressed:text-fg",
         className,

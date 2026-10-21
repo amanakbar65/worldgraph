@@ -32,6 +32,10 @@ export function PanelSkeleton() {
   );
 }
 
+/** Back and Close: compact 32 px buttons whose ::before layer makes a 40 px tap area. */
+const CONTROL =
+  "relative flex size-8 items-center justify-center rounded-md text-fg-muted before:absolute before:-inset-1 before:content-[''] hover:bg-surface-2 hover:text-fg";
+
 function Controls({
   depth,
   closeRef,
@@ -49,7 +53,7 @@ function Controls({
         <button
           type="button"
           onClick={back}
-          className="flex size-8 items-center justify-center rounded-md text-fg-muted hover:bg-surface-2 hover:text-fg"
+          className={CONTROL}
           aria-label="Back"
         >
           <ArrowLeft aria-hidden className="size-4" />
@@ -60,7 +64,7 @@ function Controls({
         ref={closeRef}
         type="button"
         onClick={closePanels}
-        className="flex size-8 items-center justify-center rounded-md text-fg-muted hover:bg-surface-2 hover:text-fg"
+        className={CONTROL}
         aria-label="Close panel"
       >
         <X aria-hidden className="size-4" />

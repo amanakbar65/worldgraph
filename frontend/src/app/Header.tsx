@@ -19,7 +19,8 @@ export function Header() {
       <button
         type="button"
         onClick={() => setView("globe")}
-        className="flex items-center gap-2 rounded-md px-1 py-1 text-body font-semibold tracking-tight"
+        // The ::before layers on the header's buttons make each tap area 40 px.
+        className="relative flex items-center gap-2 rounded-md px-1 py-1 text-body font-semibold tracking-tight before:absolute before:-inset-1 before:content-['']"
         aria-label="WorldGraph home"
       >
         <Logo className="size-6" />
@@ -51,7 +52,7 @@ export function Header() {
         <button
           type="button"
           onClick={() => setSearchOpen(true)}
-          className="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-2.5 text-body text-fg-muted transition-colors hover:border-line-strong hover:text-fg sm:w-56"
+          className="relative flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-2.5 text-body text-fg-muted transition-colors before:absolute before:-inset-0.5 before:content-[''] hover:border-line-strong hover:text-fg sm:w-56"
           aria-label="Search places, companies, stories and forecasts"
         >
           <Search aria-hidden className="size-4" />
@@ -63,7 +64,7 @@ export function Header() {
         <button
           type="button"
           onClick={() => open({ kind: "ask" })}
-          className="flex h-9 items-center gap-1.5 rounded-md px-2.5 text-body text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg"
+          className="relative flex h-9 items-center gap-1.5 rounded-md px-2.5 text-body text-fg-muted transition-colors before:absolute before:-inset-0.5 before:content-[''] hover:bg-surface-2 hover:text-fg"
         >
           <MessageCircleQuestion aria-hidden className="size-4" />
           <span className="hidden lg:inline">Ask</span>
@@ -72,7 +73,7 @@ export function Header() {
         <button
           type="button"
           onClick={() => open({ kind: "settings" })}
-          className="flex size-9 items-center justify-center rounded-md text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg"
+          className="relative flex size-9 items-center justify-center rounded-md text-fg-muted transition-colors before:absolute before:-inset-0.5 before:content-[''] hover:bg-surface-2 hover:text-fg"
           aria-label="Settings"
         >
           <Settings2 aria-hidden className="size-4" />
