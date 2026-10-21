@@ -14,7 +14,7 @@ function swatch(label: string) {
 
 describe("GraphLegend", () => {
   it("draws every link type differently, by pattern as well as colour", () => {
-    render(<GraphLegend types={["company"]} linkTypes={["reported", "inferred", "projected", "conditional"]} />);
+    render(<GraphLegend types={["organization"]} linkTypes={["reported", "inferred", "projected", "conditional"]} />);
     const looks = ["Reported", "Inferred", "Projected", "Conditional"].map(swatch);
     expect(new Set(looks.map((l) => l.dash)).size).toBe(4);
     expect(swatch("Conditional").stroke).toContain("stroke-forecast");
