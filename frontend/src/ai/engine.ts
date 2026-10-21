@@ -11,10 +11,19 @@
  */
 import type { z } from "zod";
 
+import type { AiTurn } from "./history";
+
+export type { AiTurn } from "./history";
+
 export type AiTask = "analysis" | "ask" | "projection";
 
 export interface AiOptions {
   signal?: AbortSignal;
+  /**
+   * Earlier turns of a conversation, oldest first (Ask's follow-ups). Both
+   * engines send them before the data, trimmed to the last few (history.ts).
+   */
+  history?: readonly AiTurn[];
 }
 
 export interface AiEngine {

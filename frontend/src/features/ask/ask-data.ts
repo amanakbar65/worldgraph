@@ -152,6 +152,8 @@ export interface ShapedAnswer {
   cascade: CascadeChain[];
   forecasts: ForecastSummary[];
   followUps: string[];
+  /** How the AI read a follow-up ("What's driving fuel costs in India?"); null when it adds nothing. */
+  readAs: string | null;
   /** Citations, steps and forecast ids the reply named that the context doesn't hold. */
   dropped: number;
 }
@@ -196,9 +198,15 @@ export function chainSteps(steps: readonly { from: AskStory; to: AskStory; link:
  * Keep only what the context supports: citations of stories it holds,
  * cascade steps that are stored links between two of its stories, and its
  * forecasts. A bullet left with no citation is dropped; with no bullets
- * left, the answer is "not enough evidence".
+ * left, the answer is "not enough evidence". Follow-ups that repeat the
+ * question, or one asked earlier in the conversation, are left out.
  */
-export function shapeAnswer(raw: AskAnswer, ctx: AskContextResponse, question = ""): ShapedAnswer {
+export function shapeAnswer(
+  raw: AskAnswer,
+  ctx: AskContextResponse,
+  question = "",
+  asked: readonly string[] = [],
+): ShapedAnswer {
   const stories = new Map(ctx.stories.map((s) => [s.id, s]));
   let dropped = 0;
 
@@ -215,9 +223,18 @@ export function shapeAnswer(raw: AskAnswer, ctx: AskContextResponse, question = 
     if (bullets.length >= MAX_BULLETS) break;
   }
 
-  const followUps = cleanFollowUps(raw.follow_up, question ? [question] : []);
+  const followUps = cleanFollowUps(raw.follow_up, question ? [question, ...asked] : asked);
+  const read = readAs(raw.read_as, question);
   if (raw.status !== "answered" || bullets.length === 0) {
-    return { status: "not_enough_evidence", bullets: [], cascade: [], forecasts: [], followUps, dropped };
+    return {
+      status: "not_enough_evidence",
+      bullets: [],
+      cascade: [],
+      forecasts: [],
+      followUps,
+      readAs: read,
+      dropped,
+    };
   }
 
   const steps: { from: AskStory; to: AskStory; link: CascadeLink }[] = [];
@@ -245,7 +262,15 @@ export function shapeAnswer(raw: AskAnswer, ctx: AskContextResponse, question = 
     if (forecasts.length >= MAX_FORECASTS) break;
   }
 
-  return { status: "answered", bullets, cascade: chainSteps(steps), forecasts, followUps, dropped };
+  return {
+    status: "answered",
+    bullets,
+    cascade: chainSteps(steps),
+    forecasts,
+    followUps,
+    readAs: read,
+    dropped,
+  };
 }
 
 /** "Not enough evidence" without asking the AI (the context was empty). */
@@ -256,8 +281,25 @@ export function notEnoughEvidence(followUps: readonly string[] = []): ShapedAnsw
     cascade: [],
     forecasts: [],
     followUps: cleanFollowUps(followUps),
+    readAs: null,
     dropped: 0,
   };
+}
+
+const wordCount = (s: string) => s.split(/\s+/).filter(Boolean).length;
+
+/**
+ * How the AI read the question, worth showing only when it says more than
+ * what was typed (a follow-up written out in full): 2–15 words that bring
+ * in topic words the question didn't have.
+ */
+export function readAs(raw: string | undefined, question: string): string | null {
+  if (!raw) return null;
+  const text = cleanQuestion(raw);
+  const n = wordCount(text);
+  if (n < 2 || n > 15 || text.length > 160) return null;
+  const typed = new Set(topicWords(question));
+  return topicWords(text).some((w) => !typed.has(w)) ? text : null;
 }
 
 /** The stories an answer cites, in order of first citation. */
@@ -265,6 +307,92 @@ export function citedStories(answer: ShapedAnswer): AskStory[] {
   const out: AskStory[] = [];
   for (const bullet of answer.bullets) for (const s of bullet.cites) if (!out.includes(s)) out.push(s);
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// The conversation: follow-ups and what a thread is about
+// ---------------------------------------------------------------------------
+
+/** What a conversation is about: the place, story, forecast or entity Ask was opened from. */
+export interface AskAbout {
+  id: string;
+  type: EntityType;
+  /** Shown on the chip and told to the AI (a story's headline, a region's name…). */
+  name: string;
+  /** Words added to the search, so "what are the risks?" finds the place or topic. */
+  terms: string[];
+}
+
+/** The scope's words for the search: a story or forecast's topic and place, otherwise its name. */
+export function aboutFrom(scope: AskScope): AskAbout {
+  const terms: string[] = [];
+  if (scope.type === "story" || scope.type === "forecast") {
+    for (const t of [scope.topic?.name, scope.place]) if (t && !terms.includes(t)) terms.push(t);
+  }
+  if (terms.length === 0) terms.push(scope.name);
+  return { id: scope.id, type: scope.type, name: scope.name, terms };
+}
+
+/** What the AI is told about it (the data's `about`). */
+export function aboutForAi(about: AskAbout | null): { type: EntityType; name: string } | undefined {
+  return about ? { type: about.type, name: about.name } : undefined;
+}
+
+/** Words that don't name a topic (as api.ask_context's stop words, plus a few). */
+const FILLER = new Set(
+  (
+    "a an the and or but so for with what whats which who whom whose how hows why when where will would could " +
+    "should shall can may might must do does did doing done is are was were be been being has have had having " +
+    "this that these those there their theirs they them then than from into onto about over under in on of to " +
+    "at by as it its i me my we us our you your he him his she her not no any all some more most much many " +
+    "very also just only other such each both few own same too now here yet again still even ever get got " +
+    "gets let lets tell show if s"
+  ).split(" "),
+);
+
+/** The words in a question that name something (lowercase, three letters or more, no filler). */
+export function topicWords(question: string): string[] {
+  const out: string[] = [];
+  for (const w of question.toLowerCase().split(/[^\p{L}\p{N}]+/u)) {
+    if (w.length >= 3 && !FILLER.has(w) && !out.includes(w)) out.push(w);
+  }
+  return out;
+}
+
+const LEANS_BACK = /^(and|or|but|so|also|then|what about|how about|what if|same)\b/i;
+const POINTS_BACK = /\b(it|its|that|this|these|those|they|them|their|there|he|she|him|her)\b/i;
+
+/**
+ * Does the question lean on the one before? "What about India?", "And for
+ * airlines?", "How could that affect prices?", "Who is affected?" do;
+ * "Where are the opportunities in solar power?" stands on its own.
+ */
+export function isFollowUp(question: string): boolean {
+  const q = cleanQuestion(question);
+  return topicWords(q).length <= 2 || LEANS_BACK.test(q) || POINTS_BACK.test(q);
+}
+
+/** api.ask_context reads the first 500 characters (and its first 12 topic words). */
+export const MAX_SEARCH = 500;
+
+/**
+ * What api.ask_context searches for: the question first (its words count
+ * most), then for a follow-up the question it leans on, then what the
+ * conversation is about.
+ */
+export function searchText(question: string, previous: string | null, about: AskAbout | null): string {
+  const parts = [question];
+  if (previous && isFollowUp(question)) parts.push(previous);
+  if (about) parts.push(...about.terms);
+  return parts.join(" ").replace(/\s+/g, " ").trim().slice(0, MAX_SEARCH).trim();
+}
+
+/** An answer as a short text for the conversation's history (its points, without citations). */
+export function answerText(answer: ShapedAnswer): string {
+  if (answer.status !== "answered" || answer.bullets.length === 0) {
+    return "WorldGraph didn't hold enough evidence to answer this.";
+  }
+  return answer.bullets.map((b) => `- ${b.text}`).join("\n");
 }
 
 // ---------------------------------------------------------------------------

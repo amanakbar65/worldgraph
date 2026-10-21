@@ -27,6 +27,12 @@ export { AnalysisItem };
 
 export const AskAnswer = z.object({
   status: z.enum(["answered", "not_enough_evidence"]),
+  /**
+   * The question as the AI understood it, standalone (a follow-up written out
+   * in full). Optional, so a reply without it still counts; Ask shows it only
+   * when it is 2–15 words (ask-data.ts, readAs).
+   */
+  read_as: z.string().max(400).optional(),
   bullets: z.array(z.object({ text: words(30), cite: z.array(StoryId).min(1).max(6) })).max(3),
   cascade: z.array(z.object({ from: StoryId, to: StoryId, mechanism: words(4, 2) })).max(4),
   forecasts: z.array(z.string().regex(/^forecast:[a-z0-9][a-z0-9.-]*$/)).max(2),

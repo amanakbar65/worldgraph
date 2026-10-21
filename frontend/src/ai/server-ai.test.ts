@@ -73,6 +73,44 @@ describe("POST /api/ai", () => {
     ]);
   });
 
+  it("puts a follow-up's earlier turns before the data, as user and assistant messages", async () => {
+    const fetchMock = claudeReply(message);
+    const history = [
+      { question: "What's driving fuel costs?", answer: "- Brent is up on tighter supply." },
+      { question: "And for airlines?", answer: "- Jet fuel costs more." },
+    ];
+    const input = { question: "What about India?", context: {} };
+    const result = await handleAi(
+      JSON.stringify({ task: "ask", input, history }),
+      deps({ fetch: fetchMock as unknown as typeof fetch }),
+    );
+    expect(result.status).toBe(200);
+    const request = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
+    expect(request.messages).toEqual([
+      { role: "user", content: "What's driving fuel costs?" },
+      { role: "assistant", content: "- Brent is up on tighter supply." },
+      { role: "user", content: "And for airlines?" },
+      { role: "assistant", content: "- Jet fuel costs more." },
+      { role: "user", content: JSON.stringify(input) },
+    ]);
+    // The prompt stays the cached system prompt.
+    expect(request.system[0].text).toBe(WEB_PROMPTS.ask.prompt);
+  });
+
+  it("refuses history that doesn't fit, before spending anything", async () => {
+    const fetchMock = vi.fn();
+    const d = deps({ fetch: fetchMock });
+    const send = (history: unknown, task = "ask") =>
+      handleAi(JSON.stringify({ task, input: { question: "Oil?", context: {} }, history }), d);
+    const turn = { question: "Oil?", answer: "- Up." };
+    expect((await send("not a list")).status).toBe(400);
+    expect((await send(Array.from({ length: 7 }, () => turn))).status).toBe(400);
+    expect((await send([{ question: "Oil?" }])).status).toBe(400);
+    expect((await send([{ question: "Oil?", answer: "x".repeat(1001) }])).status).toBe(400);
+    expect((await send([turn], "projection")).status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("uses the model setting", async () => {
     const fetchMock = claudeReply({ ...message, model: "claude-sonnet-5-5" });
     await handleAi(

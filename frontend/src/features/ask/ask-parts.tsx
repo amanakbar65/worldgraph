@@ -328,7 +328,8 @@ export function AiProblem({
   kind: AiError["kind"];
   message: string;
   engine: AiEngine["kind"] | null;
-  onRetry: () => void;
+  /** Left out while another question is running (one at a time). */
+  onRetry?: () => void;
 }) {
   const copy = aiProblemCopy(kind, engine, message);
   return (
@@ -338,7 +339,7 @@ export function AiProblem({
       icon={copy.icon}
       title={copy.title}
       description={copy.description}
-      action={copy.retry ? { label: copy.retry, onClick: onRetry, icon: RotateCw } : undefined}
+      action={copy.retry && onRetry ? { label: copy.retry, onClick: onRetry, icon: RotateCw } : undefined}
       className="rounded-xl border border-line bg-surface/60"
     />
   );

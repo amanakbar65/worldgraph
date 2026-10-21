@@ -3,13 +3,17 @@
  *
  * - Test link (claude.ai Artifact): the viewer's own Claude account through
  *   the `sample` capability. One user turn: the shared prompt, then the data.
+ *   A follow-up is a short chat instead: the prompt, the earlier questions
+ *   and answers, then the data.
  * - Website: POST /api/ai, a Netlify function that calls the Claude API with
- *   a daily spending cap (frontend/netlify/functions/ai.mts).
+ *   a daily spending cap (frontend/netlify/functions/ai.mts). A follow-up
+ *   sends the earlier turns as `history`.
  *
  * Neither retries: a failed call rejects once with an AiError and the caller
  * decides (usually: tell the viewer and keep the control).
  */
 import { AiError, type AiEngine, type AiOptions, type AiTask } from "./engine";
+import { trimHistory, type AiTurn } from "./history";
 import { PROMPTS } from "./prompts";
 import { capability, TARGET } from "@/platform/runtime";
 
@@ -30,6 +34,31 @@ const MAX_PROMPT_BYTES = 262_144;
 /** The one user turn the artifact engine sends: instructions, then the data. */
 export function buildPrompt(task: AiTask, input: unknown): string {
   return `${PROMPTS[task]}\n\n## Data\n\n${JSON.stringify(input)}`;
+}
+
+/**
+ * A follow-up, as the chat `sample` takes: the instructions as a leading
+ * user turn, each earlier question (user) and its answer (assistant), then
+ * the data with the new question as the last user turn.
+ */
+export function buildMessages(
+  task: AiTask,
+  input: unknown,
+  history: readonly AiTurn[],
+): Claude.sample.SampleMessage[] {
+  return [
+    { role: "user", content: PROMPTS[task] },
+    ...trimHistory(history).flatMap((t): Claude.sample.SampleMessage[] => [
+      { role: "user", content: t.question },
+      { role: "assistant", content: t.answer },
+    ]),
+    { role: "user", content: `## Data\n\n${JSON.stringify(input)}` },
+  ];
+}
+
+function inputBytes(input: Claude.sample.SampleInput): number {
+  const text = typeof input === "string" ? input : input.map((m) => m.content).join("");
+  return new TextEncoder().encode(text).length;
 }
 
 function isSampleError(error: unknown): error is Claude.sample.SampleError {
@@ -81,8 +110,9 @@ export function artifactEngine(sample: typeof Claude.sample): AiEngine {
     kind: "artifact",
     label: "Your Claude account",
     async complete(task: AiTask, input: unknown, options: AiOptions = {}) {
-      const prompt = buildPrompt(task, input);
-      if (new TextEncoder().encode(prompt).length > MAX_PROMPT_BYTES) {
+      const history = trimHistory(options.history ?? []);
+      const prompt = history.length > 0 ? buildMessages(task, input, history) : buildPrompt(task, input);
+      if (inputBytes(prompt) > MAX_PROMPT_BYTES) {
         throw new AiError("failed", "Too much data for one request.");
       }
       try {
@@ -106,12 +136,13 @@ export function httpEngine(endpoint = "/api/ai", fetchImpl: typeof fetch = (...a
     kind: "api",
     label: "WorldGraph AI",
     async complete(task: AiTask, input: unknown, options: AiOptions = {}) {
+      const history = trimHistory(options.history ?? []);
       let response: Response;
       try {
         response = await fetchImpl(endpoint, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ task, input }),
+          body: JSON.stringify(history.length > 0 ? { task, input, history } : { task, input }),
           signal: options.signal,
         });
       } catch (error) {
