@@ -89,7 +89,7 @@ export default function OpportunitiesView() {
 
   return (
     <div className={cn("h-full overflow-y-auto overscroll-contain", isDesktop && panelOpen && "xl:pr-[452px]")}>
-      <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6">
+      <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 pt-6 pb-24 sm:px-6">
         <header className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between gap-3">

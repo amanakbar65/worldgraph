@@ -1,6 +1,7 @@
 import { MessageCircleQuestion, Search, Settings2 } from "lucide-react";
 
 import { NAV_ITEMS } from "./nav-items";
+import { StatusBar } from "./StatusBar";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
 import { useNav } from "@/state/nav";
@@ -43,7 +44,10 @@ export function Header() {
         ))}
       </nav>
 
-      <div className="ml-auto flex items-center gap-1.5">
+      {/* Phones only: the data status lives here rather than over the content. */}
+      <StatusBar placement="header" />
+
+      <div className="ml-auto flex shrink-0 items-center gap-1.5">
         <button
           type="button"
           onClick={() => setSearchOpen(true)}

@@ -37,15 +37,68 @@ const meta = (lastIngest: string | null, showingSample = false) => ({
   sources: [],
 });
 
+/** Pretend the window is this wide (the pill floats from 768 px, and sits in the header below). */
+function viewport(width: number) {
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: /min-width: 768px/.test(query) ? width >= 768 : false,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }));
+}
+
 beforeEach(() => {
+  viewport(1440);
   __testing.reset();
   useConnection.setState({ state: { status: "live", source: "connector" } });
   useConnectorApproval.setState({ waiting: [], asking: false });
   mocks.meta = meta(new Date(Date.now() - 4 * 60_000).toISOString());
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe("StatusBar", () => {
+  it("floats on wider screens and sits in the header on phones, never both", () => {
+    const both = () => (
+      <>
+        <header>
+          <StatusBar placement="header" />
+        </header>
+        <StatusBar />
+      </>
+    );
+    const { unmount } = render(both());
+    expect(screen.getAllByText("Live data")).toHaveLength(1);
+    expect(screen.getByText("Live data").closest("header")).toBeNull();
+    unmount();
+
+    viewport(390);
+    render(both());
+    expect(screen.getAllByText("Live")).toHaveLength(1);
+    expect(screen.getByText("Live").closest("header")).not.toBeNull();
+  });
+
+  it("keeps only what needs the viewer in the phone header", () => {
+    viewport(390);
+    useConnectorApproval.setState({
+      waiting: [{ id: 1, run: vi.fn(), resolve: vi.fn(), reject: vi.fn() }],
+      asking: false,
+    });
+    const { unmount } = render(<StatusBar placement="header" />);
+    expect(screen.getByText("Needs approval")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Allow live data from Supabase" })).toBeTruthy();
+    expect(screen.queryByText("Live")).toBeNull();
+    unmount();
+
+    useConnectorApproval.setState({ waiting: [], asking: false });
+    useAnalysisStatus.setState({ status: { phase: "running", count: 6, batch: 1, analysed: 0 }, stop: vi.fn() });
+    render(<StatusBar placement="header" />);
+    expect(screen.getByText("Analysing…")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Stop analysing stories" })).toBeTruthy();
+  });
+
   it("shows live data and how fresh it is", () => {
     render(<StatusBar />);
     expect(screen.getByText("Live data")).toBeTruthy();

@@ -144,7 +144,7 @@ function Dashboard({ profile, onEdit }: { profile: Profile; onEdit: (step: numbe
     });
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6">
+    <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 pt-6 pb-24 sm:px-6">
       <DashboardHeader
         profile={profile}
         onEdit={onEdit}

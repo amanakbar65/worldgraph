@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { analysisStatusText, useAnalysisStatus } from "@/ai/analysis-runner";
 import { useConnection, useRpc } from "@/api/client";
 import { approveWaitingCalls, useConnectorApproval } from "@/api/sources/connector";
+import { useIsDesktop } from "@/lib/hooks";
 import { freshnessText } from "@/lib/status-freshness";
 import { cn } from "@/lib/utils";
 
@@ -58,11 +59,21 @@ function useNow(intervalMs = 30_000): number {
 }
 
 /**
- * One quiet line at the bottom: where the data comes from, how fresh it is,
- * and what the AI is doing. It also carries the one control the connector
- * may need: approving live data.
+ * One quiet line: where the data comes from, how fresh it is, and what the
+ * AI is doing. It also carries the one control the connector may need:
+ * approving live data.
+ *
+ * On wider screens it floats at the bottom left. On phones it sits in the
+ * header instead (`placement="header"`), where it can't cover a list row
+ * on the screens that scroll. Each placement renders only at its own width.
  */
-export function StatusBar() {
+export function StatusBar({ placement = "float" }: { placement?: "float" | "header" }) {
+  const isDesktop = useIsDesktop();
+  if ((placement === "header") === isDesktop) return null;
+  return <StatusPill placement={placement} />;
+}
+
+function StatusPill({ placement }: { placement: "float" | "header" }) {
   const state = useConnection((s) => s.state);
   const meta = useRpc("meta", {});
   const waiting = useConnectorApproval((s) => s.waiting.length);
@@ -92,43 +103,59 @@ export function StatusBar() {
   const ai = analysisStatusText(analysis);
   const needsApproval = waiting > 0 || asking;
 
+  // In the phone header: short words only, and while something needs the
+  // viewer (approval, or a Stop button) that alone, so it stays readable.
+  const compact = placement === "header";
+  const showData = !(compact && (needsApproval || analysis.phase === "running"));
+  const text = (t: { long: string; short: string }) =>
+    compact ? <span className="truncate">{t.short}</span> : <Responsive {...t} />;
+
   return (
-    <div className="pointer-events-none absolute bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px)+0.5rem)] left-3 z-10 flex max-w-[calc(100%-24px)] md:bottom-3">
+    <div
+      className={
+        placement === "float"
+          ? "pointer-events-none absolute bottom-3 left-3 z-10 flex max-w-[calc(100%-24px)]"
+          : "flex min-w-0"
+      }
+    >
       <div
-        className="flex min-w-0 items-center gap-2 rounded-full border border-line bg-glass px-2.5 py-1 text-label text-fg-muted shadow-panel backdrop-blur"
+        className={cn(
+          "flex min-w-0 items-center gap-2 rounded-full border border-line px-2.5 py-1 text-label text-fg-muted",
+          placement === "float" ? "bg-glass shadow-panel backdrop-blur" : "bg-surface",
+        )}
         title={data.long}
       >
-        <span role="status" className="flex min-w-0 items-center gap-1.5">
-          {/* Neutral colours only: teal and amber mean opportunity and risk in this app. */}
-          {tone === "warn" ? (
-            <TriangleAlert aria-hidden className="size-3.5 shrink-0 text-fg" />
-          ) : tone === "ok" ? (
-            <CircleDot aria-hidden className="size-3.5 shrink-0 text-fg" />
-          ) : (
-            <Database aria-hidden className="size-3.5 shrink-0" />
-          )}
-          <Responsive {...data} />
-        </span>
+        {showData && (
+          <span role="status" className="flex min-w-0 items-center gap-1.5">
+            {/* Neutral colours only: teal and amber mean opportunity and risk in this app. */}
+            {tone === "warn" ? (
+              <TriangleAlert aria-hidden className="size-3.5 shrink-0 text-fg" />
+            ) : tone === "ok" ? (
+              <CircleDot aria-hidden className="size-3.5 shrink-0 text-fg" />
+            ) : (
+              <Database aria-hidden className="size-3.5 shrink-0" />
+            )}
+            {text(data)}
+          </span>
+        )}
 
         {fresh && !needsApproval && (
           // With AI news beside it, the freshness note only shows on wider screens.
           <span className={cn("shrink-0 items-center gap-2", ai ? "hidden md:flex" : "flex")}>
             <Divider />
-            <span className="tabular text-fg-subtle">
-              <Responsive {...fresh} />
-            </span>
+            <span className="tabular text-fg-subtle">{text(fresh)}</span>
           </span>
         )}
 
         {needsApproval && (
           <>
-            <Divider />
+            {showData && <Divider />}
             <span role="status" className="flex min-w-0 items-center gap-1.5 text-fg">
               <ShieldCheck aria-hidden className="size-3.5 shrink-0" />
-              <Responsive
-                long={asking ? "Waiting for your answer in Claude…" : "Live data needs your approval"}
-                short={asking ? "Waiting…" : "Needs approval"}
-              />
+              {text({
+                long: asking ? "Waiting for your answer in Claude…" : "Live data needs your approval",
+                short: asking ? "Waiting…" : "Needs approval",
+              })}
             </span>
             {!asking && (
               <PillButton onClick={() => void approveWaitingCalls()} label="Allow live data from Supabase">
@@ -140,13 +167,13 @@ export function StatusBar() {
 
         {ai && !needsApproval && (
           <>
-            <Divider />
+            {showData && <Divider />}
             <span role="status" className="flex min-w-0 items-center gap-1.5">
               <Sparkles
                 aria-hidden
                 className={cn("size-3.5 shrink-0", analysis.phase === "running" && "animate-pulse text-fg")}
               />
-              <Responsive {...ai} />
+              {text(compact && analysis.phase === "running" ? { long: ai.long, short: "Analysing…" } : ai)}
             </span>
             {analysis.phase === "running" && (
               <PillButton onClick={stop} label="Stop analysing stories">
