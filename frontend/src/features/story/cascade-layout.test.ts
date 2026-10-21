@@ -177,7 +177,19 @@ describe("fitPlan", () => {
   const layout = layoutCascade(model, "LR");
 
   it("frames everything when it fits at a readable size", () => {
-    expect(fitPlan(model, layout, { width: 4000, height: 3000 }, false)).toEqual({ ids: null });
+    expect(fitPlan(model, layout, { width: 4000, height: 3000 }, false)).toEqual({ ids: null, minZoom: READABLE_ZOOM });
+  });
+
+  it("never opens with labels under 12 px: the smallest zoom is 1 (labels are 12 px there)", () => {
+    expect(READABLE_ZOOM).toBe(1);
+    for (const box of [
+      { width: 4000, height: 3000 },
+      { width: 1400, height: 760 },
+      { width: 600, height: 400 },
+      { width: 0, height: 0 },
+    ]) {
+      expect(fitPlan(model, layout, box, false).minZoom).toBe(READABLE_ZOOM);
+    }
   });
 
   it("frames the story and its direct links when the whole would be too small", () => {

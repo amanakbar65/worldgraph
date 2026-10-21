@@ -279,8 +279,12 @@ function untangleLaneLinks(
 // Framing
 // ---------------------------------------------------------------------------
 
-/** Below this zoom the cards' text gets too small to read comfortably. */
-export const READABLE_ZOOM = 0.6;
+/**
+ * The smallest zoom a cascade opens at. Card and link labels are 12 px at
+ * zoom 1 (the app's smallest text size), so any less and they drop below
+ * it. Zooming out further is the viewer's choice (or the List view).
+ */
+export const READABLE_ZOOM = 1;
 
 /**
  * What to frame when a layout appears: everything if it fits at a readable
@@ -296,11 +300,13 @@ export function fitPlan(
 ): { ids: string[] | null; minZoom?: number } {
   if (newProjections) {
     const ai = model.groups.find((g) => g.kind === "ai");
-    if (ai) return { ids: [model.focus, ai.id], minZoom: 0.5 };
+    if (ai) return { ids: [model.focus, ai.id], minZoom: READABLE_ZOOM };
   }
-  if (box.width <= 0 || box.height <= 0 || layout.width <= 0 || layout.height <= 0) return { ids: null };
+  if (box.width <= 0 || box.height <= 0 || layout.width <= 0 || layout.height <= 0) {
+    return { ids: null, minZoom: READABLE_ZOOM };
+  }
   const zoom = Math.min(box.width / (layout.width * 1.12), box.height / (layout.height * 1.12));
-  if (zoom >= READABLE_ZOOM) return { ids: null };
+  if (zoom >= READABLE_ZOOM) return { ids: null, minZoom: READABLE_ZOOM };
   const ids = new Set<string>([model.focus]);
   for (const node of model.nodes) if (Math.abs(node.depth) <= 1) ids.add(node.groupId ?? node.id);
   return { ids: [...ids], minZoom: READABLE_ZOOM };

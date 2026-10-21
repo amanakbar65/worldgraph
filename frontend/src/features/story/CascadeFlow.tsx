@@ -30,7 +30,7 @@ import { useCalm } from "@/state/settings";
 import { CascadeUiContext, type CascadeUi } from "./cascade-context";
 import type { CascadeModel, CascadeNode } from "./cascade-data";
 import { flowEdges, flowNodes } from "./cascade-flow-elements";
-import { fitPlan, neighbour, type ArrowKey, type CascadeLayout } from "./cascade-layout";
+import { fitPlan, neighbour, READABLE_ZOOM, type ArrowKey, type CascadeLayout } from "./cascade-layout";
 import { CascadeEdgeView } from "./CascadeEdge";
 import { LaneNodeView, StoryNodeView } from "./CascadeNodes";
 
@@ -250,7 +250,7 @@ function FlowCanvas({ model, layout, selectedEdge, onOpenNode, onOpenEvidence, o
           minZoom={0.2}
           maxZoom={1.75}
           fitView
-          fitViewOptions={{ padding: 0.12, maxZoom: 1 }}
+          fitViewOptions={{ padding: 0.12, maxZoom: 1, minZoom: READABLE_ZOOM }}
           zoomOnDoubleClick={false}
           className="bg-transparent"
         >
