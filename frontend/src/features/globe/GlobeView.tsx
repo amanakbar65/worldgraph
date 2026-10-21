@@ -67,7 +67,7 @@ import { TopNowBody, TopNowStrip } from "./TopNow";
 
 const HOME_CENTER: LngLat = [25, 20];
 const COLUMN = 352; // the desktop left column (22rem)
-const STATUS_SPACE = 52; // the app's status pill sits bottom-left
+const STATUS_SPACE = 52; // the app's status pill sits bottom-left on desktop (in the header on phones)
 const TOOLBAR_SPACE = 64;
 const SIDE_PANEL = 464; // PanelHost's desktop side panel plus its margin
 const PHONE_TOP = 60; // the phone's top bar
@@ -349,7 +349,7 @@ export default function GlobeView() {
         top: PHONE_TOP,
         left: 0,
         right: 0,
-        bottom: panel ? Math.round(size.height * 0.5) : Math.min(size.height * 0.45, stripSize.height + 56),
+        bottom: panel ? Math.round(size.height * 0.5) : Math.min(size.height * 0.45, stripSize.height + 20),
       };
   const freeW = Math.max(0, size.width - padding.left - padding.right);
   const freeH = Math.max(0, size.height - padding.top - padding.bottom);
@@ -688,13 +688,13 @@ export default function GlobeView() {
 
             {listOpen || mapError ? (
               <div
-                className="pointer-events-auto absolute right-3 bottom-12 left-3 flex flex-col"
+                className="pointer-events-auto absolute right-3 bottom-3 left-3 flex flex-col"
                 style={{ top: PHONE_TOP }}
               >
                 <EventList {...listProps} onClose={mapError ? undefined : () => setListOpen(false)} />
               </div>
             ) : (
-              <div ref={stripRef} className="pointer-events-auto absolute right-3 bottom-12 left-3">
+              <div ref={stripRef} className="pointer-events-auto absolute right-3 bottom-3 left-3">
                 {failure ??
                   (shownSelection ? (
                     <SelectionCard

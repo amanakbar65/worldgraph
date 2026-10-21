@@ -143,6 +143,17 @@ describe("GraphView", () => {
     expect(top()).toEqual({ kind: "region", id: "region:in" });
   });
 
+  it("puts the list after the toolbar in keyboard order, as on screen", () => {
+    render(<GraphView />);
+    const toggle = screen.getByRole("radio", { name: "List" });
+    fireEvent.click(toggle);
+    const firstRow = within(screen.getByRole("list", { name: "Nodes, most connected first" })).getAllByRole("button")[0];
+    // Tab from the toolbar's last control goes on into the list, not out of the page.
+    const after = (a: Element, b: Element) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    expect(after(toggle, firstRow)).toBe(true);
+    expect(after(screen.getByRole("radio", { name: "All time" }), firstRow)).toBe(true);
+  });
+
   it("finds a node and keeps it lit", () => {
     render(<GraphView />);
     const box = screen.getByRole("combobox", { name: "Find something in the graph" });
