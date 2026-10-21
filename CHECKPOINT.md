@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 19 Oct 2026, 08:40 UTC. **Test link published:** https://claude.ai/artifact/XfUP7NoqKsf471epDNFRJN (version 1). Fix run 1 merged. Weekly usage limit almost spent: nothing in flight.
+**Last updated:** 21 Oct 2026. Test link: https://claude.ai/artifact/XfUP7NoqKsf471epDNFRJN. **In flight:** fix run `wf_c203058a-8f7` (1 agent, label a11y): the recovered a11y findings, the 4 unfinished checks, and the shell leftovers. Its worktree is `wf_c203058a-8f7-1`, saved to `wip/` of the same name. If it is interrupted, merge that branch after the checks or relaunch `worldgraph-qa-fix.js` with the same group and a resume note.
 
 ## How to resume (any new session)
 
