@@ -1,7 +1,8 @@
 import { ArrowLeft, X } from "lucide-react";
-import { Suspense, useEffect, useRef, type ReactNode } from "react";
+import { Suspense, useEffect, useRef, type ReactNode, type Ref } from "react";
 import { Drawer } from "vaul";
 
+import { usePanelFocus } from "./panel-focus";
 import { PANEL_COMPONENTS, WIDE_PANELS } from "./registry";
 import { useIsDesktop } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
@@ -31,7 +32,15 @@ export function PanelSkeleton() {
   );
 }
 
-function Controls({ depth, children }: { depth: number; children?: ReactNode }) {
+function Controls({
+  depth,
+  closeRef,
+  children,
+}: {
+  depth: number;
+  closeRef: Ref<HTMLButtonElement>;
+  children?: ReactNode;
+}) {
   const back = useNav((s) => s.back);
   const closePanels = useNav((s) => s.closePanels);
   return (
@@ -48,6 +57,7 @@ function Controls({ depth, children }: { depth: number; children?: ReactNode }) 
       )}
       <div className="min-w-0 flex-1">{children}</div>
       <button
+        ref={closeRef}
         type="button"
         onClick={closePanels}
         className="flex size-8 items-center justify-center rounded-md text-fg-muted hover:bg-surface-2 hover:text-fg"
@@ -69,6 +79,8 @@ export function PanelHost() {
   const closePanels = useNav((s) => s.closePanels);
   const isDesktop = useIsDesktop();
   const scroller = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLElement>(null);
+  const close = usePanelFocus(panel, root);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: 0 });
@@ -79,13 +91,14 @@ export function PanelHost() {
     const wide = WIDE_PANELS.has(panel.kind);
     return (
       <aside
+        ref={root}
         aria-label="Details"
         className={cn(
           "absolute z-20 flex flex-col overflow-hidden rounded-xl border border-line bg-glass shadow-panel backdrop-blur-xl",
           wide ? "inset-3" : "top-3 right-3 bottom-3 w-[min(440px,calc(100%-24px))]",
         )}
       >
-        <Controls depth={depth} />
+        <Controls depth={depth} closeRef={close} />
         <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <PanelContent panel={panel} />
         </div>
@@ -102,12 +115,18 @@ export function PanelHost() {
     >
       <Drawer.Portal>
         <Drawer.Content
+          ref={(el) => {
+            root.current = el;
+          }}
           aria-describedby={undefined}
+          // usePanelFocus moves focus in and gives it back (Radix would drop it on <body>).
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
           className="fixed inset-x-0 bottom-0 z-40 flex h-[94dvh] flex-col rounded-t-2xl border-t border-line bg-surface shadow-panel outline-none"
         >
           <Drawer.Title className="sr-only">Details</Drawer.Title>
           <div className="mx-auto mt-2 mb-1 h-1.5 w-10 shrink-0 rounded-full bg-line-strong" aria-hidden />
-          <Controls depth={depth} />
+          <Controls depth={depth} closeRef={close} />
           <div
             ref={scroller}
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom,0px)]"

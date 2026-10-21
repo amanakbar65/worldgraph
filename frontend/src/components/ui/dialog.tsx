@@ -2,11 +2,14 @@ import { X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import * as React from "react";
 
+import { rememberOrigin, returnFocus } from "@/lib/focus";
 import { cn } from "@/lib/utils";
 
 /**
  * A modal dialog. Focus is trapped inside, Escape closes it and focus goes
- * back to the trigger. Always give it a DialogTitle (it can be sr-only).
+ * back to what had it before the dialog opened (the trigger, or whatever
+ * was focused when a shortcut like Ctrl+K opened it). Always give it a
+ * DialogTitle (it can be sr-only).
  */
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -17,7 +20,17 @@ interface DialogContentProps extends React.ComponentProps<typeof DialogPrimitive
   hideClose?: boolean;
 }
 
-function DialogContent({ className, children, hideClose = false, ...props }: DialogContentProps) {
+function DialogContent({
+  className,
+  children,
+  hideClose = false,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
+  ...props
+}: DialogContentProps) {
+  // Radix only gives focus back to a DialogTrigger; dialogs opened by a
+  // shortcut (the search) have none, so remember the origin ourselves.
+  const origin = React.useRef<HTMLElement | null>(null);
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
@@ -29,6 +42,17 @@ function DialogContent({ className, children, hideClose = false, ...props }: Dia
       <DialogPrimitive.Content
         // The app's global Escape handler leaves modal dialogs alone.
         data-modal=""
+        onOpenAutoFocus={(event) => {
+          // Runs before Radix moves focus in: what has focus now is the origin.
+          if (event.currentTarget instanceof Element) origin.current = rememberOrigin(event.currentTarget);
+          onOpenAutoFocus?.(event);
+        }}
+        onCloseAutoFocus={(event) => {
+          onCloseAutoFocus?.(event);
+          if (event.defaultPrevented) return;
+          event.preventDefault();
+          returnFocus(origin.current);
+        }}
         className={cn(
           "fixed top-1/2 left-1/2 z-50 flex max-h-[85dvh] w-[min(32rem,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 flex-col gap-3 overflow-y-auto rounded-xl border border-line-strong bg-surface p-5 text-fg shadow-panel outline-none",
           "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
