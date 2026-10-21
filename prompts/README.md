@@ -4,8 +4,10 @@ One set of AI instructions and output schemas, used by both AI engines:
 
 | Engine | Where it runs | How it uses these files |
 | --- | --- | --- |
-| Test link (claude.ai Artifact) | The viewer's own Claude account, only while the app is open (`sample` capability) | The prompt text plus the data, as one message; the reply is parsed as JSON and checked |
-| Website (after deployment) | Claude API, with a daily spending cap | The prompt as the system prompt (cached), the data as the user message, and the schema as the structured-output format |
+| Test link (claude.ai Artifact) | The viewer's own Claude account, only while the app is open (`sample` capability) | The prompt text plus the data, as one message; the reply is parsed as JSON and checked. An Ask follow-up is a short chat instead: the prompt, the earlier questions and answers, then the data |
+| Website (after deployment) | Claude API, with a daily spending cap | The prompt as the system prompt (cached), the data as the user message, and the schema as the structured-output format. An Ask follow-up puts the earlier questions and answers before the data, as user and assistant messages |
+
+Ask is a conversation: a follow-up carries the last 6 earlier turns (each the question and a short text of the answer, trimmed; `frontend/src/ai/history.ts`), so "what about India?" reads against the question before it. The data's `about` names the place or story Ask was opened from, and the answer's `read_as` says how the question was understood.
 
 | Task | Prompt | Output schema | Checked again by |
 | --- | --- | --- | --- |

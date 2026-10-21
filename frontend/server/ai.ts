@@ -1,7 +1,11 @@
 /**
- * The website's AI endpoint: POST /api/ai {task, input} → {data} | {error}.
+ * The website's AI endpoint: POST /api/ai {task, input, history?} → {data} | {error}.
  * Used by the Netlify function (netlify/functions/ai.mts).
  *
+ * - `history` (Ask only): the conversation's earlier turns, oldest first, at
+ *   most 6 {question, answer} (src/ai/history.ts has the limits). They go to
+ *   Claude as earlier user and assistant messages before the data, so a
+ *   follow-up such as "what about India?" reads against the last question.
  * - Only "ask" and "projection" run here. "analysis" belongs to the
  *   pipeline job (backend/src/worldgraph/pipeline/analysis.py) and is refused.
  * - A daily budget (WG_AI_DAILY_BUDGET_USD, default US$2, UTC days) covers
@@ -15,6 +19,8 @@
  * Status codes the browser engine understands: 402 budget, 429 busy,
  * 503 unavailable, 422 unreadable answer, 4xx/5xx otherwise failed.
  */
+
+import { MAX_TURNS, parseHistory } from "../src/ai/history";
 
 export type WebAiTask = "ask" | "projection";
 
@@ -124,9 +130,9 @@ const fail = (status: number, error: string): AiResult => ({ status, body: { err
 
 export async function handleAi(rawBody: string, deps: AiDeps): Promise<AiResult> {
   if (byteLength(rawBody) > MAX_BODY_BYTES) return fail(413, "Request too large.");
-  let parsed: { task?: unknown; input?: unknown };
+  let parsed: { task?: unknown; input?: unknown; history?: unknown };
   try {
-    parsed = JSON.parse(rawBody) as { task?: unknown; input?: unknown };
+    parsed = JSON.parse(rawBody) as { task?: unknown; input?: unknown; history?: unknown };
   } catch {
     return fail(400, "Body must be JSON.");
   }
@@ -136,6 +142,10 @@ export async function handleAi(rawBody: string, deps: AiDeps): Promise<AiResult>
   if (task !== "ask" && task !== "projection") return fail(400, "Unknown task.");
   if (!input || typeof input !== "object" || Array.isArray(input))
     return fail(400, "Input must be an object.");
+  const history = parseHistory(parsed.history);
+  if (history === null)
+    return fail(400, `History must be at most ${MAX_TURNS} short {question, answer} turns.`);
+  if (history.length > 0 && task !== "ask") return fail(400, "Only Ask takes earlier turns.");
   const data = JSON.stringify(input);
   if (byteLength(data) > MAX_INPUT_BYTES) return fail(413, "Too much data for one question.");
 
@@ -167,7 +177,14 @@ export async function handleAi(rawBody: string, deps: AiDeps): Promise<AiResult>
     model,
     max_tokens: 16000,
     system: [{ type: "text", text: prompt, cache_control: { type: "ephemeral" } }],
-    messages: [{ role: "user", content: data }],
+    // Earlier turns first (a follow-up), then the data with the new question.
+    messages: [
+      ...history.flatMap((t) => [
+        { role: "user", content: t.question },
+        { role: "assistant", content: t.answer },
+      ]),
+      { role: "user", content: data },
+    ],
     output_config: { effort: "low", format: { type: "json_schema", schema } },
     ...(fallbacks ? { fallbacks: "default" } : {}),
   };

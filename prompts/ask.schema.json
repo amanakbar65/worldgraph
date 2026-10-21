@@ -1,8 +1,9 @@
 {
-  "$comment": "Output of prompts/ask.md. Limits (3 bullets, 30 words, 4 steps…) are checked after the call.",
+  "$comment": "Output of prompts/ask.md. Limits (3 bullets, 30 words, 4 steps, read_as up to 15 words…) are checked after the call.",
   "type": "object",
   "properties": {
     "status": { "type": "string", "enum": ["answered", "not_enough_evidence"] },
+    "read_as": { "type": "string" },
     "bullets": {
       "type": "array",
       "items": {
@@ -31,6 +32,6 @@
     "forecasts": { "type": "array", "items": { "type": "string" } },
     "follow_up": { "type": "array", "items": { "type": "string" } }
   },
-  "required": ["status", "bullets", "cascade", "forecasts", "follow_up"],
+  "required": ["status", "read_as", "bullets", "cascade", "forecasts", "follow_up"],
   "additionalProperties": false
 }

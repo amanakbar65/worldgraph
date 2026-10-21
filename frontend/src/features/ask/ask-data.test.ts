@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { AskAnswer } from "@/ai/schemas";
 
 import {
+  aboutFrom,
+  answerText,
   chainSteps,
   citedStories,
   cleanFollowUps,
@@ -11,10 +13,15 @@ import {
   inSentence,
   isAskable,
   isEmptyContext,
+  isFollowUp,
   mainTopic,
+  MAX_SEARCH,
   notEnoughEvidence,
+  readAs,
+  searchText,
   shapeAnswer,
   suggestionsFor,
+  topicWords,
 } from "./ask-data";
 import {
   BRENT,
@@ -301,5 +308,99 @@ describe("suggested questions", () => {
       ]),
     ).toEqual({ name: "Crude oil", type: "commodity" });
     expect(mainTopic([{ name: "India", type: "region" }])).toBeNull();
+  });
+});
+
+describe("the conversation", () => {
+  const GUJARAT = { id: "region:in-gj", type: "region" as const, name: "Gujarat", terms: ["Gujarat"] };
+
+  it("tells a follow-up from a question that stands on its own", () => {
+    for (const q of [
+      "What about India?",
+      "And for airlines?",
+      "How could that affect prices?",
+      "Who is affected?",
+      "What does the crowd expect?",
+      "What could happen next?",
+      "Which businesses there should worry?",
+    ]) {
+      expect(isFollowUp(q), q).toBe(true);
+    }
+    for (const q of [
+      "What's driving fuel costs?",
+      "Where are the opportunities in solar power?",
+      "How do OPEC+ cuts affect airlines?",
+      "Which risks should Gujarat businesses watch?",
+    ]) {
+      expect(isFollowUp(q), q).toBe(false);
+    }
+  });
+
+  it("finds the words that name something", () => {
+    expect(topicWords("What's driving fuel costs in India?")).toEqual(["driving", "fuel", "costs", "india"]);
+    expect(topicWords("What about it?")).toEqual([]);
+  });
+
+  it("searches a follow-up with the question it leans on, then the subject", () => {
+    expect(searchText("What about India?", "What's driving fuel costs?", null)).toBe(
+      "What about India? What's driving fuel costs?",
+    );
+    expect(searchText("Where are the opportunities in solar power?", "What's driving fuel costs?", null)).toBe(
+      "Where are the opportunities in solar power?",
+    );
+    expect(searchText("What are the risks?", null, GUJARAT)).toBe("What are the risks? Gujarat");
+    expect(searchText("x ".repeat(400), "y", GUJARAT).length).toBeLessThanOrEqual(MAX_SEARCH);
+  });
+
+  it("uses a story's topic and place as search words, and its headline as the name", () => {
+    expect(
+      aboutFrom({
+        id: SURCHARGE.id,
+        type: "story",
+        name: SURCHARGE.headline,
+        place: "India",
+        topic: { name: "Jet fuel", type: "commodity" },
+      }),
+    ).toEqual({ id: SURCHARGE.id, type: "story", name: SURCHARGE.headline, terms: ["Jet fuel", "India"] });
+    expect(aboutFrom({ id: BRENT.id, type: "story", name: BRENT.headline }).terms).toEqual([BRENT.headline]);
+    expect(aboutFrom({ id: "region:in-gj", type: "region", name: "Gujarat" }).terms).toEqual(["Gujarat"]);
+  });
+
+  it("keeps how a follow-up was read only when it adds something, within 15 words", () => {
+    expect(readAs("What's driving fuel costs in India?", "What about India?")).toBe(
+      "What's driving fuel costs in India?",
+    );
+    expect(readAs("What is driving fuel costs?", "What's driving fuel costs?")).toBeNull();
+    expect(readAs("word ".repeat(16), "What about India?")).toBeNull();
+    expect(readAs(undefined, "What about India?")).toBeNull();
+    expect(readAs("India", "What about India?")).toBeNull();
+  });
+
+  it("shapes read_as, and leaves out follow-ups already asked in the conversation", () => {
+    const shaped = shapeAnswer(
+      answer({
+        read_as: "What's driving fuel costs in India?",
+        follow_up: ["What's driving fuel costs?", "Which airlines are most exposed?"],
+      }),
+      CONTEXT,
+      "What about India?",
+      ["What's driving fuel costs?"],
+    );
+    expect(shaped.readAs).toBe("What's driving fuel costs in India?");
+    expect(shaped.followUps).toEqual(["Which airlines are most exposed?"]);
+  });
+
+  it("writes an answer as a short text for the history, without citations", () => {
+    const shaped = shapeAnswer(
+      answer({
+        bullets: [
+          { text: "Brent is up.", cite: [BRENT.id] },
+          { text: "Fares could rise.", cite: [SURCHARGE.id] },
+        ],
+      }),
+      CONTEXT,
+    );
+    expect(answerText(shaped)).toBe("- Brent is up.\n- Fares could rise.");
+    expect(answerText(notEnoughEvidence())).toBe("WorldGraph didn't hold enough evidence to answer this.");
   });
 });

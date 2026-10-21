@@ -1,46 +1,75 @@
 /**
- * This visit's questions and how each one is going. Lives in memory only:
- * a reload starts afresh. Each question goes searching (api.ask_context,
- * fetched by the panel through useRpc) → thinking (one AI call) → done,
- * or stops (the viewer pressed Stop) or fails. The AI runs only on an
- * explicit ask: a submit, a suggestion, a follow-up or "Try again".
+ * The Ask conversation: one thread of questions and answers that lives in
+ * memory while the app is open (closing and reopening the panel keeps it; a
+ * reload or "New chat" starts afresh).
+ *
+ * Each turn goes searching (api.ask_context, fetched by the panel through
+ * useRpc) → thinking (one AI call) → done, or stops (the viewer pressed
+ * Stop) or fails. A follow-up carries the thread's earlier answered turns
+ * (the last few, trimmed) so "what about India?" reads against the question
+ * before it, and searches with that question's words too. What the thread
+ * is about (a region or story Ask was opened from) stays with it and goes
+ * with every turn. The AI runs only on an explicit ask: a send, a
+ * suggestion, a follow-up or "Try again".
  */
 import { create } from "zustand";
 
 import type { AskContextResponse } from "@/api/contract";
 import { AiError, runAi } from "@/ai/engine";
+import { trimHistory, type AiTurn } from "@/ai/history";
 import { AskAnswer } from "@/ai/schemas";
 
-import { compactContext, isEmptyContext, notEnoughEvidence, shapeAnswer, type ShapedAnswer } from "./ask-data";
+import {
+  aboutForAi,
+  answerText,
+  compactContext,
+  isEmptyContext,
+  notEnoughEvidence,
+  searchText,
+  shapeAnswer,
+  type AskAbout,
+  type ShapedAnswer,
+} from "./ask-data";
 
 export type AskPhase = "searching" | "thinking" | "done" | "stopped" | "failed";
 
 export type AskFailure =
-  | { source: "data"; error: Error }
-  | { source: "ai"; kind: AiError["kind"]; message: string };
+  { source: "data"; error: Error } | { source: "ai"; kind: AiError["kind"]; message: string };
 
-export interface AskEntry {
+export interface AskTurn {
   id: number;
   question: string;
   /** The sample setting when it was asked (api.ask_context's `sample`). */
   sample: boolean | undefined;
   askedAt: number;
+  /** What the thread was about when this was asked (null: nothing in particular). */
+  about: AskAbout | null;
+  /** What api.ask_context searched for: the question, plus what a follow-up leans on and `about`. */
+  search: string;
+  /** The earlier turns sent to the AI with it (fixed when asked, so "Try again" sends the same). */
+  history: AiTurn[];
   phase: AskPhase;
   context: AskContextResponse | null;
   answer: ShapedAnswer | null;
   failure: AskFailure | null;
 }
 
-/** How many questions this visit keeps. */
-export const MAX_HISTORY = 8;
+/** The thread keeps this many turns (the oldest go first); the AI sees only the last few. */
+export const MAX_TURNS_KEPT = 40;
 
 interface AskState {
-  /** Oldest first. */
-  entries: AskEntry[];
-  /** Which entry each opening of the panel shows (keyed by its q and scope). */
-  shown: Record<string, number | null>;
-  submit: (question: string, sample: boolean | undefined, panelKey: string) => number;
-  show: (panelKey: string, id: number | null) => void;
+  /** The conversation, oldest first. */
+  turns: AskTurn[];
+  /** What the conversation is about: the node id Ask was last opened about, or null. */
+  scope: string | null;
+  /** The unsent question, kept while the panel is closed. */
+  draft: string;
+  setDraft: (draft: string) => void;
+  setScope: (scope: string | null) => void;
+  /** Ask a question in the thread; returns its turn id. */
+  submit: (question: string, sample: boolean | undefined, about: AskAbout | null) => number;
+  /** Start again: an empty thread about `scope` (where the panel was opened from). */
+  newChat: (scope: string | null) => void;
   receiveContext: (id: number, context: AskContextResponse) => void;
   failContext: (id: number, error: Error) => void;
   stop: (id: number) => void;
@@ -50,41 +79,67 @@ interface AskState {
 const controllers = new Map<number, AbortController>();
 let nextId = 1;
 
+const isRunning = (t: AskTurn) => t.phase === "searching" || t.phase === "thinking";
+
+/** The earlier turns a new question carries: answered ones only, the last few, trimmed. */
+export function historyFor(turns: readonly AskTurn[]): AiTurn[] {
+  return trimHistory(
+    turns.flatMap((t) =>
+      t.phase === "done" && t.answer ? [{ question: t.question, answer: answerText(t.answer) }] : [],
+    ),
+  );
+}
+
+/** The question a follow-up leans on: the last one asked, as the AI read it when it said. */
+function previousQuestion(turns: readonly AskTurn[]): string | null {
+  const last = turns.at(-1);
+  return last ? (last.answer?.readAs ?? last.question) : null;
+}
+
 export const useAsk = create<AskState>((set, get) => {
-  const patch = (id: number, change: Partial<AskEntry>) =>
-    set((s) => ({ entries: s.entries.map((e) => (e.id === id ? { ...e, ...change } : e)) }));
-  const find = (id: number) => get().entries.find((e) => e.id === id);
+  const patch = (id: number, change: Partial<AskTurn>) =>
+    set((s) => ({ turns: s.turns.map((t) => (t.id === id ? { ...t, ...change } : t)) }));
+  const find = (id: number) => get().turns.find((t) => t.id === id);
 
   return {
-    entries: [],
-    shown: {},
+    turns: [],
+    scope: null,
+    draft: "",
 
-    submit: (question, sample, panelKey) => {
+    setDraft: (draft) => set({ draft }),
+    setScope: (scope) => set({ scope }),
+
+    submit: (question, sample, about) => {
       // One question at a time: a new one stops any that is still running.
-      for (const e of get().entries) if (e.phase === "searching" || e.phase === "thinking") get().stop(e.id);
+      for (const t of get().turns) if (isRunning(t)) get().stop(t.id);
+      const turns = get().turns;
       const id = nextId++;
-      const entry: AskEntry = {
+      const turn: AskTurn = {
         id,
         question,
         sample,
         askedAt: Date.now(),
+        about,
+        search: searchText(question, previousQuestion(turns), about),
+        history: historyFor(turns),
         phase: "searching",
         context: null,
         answer: null,
         failure: null,
       };
-      set((s) => {
-        const entries = [...s.entries, entry].slice(-MAX_HISTORY);
-        return { entries, shown: { ...s.shown, [panelKey]: id } };
-      });
+      set({ turns: [...turns, turn].slice(-MAX_TURNS_KEPT) });
       return id;
     },
 
-    show: (panelKey, id) => set((s) => ({ shown: { ...s.shown, [panelKey]: id } })),
+    newChat: (scope) => {
+      for (const c of controllers.values()) c.abort();
+      controllers.clear();
+      set({ turns: [], scope, draft: "" });
+    },
 
     receiveContext: (id, context) => {
-      const entry = find(id);
-      if (!entry || entry.phase !== "searching") return;
+      const turn = find(id);
+      if (!turn || turn.phase !== "searching") return;
       if (isEmptyContext(context)) {
         patch(id, { phase: "done", context, answer: notEnoughEvidence() });
         return;
@@ -92,16 +147,23 @@ export const useAsk = create<AskState>((set, get) => {
       patch(id, { phase: "thinking", context });
       const controller = new AbortController();
       controllers.set(id, controller);
-      runAi("ask", { question: entry.question, context: compactContext(context) }, AskAnswer, {
-        signal: controller.signal,
-      })
+      const asked = get()
+        .turns.filter((t) => t.id < id)
+        .map((t) => t.question);
+      const input = {
+        question: turn.question,
+        about: aboutForAi(turn.about),
+        context: compactContext(context),
+      };
+      runAi("ask", input, AskAnswer, { signal: controller.signal, history: turn.history })
         .then((raw) => {
           if (find(id)?.phase !== "thinking" || controller.signal.aborted) return;
-          patch(id, { phase: "done", answer: shapeAnswer(raw, context, entry.question) });
+          patch(id, { phase: "done", answer: shapeAnswer(raw, context, turn.question, asked) });
         })
         .catch((error: unknown) => {
           if (find(id)?.phase !== "thinking") return;
-          const ai = error instanceof AiError ? error : new AiError("failed", "The answer didn't arrive. Try again.");
+          const ai =
+            error instanceof AiError ? error : new AiError("failed", "The answer didn't arrive. Try again.");
           if (ai.kind === "cancelled") patch(id, { phase: "stopped" });
           else patch(id, { phase: "failed", failure: { source: "ai", kind: ai.kind, message: ai.message } });
         })
@@ -116,33 +178,33 @@ export const useAsk = create<AskState>((set, get) => {
     },
 
     stop: (id) => {
-      const entry = find(id);
-      if (!entry || (entry.phase !== "searching" && entry.phase !== "thinking")) return;
+      const turn = find(id);
+      if (!turn || !isRunning(turn)) return;
       patch(id, { phase: "stopped" });
       controllers.get(id)?.abort();
       controllers.delete(id);
     },
 
     retry: (id) => {
-      const entry = find(id);
-      if (!entry || entry.phase === "searching" || entry.phase === "thinking") return;
+      const turn = find(id);
+      // One question at a time: no retry while any turn is running.
+      if (!turn || get().turns.some(isRunning)) return;
+      // Only this turn runs again, with the history it was first asked with.
       // A stored context is reused (it's cached); the AI is asked again.
       patch(id, { phase: "searching", answer: null, failure: null, askedAt: Date.now() });
-      if (entry.context && entry.failure?.source !== "data") get().receiveContext(id, entry.context);
+      if (turn.context && turn.failure?.source !== "data") get().receiveContext(id, turn.context);
     },
   };
 });
 
-/** The key that tells openings of the Ask panel apart. */
-export function panelKeyOf(q: string | undefined, scope: string | undefined): string {
-  return `${q ?? ""}|${scope ?? ""}`;
-}
+/** The turn that is searching or thinking, if any. */
+export const runningTurn = (s: { turns: AskTurn[] }): AskTurn | null => s.turns.find(isRunning) ?? null;
 
 export const __testing = {
   reset: () => {
     for (const c of controllers.values()) c.abort();
     controllers.clear();
     nextId = 1;
-    useAsk.setState({ entries: [], shown: {} });
+    useAsk.setState({ turns: [], scope: null, draft: "" });
   },
 };

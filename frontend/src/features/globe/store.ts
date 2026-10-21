@@ -14,7 +14,7 @@ interface GlobeUiState {
   listOpen: boolean;
   /** Phones: the Top 5 card is folded to one line. */
   topCollapsed: boolean;
-  /** The viewer has moved the globe; it stops turning on its own. */
+  /** The viewer has moved the globe: it is no longer re-framed to home, and the camera is kept. */
   interacted: boolean;
   /** The last fly-to request (useNav.focus) the globe acted on. */
   appliedFocus: number | null;

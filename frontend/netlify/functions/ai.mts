@@ -1,8 +1,10 @@
 /**
- * Website AI endpoint: POST /api/ai {task: "ask" | "projection", input}.
- * (netlify.toml redirects /api/ai here.) All the logic is in server/ai.ts:
- * input checks, the daily budget in llm_usage, the Claude API call and
- * usage logging. Story analysis is refused: the pipeline does it.
+ * Website AI endpoint: POST /api/ai {task: "ask" | "projection", input,
+ * history?}, where `history` holds an Ask conversation's earlier turns (at
+ * most 6 {question, answer}). (netlify.toml redirects /api/ai here.) All the
+ * logic is in server/ai.ts: input and history checks, the daily budget in
+ * llm_usage, the Claude API call and usage logging. Story analysis is
+ * refused: the pipeline does it.
  *
  * Environment: ANTHROPIC_API_KEY, DATABASE_URL, optional DATABASE_CA_CERT,
  * WG_AI_MODEL (default claude-opus-5-5), WG_AI_DAILY_BUDGET_USD (default 2).

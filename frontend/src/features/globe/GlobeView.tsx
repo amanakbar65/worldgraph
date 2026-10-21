@@ -150,7 +150,6 @@ export default function GlobeView() {
   const setListOpen = useGlobeUi((s) => s.setListOpen);
   const topCollapsed = useGlobeUi((s) => s.topCollapsed);
   const setTopCollapsed = useGlobeUi((s) => s.setTopCollapsed);
-  const interacted = useGlobeUi((s) => s.interacted);
   const setInteracted = useGlobeUi((s) => s.setInteracted);
   const appliedFocus = useGlobeUi((s) => s.appliedFocus);
   const setAppliedFocus = useGlobeUi((s) => s.setAppliedFocus);
@@ -733,7 +732,9 @@ export default function GlobeView() {
           initialCamera={initialCamera}
           camera={camera}
           calm={calm}
-          autoRotate={!interacted && panel === null && !listOpen && !hovering && selected === null}
+          // The slow turn (after Home, or idle time) waits while something is open over the globe.
+          turnBlocked={panel !== null || selected !== null || (listOpen && !isDesktop)}
+          turnPaused={hovering}
           onHover={onHover}
           onPick={onPick}
           onView={onView}

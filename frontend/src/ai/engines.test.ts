@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AiError } from "./engine";
 import {
   artifactEngine,
+  buildMessages,
   buildPrompt,
   httpEngine,
   httpStatusToAiError,
@@ -45,6 +46,45 @@ describe("artifact engine", () => {
     expect(prompt).toBe(buildPrompt("projection", { focus: "story:a" }));
     expect(options.modelTier).toBe(MODEL_TIER.projection);
     expect(options.signal).toBe(controller.signal);
+  });
+
+  it("sends a follow-up as a chat: the prompt, the earlier turns, then the data", async () => {
+    const sample = fakeSample(async () => ({ status: "answered" }));
+    const history = [
+      { question: "What's driving fuel costs?", answer: "- Brent is up on tighter supply." },
+      { question: "And for airlines?", answer: "- Jet fuel costs more." },
+    ];
+    await artifactEngine(sample).complete("ask", { question: "What about India?" }, { history });
+    const [messages, options] = sample.json.mock.calls[0] as [Claude.sample.SampleMessage[], Claude.sample.SampleOptions];
+    expect(messages).toEqual([
+      { role: "user", content: PROMPTS.ask },
+      { role: "user", content: "What's driving fuel costs?" },
+      { role: "assistant", content: "- Brent is up on tighter supply." },
+      { role: "user", content: "And for airlines?" },
+      { role: "assistant", content: "- Jet fuel costs more." },
+      { role: "user", content: '## Data\n\n{"question":"What about India?"}' },
+    ]);
+    expect(messages).toEqual(buildMessages("ask", { question: "What about India?" }, history));
+    // It starts and ends on a user turn, as `sample` requires.
+    expect(messages[0].role).toBe("user");
+    expect(messages.at(-1)?.role).toBe("user");
+    expect(options.modelTier).toBe(MODEL_TIER.ask);
+  });
+
+  it("sends at most the last six earlier turns, trimmed", async () => {
+    const sample = fakeSample(async () => ({}));
+    const history = Array.from({ length: 9 }, (_, i) => ({ question: `Q${i}?`, answer: "a".repeat(5000) }));
+    await artifactEngine(sample).complete("ask", {}, { history });
+    const messages = sample.json.mock.calls[0][0] as Claude.sample.SampleMessage[];
+    expect(messages).toHaveLength(1 + 6 * 2 + 1);
+    expect(messages[1].content).toBe("Q3?");
+    for (const m of messages.slice(1, -1)) expect(m.content.length).toBeLessThanOrEqual(1000);
+  });
+
+  it("sends one prompt string when there is no history", async () => {
+    const sample = fakeSample(async () => ({}));
+    await artifactEngine(sample).complete("ask", { question: "Oil?" }, { history: [] });
+    expect(sample.json.mock.calls[0][0]).toBe(buildPrompt("ask", { question: "Oil?" }));
   });
 
   it("picks a model tier for every task", () => {
@@ -106,6 +146,20 @@ describe("website engine", () => {
     expect(url).toBe("/api/ai");
     expect(init.method).toBe("POST");
     expect(JSON.parse(String(init.body))).toEqual({ task: "ask", input: { q: "oil" } });
+  });
+
+  it("sends a follow-up's earlier turns as history, trimmed to the last six", async () => {
+    const fetchImpl = vi.fn(() => ok({ data: { status: "answered" } }));
+    const engine = httpEngine("/api/ai", fetchImpl as unknown as typeof fetch);
+    const history = Array.from({ length: 8 }, (_, i) => ({ question: `Q${i}?`, answer: `- A${i}` }));
+    await engine.complete("ask", { question: "What about India?" }, { history });
+    const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(String(init.body));
+    expect(body.task).toBe("ask");
+    expect(body.input).toEqual({ question: "What about India?" });
+    expect(body.history).toHaveLength(6);
+    expect(body.history[0]).toEqual({ question: "Q2?", answer: "- A2" });
+    expect(body.history.at(-1)).toEqual({ question: "Q7?", answer: "- A7" });
   });
 
   it.each([

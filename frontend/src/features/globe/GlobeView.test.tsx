@@ -7,9 +7,11 @@ import type { RpcName } from "@/api/contract";
 import { DataError } from "@/api/source";
 import { snapshotKeyOf, snapshotManifest } from "@/lib/snapshot-plan";
 import { useNav } from "@/state/nav";
+import { useSettings } from "@/state/settings";
 
 import { FORECAST, GLOBE, META, NOW, TOP, TOP_LIVE } from "./fixtures";
 import GlobeView from "./GlobeView";
+import { IDLE_MS } from "./idle-spin";
 import { DEFAULT_TOGGLES } from "./layers";
 import { useGlobeHover, useGlobeUi } from "./store";
 
@@ -21,6 +23,7 @@ interface FakeMap {
   options: { center: [number, number]; zoom: number; style: { layers: { id: string }[] } };
   fire: (type: string, event?: unknown) => void;
   flyTo: ReturnType<typeof vi.fn>;
+  setCenter: ReturnType<typeof vi.fn>;
   remove: ReturnType<typeof vi.fn>;
   addControl: ReturnType<typeof vi.fn>;
 }
@@ -77,6 +80,10 @@ vi.mock("maplibre-gl", () => {
     }
     on(type: string, fn: (event?: unknown) => void) {
       (this.handlers[type] ??= []).push(fn);
+      return this;
+    }
+    off(type: string, fn: (event?: unknown) => void) {
+      this.handlers[type] = (this.handlers[type] ?? []).filter((h) => h !== fn);
       return this;
     }
     fire(type: string, event?: unknown) {
@@ -426,6 +433,73 @@ describe("GlobeView on a desktop", () => {
     for (const a of arcs.props.data) {
       expect(a.dim).toBe(a.src_country !== "region:fr" && a.dst_country !== "region:fr");
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The slow turn (idle-spin.ts): after Home, or after idle time with nothing open
+// ---------------------------------------------------------------------------
+
+describe("GlobeView's slow turn", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({
+      toFake: [
+        "Date",
+        "setTimeout",
+        "clearTimeout",
+        "requestAnimationFrame",
+        "cancelAnimationFrame",
+        "performance",
+      ],
+    });
+    vi.setSystemTime(NOW);
+    useSettings.setState({ calm: false });
+  });
+  afterEach(() => useSettings.setState({ calm: false }));
+
+  const turns = () => map().setCenter.mock.calls.length;
+
+  it("doesn't turn on load; it turns after idle time, and input stops it", () => {
+    renderGlobe();
+    act(() => map().fire("load"));
+    act(() => vi.advanceTimersByTime(5000));
+    expect(turns()).toBe(0);
+    act(() => vi.advanceTimersByTime(IDLE_MS));
+    expect(turns()).toBeGreaterThan(0);
+    act(() => void fireEvent.pointerDown(document.body));
+    const before = turns();
+    act(() => vi.advanceTimersByTime(5000));
+    expect(turns()).toBe(before);
+  });
+
+  it("turns once Home's flight back lands", () => {
+    renderGlobe();
+    act(() => map().fire("load"));
+    fireEvent.click(screen.getByRole("button", { name: "Show the whole globe" }));
+    expect(map().flyTo).toHaveBeenLastCalledWith(expect.objectContaining({ center: [25, 20] }));
+    act(() => vi.advanceTimersByTime(1000));
+    expect(turns()).toBe(0); // still flying
+    act(() => map().fire("moveend"));
+    act(() => vi.advanceTimersByTime(4000));
+    expect(turns()).toBeGreaterThan(0);
+  });
+
+  it("waits while a panel is open", () => {
+    useNav.setState({ panels: [{ kind: "region", id: "region:in" }] });
+    renderGlobe();
+    act(() => map().fire("load"));
+    act(() => vi.advanceTimersByTime(IDLE_MS * 3));
+    expect(turns()).toBe(0);
+  });
+
+  it("never turns with the Calm setting", () => {
+    useSettings.setState({ calm: true });
+    renderGlobe();
+    act(() => map().fire("load"));
+    fireEvent.click(screen.getByRole("button", { name: "Show the whole globe" }));
+    act(() => map().fire("moveend"));
+    act(() => vi.advanceTimersByTime(IDLE_MS * 3));
+    expect(turns()).toBe(0);
   });
 });
 
