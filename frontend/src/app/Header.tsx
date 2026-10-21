@@ -27,6 +27,7 @@ export function Header() {
         <span className="hidden sm:inline">WorldGraph</span>
       </button>
 
+      {/* Icons only until there is room for every label (xl), so search, Ask and Settings stay on screen. */}
       <nav aria-label="Screens" className="ml-2 hidden items-center gap-0.5 md:flex">
         {NAV_ITEMS.map((item) => (
           <button
@@ -34,13 +35,14 @@ export function Header() {
             type="button"
             onClick={() => setView(item.view)}
             aria-current={view === item.view ? "page" : undefined}
+            title={item.label}
             className={cn(
-              "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-body text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg",
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-body whitespace-nowrap text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg",
               view === item.view && "bg-surface-2 text-fg",
             )}
           >
             <item.icon aria-hidden className="size-4" />
-            {item.label}
+            <span className="sr-only xl:not-sr-only">{item.label}</span>
           </button>
         ))}
       </nav>
