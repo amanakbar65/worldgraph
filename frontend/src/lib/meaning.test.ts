@@ -58,6 +58,15 @@ describe("meaning", () => {
     expect(LINK_TYPES.conditional.line).toBe("dotted");
   });
 
+  it("draws the two projections with different patterns, so they read apart without colour", () => {
+    const patterns = Object.values(LINK_TYPES).map((t) => t.dasharray ?? "solid");
+    expect(new Set(patterns).size).toBe(patterns.length);
+    // Projected: dots only. Conditional: a dot, then a dash.
+    expect(LINK_TYPES.projected.dasharray?.split(" ")).toHaveLength(2);
+    const [dot, , dash] = (LINK_TYPES.conditional.dasharray ?? "").split(" ").map(Number);
+    expect(dash).toBeGreaterThan(dot * 4);
+  });
+
   it("colours KPI changes by what higher means", () => {
     expect(kpiChangeImpact(0.3, "worse")).toBe("risk");
     expect(kpiChangeImpact(-0.3, "worse")).toBe("opportunity");

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, type MutableRefObject, type Ref } from "react";
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from "react-force-graph-2d";
 
-import { LINK_TYPES } from "@/lib/meaning";
+import { FORECAST_TONE, LINK_TYPES } from "@/lib/meaning";
 
 import { paletteColor, rgba, type Palette } from "./graph-colors";
 import { endId, focusSet, labelBudget, type VizGraph, type VizLink, type VizNode } from "./graph-data";
@@ -70,9 +70,9 @@ const MAX_ZOOM = 10;
  * The force-directed knowledge graph on a canvas. Entities are icon badges
  * in their type colour sized by connections, stories small dots in their
  * impact colour, forecasts violet rings. Cause-and-effect links point from
- * cause to effect and are drawn solid (reported), dashed (inferred) or
- * dotted (projected, conditional); other links stay faint. Labels go to
- * the most connected nodes first and never overlap.
+ * cause to effect and are drawn solid (reported), dashed (inferred),
+ * dotted (projected) or dot–dash in violet (conditional); other links stay
+ * faint. Labels go to the most connected nodes first and never overlap.
  */
 export function GraphCanvas({
   graph,
@@ -334,7 +334,8 @@ export function GraphCanvas({
       const touches = lit !== null && (s.id === litId || t.id === litId);
       const dim = lit !== null && !touches;
       const causal = link.linkType !== null;
-      const tone = causal ? "--fg-muted" : "--fg-subtle";
+      // Conditional links hang on a crowd forecast: violet, as in the cascade.
+      const tone = !causal ? "--fg-subtle" : link.linkType === "conditional" ? FORECAST_TONE.cssVar : "--fg-muted";
       const base = causal ? 0.8 : 0.28;
       const alpha = dim ? base * 0.2 : touches ? Math.min(1, base * 1.6) : base;
       const px = (causal ? 1.4 : 0.75) * (touches ? 1.5 : 1);

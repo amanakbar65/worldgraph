@@ -1,8 +1,8 @@
 /**
  * How a causal link looks and reads. Facts, inferences and projections stay
- * visibly apart: reported links are solid, inferred dashed, projected and
- * conditional dotted. Confidence sets the line's weight and opacity, and is
- * always said in words too.
+ * visibly apart: reported links are solid, inferred dashed, projected
+ * dotted and conditional dot–dash (and violet). Confidence sets the line's
+ * weight and opacity, and is always said in words too.
  */
 import type { CascadeLink, LinkType } from "@/api/contract";
 import { formatProbability } from "@/lib/format";
@@ -35,11 +35,15 @@ export function edgeLook(linkType: LinkType, confidence: number): EdgeLook {
   const opacity = Math.round((0.4 + c * 0.55) * 100) / 100;
   const line = LINK_TYPES[linkType]?.line ?? "solid";
   // Dots are round caps on near-zero dashes, so their size follows the width.
+  // Conditional puts a short dash between the dots, so it reads apart from
+  // projected without its colour.
   const dasharray =
     line === "dashed"
       ? `${round(width * 3.5)} ${round(width * 2.5)}`
       : line === "dotted"
-        ? `0.01 ${round(width * 2.6)}`
+        ? linkType === "conditional"
+          ? `0.01 ${round(width * 2.2)} ${round(width * 2.4)} ${round(width * 2.2)}`
+          : `0.01 ${round(width * 2.6)}`
         : undefined;
   const tone = linkType === "conditional" ? "forecast" : "muted";
   return {

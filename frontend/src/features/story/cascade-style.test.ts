@@ -13,6 +13,13 @@ describe("edgeLook", () => {
     expect(edgeLook("conditional", 0.8)).toMatchObject({ line: "dotted" });
   });
 
+  it("puts a dash between the dots of conditional links, so they differ from projected ones without colour", () => {
+    const projected = edgeLook("projected", 0.6).dasharray;
+    const conditional = edgeLook("conditional", 0.6).dasharray;
+    expect(conditional).not.toBe(projected);
+    expect(conditional).toMatch(/^0\.01 \d+(\.\d)? \d+(\.\d)? \d+(\.\d)?$/);
+  });
+
   it("gives conditional links the forecast violet and the rest a quiet grey", () => {
     expect(edgeLook("conditional", 0.5)).toMatchObject({ tone: "forecast", strokeClass: "stroke-forecast" });
     expect(edgeLook("reported", 0.5)).toMatchObject({ tone: "muted", strokeClass: "stroke-fg-muted" });

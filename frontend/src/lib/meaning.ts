@@ -217,7 +217,11 @@ export interface LinkTypeInfo {
   dasharray: string | undefined;
 }
 
-/** Facts, inferences and projections stay visibly apart: solid, dashed, dotted. */
+/**
+ * Facts, inferences and projections stay visibly apart: solid, dashed,
+ * dotted. The two projections differ by pattern too, so they read apart
+ * without colour: projected is plain dots, conditional is dot–dash.
+ */
 export const LINK_TYPES: Record<LinkType, LinkTypeInfo> = {
   reported: {
     label: "Reported",
@@ -241,7 +245,7 @@ export const LINK_TYPES: Record<LinkType, LinkTypeInfo> = {
     label: "Conditional",
     description: "Happens only if a crowd forecast resolves one way.",
     line: "dotted",
-    dasharray: "0.5 4.5",
+    dasharray: "0.5 4 6 4",
   },
 };
 
