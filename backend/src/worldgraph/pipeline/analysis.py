@@ -33,6 +33,9 @@ PRICES: dict[str, tuple[float, float, float]] = {
     "claude-opus-5-5": (4.00, 20.00, 0.20),
     "claude-sonnet-5-5": (2.00, 10.00, 0.20),
     "claude-haiku-5-5": (0.10, 0.50, 0.01),
+    # Where the server-side refusal fallback may send a declined request.
+    "claude-opus-5": (5.00, 25.00, 0.50),
+    "claude-opus-4-8": (5.00, 25.00, 0.50),
 }
 
 SECTORS = Literal[
