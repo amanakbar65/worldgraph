@@ -109,7 +109,10 @@ test.describe("focus in and out of panels", () => {
 
 test.describe("focus in and out of search", () => {
   test.beforeEach(({ isPhone }) => {
-    test.skip(isPhone, "Keyboard search (Ctrl+K); phones open it from the header, covered in search.spec.ts.");
+    test.skip(
+      isPhone,
+      "Keyboard search (Ctrl+K); phones open it from the header, covered in search.spec.ts.",
+    );
   });
 
   test("Escape closes search and focus goes back where it was", async ({ page }) => {

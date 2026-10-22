@@ -117,7 +117,12 @@ test.describe("Ask as a conversation", () => {
       `Written by WorldGraph AI from ${cited.length} cited ${cited.length === 1 ? "story" : "stories"}.`,
     );
     // Sample stories are labelled in the answer too.
-    await expect(answer.getByText(/^Sample( data)?$/).filter({ visible: true }).first()).toBeVisible();
+    await expect(
+      answer
+        .getByText(/^Sample( data)?$/)
+        .filter({ visible: true })
+        .first(),
+    ).toBeVisible();
 
     // The box now asks for a follow-up, and the answer offers one.
     await expect(box).toHaveAttribute("placeholder", "Ask a follow-up…");
@@ -150,10 +155,7 @@ test.describe("Ask as a conversation", () => {
     await snap(page, testInfo, "ask-chat-follow-ups");
   });
 
-  test("the thread stays while the panel is closed, and New chat starts again", async ({
-    page,
-    isPhone,
-  }) => {
+  test("the thread stays while the panel is closed, and New chat starts again", async ({ page, isPhone }) => {
     await standInAi(page);
     await openApp(page, "#ask");
     const panel = detailsPanel(page);
@@ -161,7 +163,10 @@ test.describe("Ask as a conversation", () => {
     await expect(conversation(page).getByRole("article", { name: Q1 }).getByText(pointFor(Q1))).toBeVisible();
 
     // A cited story opens over Ask; Back returns to the same conversation.
-    await conversation(page).getByRole("button", { name: /^Source story: / }).first().click();
+    await conversation(page)
+      .getByRole("button", { name: /^Source story: / })
+      .first()
+      .click();
     await expect(panel.getByRole("article").getByRole("heading", { level: 2 })).toBeVisible();
     await panel.getByRole("button", { name: "Back", exact: true }).click();
     await expect(conversation(page).getByRole("article", { name: Q1 })).toBeVisible();

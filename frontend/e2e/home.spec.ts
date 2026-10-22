@@ -26,7 +26,8 @@ interface Camera {
 /** The map's camera and the turn's state, once the globe has loaded. */
 async function camera(page: Page): Promise<Camera> {
   await page.waitForFunction(() => {
-    const g = (window as unknown as { __wgGlobe?: { map?: { loaded(): boolean }; spin?: unknown } }).__wgGlobe;
+    const g = (window as unknown as { __wgGlobe?: { map?: { loaded(): boolean }; spin?: unknown } })
+      .__wgGlobe;
     return !!g?.spin && !!g.map?.loaded();
   });
   return page.evaluate(() => {
@@ -76,7 +77,11 @@ test.describe("the logo is Home", () => {
       "aria-current",
       "page",
     );
-    if (!isPhone) await expect(nav.getByRole("button", { name: "Forecasts", exact: true })).not.toHaveAttribute("aria-current", "page");
+    if (!isPhone)
+      await expect(nav.getByRole("button", { name: "Forecasts", exact: true })).not.toHaveAttribute(
+        "aria-current",
+        "page",
+      );
   });
 
   test.describe("with motion on", () => {

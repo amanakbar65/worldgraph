@@ -83,7 +83,8 @@ test.describe("globe", () => {
     await window.getByRole("radio", { name: "Last 24 hours" }).click();
     await expect(window.getByRole("radio", { name: "Last 24 hours" })).toBeChecked();
     await expect.poll(() => currentHash(page)).toContain("w=24h");
-    if (!isPhone) await expect(page.getByText("Last 24 hours · most important first")).toBeVisible();
+    // The card says how it ranks (api.top: importance, boosted for recent news); the control above names the window.
+    if (!isPhone) await expect(page.getByText("Important and recent first", { exact: true })).toBeVisible();
 
     const top = await rpc<Top>(page, "top", { window: "24h", sectors: [] });
     const rows = topStories(page, isPhone);
