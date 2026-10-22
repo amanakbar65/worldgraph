@@ -92,6 +92,9 @@ export function rpcFailure(error: unknown): RpcResult {
   const sqlstate = typeof e.severity === "string" && typeof e.code === "string" ? e.code : null;
   // 08 connection, 53 resources (too many connections), 57 cancelled / shutting down.
   if (sqlstate === null || /^(08|53|57)/.test(sqlstate)) {
+    // For the owner's function logs only (never sent to the browser); no connection string.
+    const why = `${typeof e.code === "string" ? e.code + " " : ""}${message}`.replace(/postgres(ql)?:\/\/\S+/gi, "<url>");
+    console.error(`rpc: database unavailable: ${why}`);
     return { status: 503, body: { error: "The database didn't answer. It may be waking up." } };
   }
   if (/^not found/i.test(message)) return { status: 404, body: { error: message } };
