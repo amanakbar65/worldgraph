@@ -1395,6 +1395,34 @@ def test_ask_context_entities_prefer_close_matches(sdb: psycopg.Connection) -> N
     assert crude[0] == "commodity:crude-oil"
 
 
+def test_ask_context_red_sea_means_the_shipping_route(sdb: psycopg.Connection) -> None:
+    """QA run 4: the Sudanese state called Red Sea won, and the shipping story was missing."""
+    data = check(
+        "ask_context", call(sdb, "ask_context", {"q": "How does the Red Sea affect Indian exporters?"})
+    )
+    ents = ids(data["entities"])
+    assert ents[:2] == ["infra:bab-el-mandeb", "region:in"]
+    assert "region:sd-rs" not in ents
+    stories = ids(data["stories"])
+    assert stories[0] == "story:red-sea-attacks-reroute"
+    assert "story:indian-exporters-margin-squeeze" in stories
+    # The cascade to Asia–Europe freight rates comes with it.
+    links = {(lk["src"], lk["dst"]) for lk in data["links"]}
+    assert ("story:red-sea-attacks-reroute", "story:asia-europe-rates-jump") in links
+    # "sea" alone ("air and sea bookings") no longer counts for "Red Sea".
+    assert "story:chennai-electronics-front-load-us" not in stories
+
+
+def test_ask_context_keeps_a_state_when_nothing_else_matches(sdb: psycopg.Connection) -> None:
+    assert (
+        ids(call(sdb, "ask_context", {"q": "What is happening in Gujarat?"})["entities"])[0] == "region:in-gj"
+    )
+    assert (
+        ids(call(sdb, "ask_context", {"q": "Port Sudan and the Red Sea state"})["entities"])[0]
+        != "region:sd-rs"
+    )
+
+
 def test_ask_context_limit_and_live_rules(sdb: psycopg.Connection) -> None:
     assert len(call(sdb, "ask_context", {"q": "india exports prices", "limit": 3})["stories"]) == 3
     assert (
