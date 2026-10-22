@@ -128,21 +128,30 @@ export function usableProfile(value: unknown): Profile | null {
 // Plain text
 // ---------------------------------------------------------------------------
 
-function storyLines(story: StorySummary): string[] {
+/**
+ * `markSample`: tag each invented item. Needed when sample data sits beside
+ * live news; when everything is sample, the note at the top says so once.
+ */
+function storyLinesOf(story: StorySummary, markSample: boolean): string[] {
   const place = story.region ? ` (${story.region.name})` : "";
-  if (!story.analysed) return [`- ${story.headline}${place} [draft, awaiting analysis]`];
-  const lines = [`- ${story.headline}${place}`];
+  const tags: string[] = [];
+  if (!story.analysed) tags.push("draft, awaiting analysis");
+  if (markSample && story.is_sample) tags.push("sample data");
+  const tag = tags.length > 0 ? ` [${tags.join("; ")}]` : "";
+  if (!story.analysed) return [`- ${story.headline}${place}${tag}`];
+  const lines = [`- ${story.headline}${place}${tag}`];
   if (story.so_what) lines.push(`  Why it matters: ${story.so_what}`);
   return lines;
 }
 
-function forecastLine(f: ForecastSummary, locale?: string): string {
+function forecastLine(f: ForecastSummary, markSample: boolean, locale?: string): string {
   const parts = [`${formatProbability(f.probability)} crowd forecast`];
   if (f.change_24h !== null) parts.push(`${formatPointChange(f.change_24h)} points in 24 h`);
   parts.push(f.provider_name);
   parts.push(f.volume === null ? "volume not reported" : `${formatCompact(f.volume, locale)}${f.volume_unit ? ` ${f.volume_unit}` : ""} volume`);
   if (f.updated_at) parts.push(`updated ${formatDateTime(f.updated_at, locale)}`);
-  return `- ${f.short_title} ${parts.join(" · ")}`;
+  const tag = markSample && f.is_sample ? " [sample data]" : "";
+  return `- ${f.short_title}${tag} ${parts.join(" · ")}`;
 }
 
 /**
@@ -159,6 +168,9 @@ export function briefAsText(brief: BriefResponse, options: { locale?: string; pr
   const sample = sampleShare(brief);
   if (sample !== "none") notes.push(sample === "all" ? "sample data, not real events" : "includes sample data");
   out.push(notes.join(" · "));
+  // Beside live news, each invented item says so: a pasted line must never pass for news.
+  const mark = sample === "some";
+  const storyLines = (s: StorySummary) => storyLinesOf(s, mark);
 
   for (const kind of BRIEF_ORDER) {
     const card = cards[kind];
@@ -171,7 +183,7 @@ export function briefAsText(brief: BriefResponse, options: { locale?: string; pr
     switch (card.kind) {
       case "odds_moved":
         out.push("Crowd forecasts are estimates, not facts.");
-        for (const f of card.forecasts) out.push(forecastLine(f, locale));
+        for (const f of card.forecasts) out.push(forecastLine(f, mark, locale));
         break;
       case "cascade_to_watch":
         if (card.focus) {

@@ -12,7 +12,7 @@ import {
   spotlightImpact,
   usableProfile,
 } from "./brief-data";
-import { BRIEF, DRAFT, EMPTY_BRIEF, FOCUS, OPEC_FORECAST, PROFILE, RISK } from "./fixtures";
+import { BRIEF, DRAFT, EMPTY_BRIEF, FOCUS, OPEC_FORECAST, PROFILE, RISK, SAMPLE_FORECAST } from "./fixtures";
 
 describe("brief cards", () => {
   it("has six cards in a fixed order", () => {
@@ -96,7 +96,30 @@ describe("briefAsText", () => {
       "CASCADE TO WATCH",
       "REGION SPOTLIGHT",
     ]);
-    expect(text).toContain(`- ${RISK.headline} (India)\n  Why it matters: ${RISK.so_what}`);
+    expect(text).toContain(`- ${RISK.headline} (India) [sample data]\n  Why it matters: ${RISK.so_what}`);
+  });
+
+  it("tags each invented item when sample data sits beside live news", () => {
+    expect(DRAFT.is_sample).toBe(false);
+    expect(OPEC_FORECAST.is_sample).toBe(false);
+    const lines = text.split("\n");
+    for (const s of [RISK, FOCUS]) {
+      expect(lines.find((l) => l.startsWith(`- ${s.headline}`))).toContain("[sample data]");
+    }
+    expect(lines.find((l) => l.startsWith(`- ${SAMPLE_FORECAST.short_title}`))).toContain("[sample data]");
+    // Live items carry no tag.
+    expect(lines.find((l) => l.startsWith(`- ${DRAFT.headline}`))).not.toContain("sample");
+    expect(lines.find((l) => l.startsWith(`- ${OPEC_FORECAST.short_title}`))).not.toContain("sample");
+  });
+
+  it("says sample once at the top when everything is sample", () => {
+    const all = {
+      ...BRIEF,
+      cards: BRIEF.cards.filter((c) => c.kind !== "biggest_movers" && c.kind !== "odds_moved"),
+    };
+    const allText = briefAsText(all, { locale: "en-GB" });
+    expect(allText.split("\n")[1]).toBe("Generated from stored data · sample data, not real events");
+    expect(allText).not.toContain("[sample data]");
   });
 
   it("marks drafts and never invents a so-what for them", () => {
