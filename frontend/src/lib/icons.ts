@@ -182,7 +182,7 @@ export function impactIcon(impact: Impact): LucideIcon {
   return IMPACT_ICONS[impact]?.icon ?? Minus;
 }
 
-/** Forecasts are crowd odds, never facts: they always wear the crowd icon. */
+/** Forecasts are crowd estimates, never facts: they always wear the crowd icon. */
 export const FORECAST_ICON: IconInfo = { icon: Users, name: "users" };
 export const FORECAST_ICON_LABEL = "crowd";
 

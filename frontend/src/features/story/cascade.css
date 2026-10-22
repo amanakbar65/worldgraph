@@ -6,18 +6,9 @@
 .wg-cascade .react-flow {
   --xy-background-color: transparent;
   --xy-edge-stroke: var(--fg-muted);
-  --xy-attribution-background-color: transparent;
 }
 
-.wg-cascade .react-flow__attribution {
-  background: transparent;
-  padding: 2px 8px;
-}
-
-.wg-cascade .react-flow__attribution a {
-  color: var(--fg-subtle);
-  font-size: 0.75rem;
-}
+/* React Flow's credit is in the legend (CascadeFlow.tsx). */
 
 /* Cards are buttons inside nodes; the node wrapper itself is never focused. */
 .wg-cascade .react-flow__node {

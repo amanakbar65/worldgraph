@@ -265,6 +265,8 @@ function FlowCanvas({ model, layout, selectedEdge, onOpenNode, onOpenEvidence, o
           fitView
           fitViewOptions={{ padding: FIT_PADDING, maxZoom: 1, minZoom: READABLE_ZOOM }}
           zoomOnDoubleClick={false}
+          // The credit to React Flow is kept: it sits in the legend (below), not the corner.
+          proOptions={{ hideAttribution: true }}
           className="bg-transparent"
         >
           <Background variant={BackgroundVariant.Dots} gap={22} size={1.2} color="var(--line-strong)" />
@@ -319,6 +321,16 @@ function Legend({ hasBranches, hasAi }: { hasBranches: boolean; hasAi: boolean }
         </span>
       )}
       <span className="text-label whitespace-nowrap text-fg-subtle">Thicker line = surer link</span>
+      {/* React Flow's credit (its authors ask for one), in the legend's quiet style
+          instead of a stray library name in the canvas corner. */}
+      <a
+        href="https://reactflow.dev"
+        target="_blank"
+        rel="noreferrer noopener"
+        className="relative text-label whitespace-nowrap text-fg-subtle underline-offset-2 before:absolute before:-inset-x-1 before:-inset-y-3 before:content-[''] hover:text-fg-muted hover:underline"
+      >
+        Diagram: React Flow
+      </a>
     </div>
   );
 }

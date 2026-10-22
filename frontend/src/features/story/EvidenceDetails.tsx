@@ -82,7 +82,7 @@ export function EvidenceDetails({ target, stories, onOpenStory, onOpenForecast }
 
       {branch && (
         <section className="flex flex-col gap-1">
-          <SectionHeader as="h4" title="Depends on this crowd forecast" description="Crowd odds, not facts. Information only." />
+          <SectionHeader as="h4" title="Depends on this crowd forecast" description="Crowd forecast, not fact. Information only." />
           <ForecastRow
             forecast={branch.forecast}
             short

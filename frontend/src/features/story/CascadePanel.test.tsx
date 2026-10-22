@@ -123,6 +123,9 @@ describe("CascadePanel as a list (phones, and the accessible alternative)", () =
     fireEvent.click(toggles[toggles.length - 1]);
     expect(within(item).getByText(/Happens only if the crowd forecast resolves NO\. The crowd puts that at 69%\./)).toBeTruthy();
     expect(within(item).getByText("Depends on this crowd forecast")).toBeTruthy();
+    // Forecast wording only: never betting words such as "odds".
+    expect(within(item).getByText("Crowd forecast, not fact. Information only.")).toBeTruthy();
+    expect(item.textContent ?? "").not.toMatch(/\bodds\b/i);
     expect(within(item).getByText("Source: Sample")).toBeTruthy();
   });
 
@@ -155,12 +158,22 @@ describe("CascadePanel as a flow (desktop)", () => {
     expect(tabbable[0].getAttribute("aria-label")).toMatch(/^This story: Asia–Europe container rates jump/);
   });
 
-  it("groups If YES and If NO effects in labelled lanes with the crowd's odds", async () => {
+  it("groups If YES and If NO effects in labelled lanes with the crowd's forecast", async () => {
     await renderPanel();
     expect(screen.getByRole("button", { name: /Suez transits recover within six months: crowd forecast from Sample/ })).toBeTruthy();
     expect(screen.getByRole("img", { name: "If YES: 31% crowd forecast" })).toBeTruthy();
     expect(screen.getByRole("img", { name: "If NO: 69% crowd forecast" })).toBeTruthy();
     expect(screen.getAllByText("If YES · 31%").length).toBeGreaterThan(0);
+  });
+
+  it("credits React Flow once, quietly, in the legend rather than the canvas corner", async () => {
+    const { container } = await renderPanel();
+    const legend = screen.getByRole("note", { name: "Legend" });
+    const credit = within(legend).getByRole("link", { name: "Diagram: React Flow" });
+    expect(credit.getAttribute("href")).toBe("https://reactflow.dev");
+    expect(credit.getAttribute("rel")).toContain("noopener");
+    expect(credit.className).toContain("text-fg-subtle");
+    expect(container.querySelector(".react-flow__attribution")).toBeNull();
   });
 
   it("offers the list view", async () => {

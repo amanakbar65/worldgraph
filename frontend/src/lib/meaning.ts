@@ -2,7 +2,7 @@
  * What each colour means, in one place.
  *
  * Colour is reserved for meaning: impact (risk, opportunity, neutral),
- * forecasts (crowd odds) and entity types. Components take the Tailwind
+ * forecasts (crowd estimates) and entity types. Components take the Tailwind
  * classes or CSS variables from here instead of naming colours themselves,
  * and always pair them with an icon or ▲ ▼ (see `icons.ts`).
  *

@@ -512,7 +512,7 @@ export default function DesignPreview() {
               <div className="flex flex-col divide-y divide-line">
                 <SwitchField
                   label="Forecast alerts"
-                  description="Tell me when watched odds move 10 points"
+                  description="Tell me when watched forecasts move 10 points"
                   checked={alerts}
                   onCheckedChange={setAlerts}
                 />
