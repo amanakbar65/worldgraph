@@ -130,23 +130,26 @@ describe("a live snapshot", () => {
 });
 
 describe("the committed snapshot", () => {
-  it("is a sample snapshot that matches the plan (run `npm run snapshot` after changing it)", () => {
+  // The test link ships a live snapshot (npm run snapshot:live) or, before the website existed, a sample one.
+  const kind = (published["manifest.json"] as ReturnType<typeof manifestFile>).kind;
+
+  it("matches the plan for its kind (rebuild it with npm run snapshot:live or npm run snapshot)", () => {
     const manifest = published["manifest.json"] as ReturnType<typeof manifestFile>;
-    expect(manifest.kind).toBe("sample");
+    expect(["live", "sample"]).toContain(kind);
     expect(Number.isFinite(Date.parse(manifest.as_of))).toBe(true);
-    expect(manifest.files).toEqual(snapshotManifest(snapshotPlan("sample")));
-    for (const entry of snapshotPlan("sample")) expect(published[entry.file], entry.file).toBeDefined();
+    expect(manifest.files).toEqual(snapshotManifest(snapshotPlan(kind)));
+    for (const entry of snapshotPlan(kind)) expect(published[entry.file], entry.file).toBeDefined();
   });
 
-  it("matches the API contract and holds sample data", () => {
-    for (const entry of snapshotPlan("sample")) {
+  it("matches the API contract and never mixes live and sample", () => {
+    for (const entry of snapshotPlan(kind)) {
       const parsed = RESPONSES[entry.name as RpcName].safeParse(published[entry.file]);
       expect(parsed.success, `${entry.file}: ${parsed.error?.message}`).toBe(true);
     }
     const meta = RESPONSES.meta.parse(published["meta.json"]);
-    expect(meta.data.showing_sample).toBe(true);
+    expect(meta.data.showing_sample).toBe(kind === "sample");
     const top = RESPONSES.top.parse(published["top-7d.json"]);
     expect(top.stories.length).toBeGreaterThan(0);
-    expect(top.stories.every((s) => s.is_sample)).toBe(true);
+    expect(top.stories.every((s) => s.is_sample === (kind === "sample"))).toBe(true);
   });
 });

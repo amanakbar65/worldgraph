@@ -69,13 +69,13 @@ afterEach(() => {
 });
 
 describe("the committed snapshot", () => {
-  it("is a sample snapshot, and every file matches the API contract", async () => {
+  it("is a live or sample snapshot, and every file matches the API contract", async () => {
     const manifest = committed("manifest.json") as {
       kind: string;
       as_of: string;
       files: Record<string, string>;
     };
-    expect(manifest.kind).toBe("sample");
+    expect(["live", "sample"]).toContain(manifest.kind);
     expect(Number.isFinite(Date.parse(manifest.as_of))).toBe(true);
     const files: Record<string, unknown> = { "snapshot/manifest.json": manifest };
     for (const file of new Set(Object.values(manifest.files))) files[`snapshot/${file}`] = committed(file);
@@ -83,7 +83,7 @@ describe("the committed snapshot", () => {
     setSample("on");
 
     const snapshot = await loadSnapshot();
-    expect(snapshot.kind).toBe("sample");
+    expect(snapshot.kind).toBe(manifest.kind);
     expect([...snapshot.invalid]).toEqual([]);
     expect(snapshot.data.size).toBe(Object.keys(manifest.files).length);
     expect(useSnapshot.getState().data.size).toBe(snapshot.data.size);
