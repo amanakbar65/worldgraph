@@ -1,7 +1,10 @@
+import shutil
 from datetime import timedelta
 
+import pytest
+
 from tests.conftest import FIXED_NOW
-from worldgraph.seed.build import build_bundle
+from worldgraph.seed.build import SEED_DIR, SeedError, build_bundle
 from worldgraph.seed.load import bundle_statements
 from worldgraph.seed.models import word_count
 
@@ -122,3 +125,59 @@ def test_sample_clock_can_run_repeatedly(sdb):
     sdb.execute("select api.refresh_sample_clock()")
     row = sdb.execute("select count(*) as n from forecast_snapshot").fetchone()
     assert row["n"] > 0
+
+
+def test_invented_news_never_names_a_real_company(tmp_path):
+    """seed/README.md rule 1: real companies appear only in true background facts."""
+    seed = tmp_path / "seed"
+    shutil.copytree(SEED_DIR, seed, ignore=shutil.ignore_patterns("__pycache__", "*.py"))
+    path = seed / "storylines" / "red-sea-shipping.yaml"
+    text = path.read_text(encoding="utf-8")
+    assert "    mentions: [region:ae]\n" in text
+    path.write_text(
+        text.replace("    mentions: [region:ae]\n", "    mentions: [region:ae, org:dp-world]\n", 1)
+    )
+    with pytest.raises(SeedError, match="org:dp-world is a real company"):
+        build_bundle(now=FIXED_NOW, seed_dir=seed)
+
+
+def test_no_sample_story_or_forecast_is_tagged_with_a_real_company():
+    bundle = build_bundle(now=FIXED_NOW)
+    real = {
+        n["id"]
+        for n in bundle.nodes
+        if n["type"] == "organization" and n["subtype"] == "company" and not n["is_sample"]
+    }
+    invented = {n["id"] for n in bundle.nodes if n["type"] in ("story", "forecast")}
+    tagged = [(e["src"], e["dst"]) for e in bundle.edges if e["src"] in invented and e["dst"] in real]
+    assert tagged == []
+
+
+def test_policy_rates_move_in_whole_steps():
+    bundle = build_bundle(now=FIXED_NOW)
+    rates = [i["node_id"] for i in bundle.indicators if i["name"] == "Policy rate"]
+    assert len(rates) >= 20
+    for rid in rates:
+        values = [p["value"] for p in bundle.points if p["series_id"] == rid]
+        step = 0.1 if rid == "indicator:cn-policy-rate" else 0.25
+        for before, after in zip(values, values[1:], strict=False):
+            steps = round(abs(after - before) / step, 6)
+            assert steps == int(steps), f"{rid} moved {after - before:.2f}"
+
+
+def test_sample_forecasts_give_their_volume_a_unit():
+    bundle = build_bundle(now=FIXED_NOW)
+    assert {f["volume_unit"] for f in bundle.forecasts} == {"sample credits"}
+
+
+def test_sample_forecast_moves_are_varied_not_canned():
+    bundle = build_bundle(now=FIXED_NOW)
+    moves = []
+    for fc in bundle.forecasts:
+        snaps = [s for s in bundle.snapshots if s["forecast_id"] == fc["node_id"]]
+        day_ago = max((s for s in snaps if s["ts"] <= FIXED_NOW - timedelta(hours=24)), key=lambda s: s["ts"])
+        moves.append(snaps[-1]["probability"] - day_ago["probability"])
+    big = [m for m in moves if abs(m) >= 0.10]
+    assert 1 <= len(big) <= 4, sorted(moves)
+    assert sum(1 for m in moves if m <= -0.02) >= 3  # some fall
+    assert len({round(m * 100) for m in moves if abs(m) >= 0.03}) >= 6  # not all the same size

@@ -13,7 +13,7 @@ forecasts:
     about: [region:br-mg, commodity:coffee, region:br, region:vn-33]
     end_in_days: 90
     resolution_rule: Resolves YES if the front-month New York arabica futures contract settles above its all-time highest settlement on any trading day before the end date.
-    history: {days: 60, start: 0.16, end: 0.43, moves: [{days_ago: 6.6, delta: 0.1}, {days_ago: 0.37, delta: 0.13}], volume: 74000, liquidity: 11500}
+    history: {days: 60, start: 0.16, end: 0.43, moves: [{days_ago: 6.6, delta: 0.1}, {days_ago: 0.37, delta: 0.05}], volume: 74000, liquidity: 11500}
 stories:
   - id: story:minas-gerais-frost-hits-coffee
     headline: Frost damages coffee trees across southern Minas Gerais

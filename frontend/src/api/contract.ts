@@ -132,7 +132,7 @@ export const ForecastSummary = z.object({
   probability: Prob, // P(YES), latest snapshot
   change_24h: z.number().min(-1).max(1).nullable(), // in probability units (0.08 = ▲ 8 points)
   volume: z.number().min(0).nullable(),
-  volume_unit: z.string().nullable(), // "USD", "MANA", null for sample
+  volume_unit: z.string().nullable(), // "USD", "MANA", "sample credits" (invented); null when not reported
   liquidity: z.number().min(0).nullable(),
   thin: z.boolean(), // below the liquidity/volume threshold
   end_date: Iso.nullable(),

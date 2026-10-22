@@ -7,7 +7,8 @@
 #
 # Fields: start = first value, end = latest value, volatility = noise as a
 # fraction of |end - start| (or of the level when start == end).
-# Policy rates use volatility 0 so they move smoothly, without noise.
+# Policy rates use volatility 0 and step 0.25 (China 0.1): like real rate
+# decisions, they move only in whole steps, never by 0.01.
 #
 # higher_is:
 #   inflation, fuel and power prices, currency per USD (weaker local currency),
@@ -31,25 +32,25 @@
 
 # United States
 - {id: indicator:us-cpi, name: Inflation, subject: region:us, unit: "%", frequency: monthly, higher_is: worse, points: 24, start: 2.4, end: 2.8, volatility: 0.35, decimals: 1}
-- {id: indicator:us-policy-rate, name: Policy rate, subject: region:us, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 4.5, end: 3.75, volatility: 0, decimals: 2}
+- {id: indicator:us-policy-rate, name: Policy rate, subject: region:us, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 4.5, end: 3.75, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:us-diesel, name: Diesel price, subject: region:us, unit: "USD/gallon", frequency: weekly, higher_is: worse, points: 52, start: 3.58, end: 3.89, volatility: 0.15, decimals: 2}
 - {id: indicator:us-pmi, name: Manufacturing PMI, subject: region:us, unit: "index", frequency: monthly, higher_is: better, points: 24, start: 48.4, end: 49.6, volatility: 0.45, decimals: 1}
 
 # India
 - {id: indicator:in-cpi, name: Inflation, subject: region:in, unit: "%", frequency: monthly, higher_is: worse, points: 19, start: 1.8, end: 3.4, volatility: 0.25, decimals: 1}
-- {id: indicator:in-policy-rate, name: Policy rate, subject: region:in, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 6.0, end: 5.25, volatility: 0, decimals: 2}
+- {id: indicator:in-policy-rate, name: Policy rate, subject: region:in, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 6.0, end: 5.25, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:in-fx, name: Indian rupee per USD, subject: region:in, unit: "INR per USD", frequency: daily, higher_is: worse, points: 90, start: 89.6, end: 88.4, volatility: 0.2, decimals: 2}
 - {id: indicator:in-power-demand, name: Peak power demand, subject: region:in, unit: "GW", frequency: daily, higher_is: neutral, points: 60, start: 221, end: 252, volatility: 0.15, decimals: 0}
 
 # China
 - {id: indicator:cn-cpi, name: Inflation, subject: region:cn, unit: "%", frequency: monthly, higher_is: worse, points: 19, start: -0.3, end: 0.5, volatility: 0.25, decimals: 1}
-- {id: indicator:cn-policy-rate, name: Policy rate, subject: region:cn, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 1.5, end: 1.4, volatility: 0, decimals: 2}
+- {id: indicator:cn-policy-rate, name: Policy rate, subject: region:cn, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 1.5, end: 1.4, volatility: 0, decimals: 2, step: 0.1}
 - {id: indicator:cn-fx, name: Yuan per USD, subject: region:cn, unit: "CNY per USD", frequency: daily, higher_is: worse, points: 90, start: 7.15, end: 7.07, volatility: 0.18, decimals: 3}
 - {id: indicator:cn-pmi, name: Manufacturing PMI, subject: region:cn, unit: "index", frequency: monthly, higher_is: better, points: 24, start: 49.3, end: 50.1, volatility: 0.5, decimals: 1}
 
 # Japan
 - {id: indicator:jp-cpi, name: Inflation, subject: region:jp, unit: "%", frequency: monthly, higher_is: worse, points: 24, start: 2.5, end: 3.1, volatility: 0.35, decimals: 1}
-- {id: indicator:jp-policy-rate, name: Policy rate, subject: region:jp, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 0.5, end: 0.75, volatility: 0, decimals: 2}
+- {id: indicator:jp-policy-rate, name: Policy rate, subject: region:jp, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 0.5, end: 0.75, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:jp-fx, name: Yen per USD, subject: region:jp, unit: "JPY per USD", frequency: daily, higher_is: worse, points: 90, start: 152.6, end: 146.4, volatility: 0.15, decimals: 2}
 - {id: indicator:jp-pmi, name: Manufacturing PMI, subject: region:jp, unit: "index", frequency: monthly, higher_is: better, points: 24, start: 48.6, end: 50.3, volatility: 0.35, decimals: 1}
 
@@ -61,43 +62,43 @@
 
 # United Kingdom
 - {id: indicator:gb-cpi, name: Inflation, subject: region:gb, unit: "%", frequency: monthly, higher_is: worse, points: 18, start: 3.8, end: 3.1, volatility: 0.3, decimals: 1}
-- {id: indicator:gb-policy-rate, name: Policy rate, subject: region:gb, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 4.25, end: 3.75, volatility: 0, decimals: 2}
+- {id: indicator:gb-policy-rate, name: Policy rate, subject: region:gb, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 4.25, end: 3.75, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:gb-fx, name: Pound per USD, subject: region:gb, unit: "GBP per USD", frequency: daily, higher_is: worse, points: 90, start: 0.743, end: 0.752, volatility: 0.3, decimals: 3}
 - {id: indicator:gb-petrol, name: Petrol price, subject: region:gb, unit: "GBP/litre", frequency: weekly, higher_is: worse, points: 52, start: 1.36, end: 1.42, volatility: 0.2, decimals: 2}
 
 # Brazil
 - {id: indicator:br-cpi, name: Inflation, subject: region:br, unit: "%", frequency: monthly, higher_is: worse, points: 18, start: 5.5, end: 4.4, volatility: 0.2, decimals: 1}
-- {id: indicator:br-policy-rate, name: Policy rate, subject: region:br, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 15.0, end: 14.25, volatility: 0, decimals: 2}
+- {id: indicator:br-policy-rate, name: Policy rate, subject: region:br, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 15.0, end: 14.25, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:br-fx, name: Real per USD, subject: region:br, unit: "BRL per USD", frequency: daily, higher_is: worse, points: 90, start: 5.36, end: 5.49, volatility: 0.25, decimals: 2}
 - {id: indicator:br-diesel, name: Diesel price, subject: region:br, unit: "BRL/litre", frequency: weekly, higher_is: worse, points: 52, start: 6.02, end: 6.24, volatility: 0.15, decimals: 2}
 
 # Mexico (the peso slips as carry trades unwind)
 - {id: indicator:mx-cpi, name: Inflation, subject: region:mx, unit: "%", frequency: monthly, higher_is: worse, points: 18, start: 3.9, end: 3.6, volatility: 0.5, decimals: 1}
-- {id: indicator:mx-policy-rate, name: Policy rate, subject: region:mx, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 8.5, end: 7.0, volatility: 0, decimals: 2}
+- {id: indicator:mx-policy-rate, name: Policy rate, subject: region:mx, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 8.5, end: 7.0, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:mx-fx, name: Mexican peso per USD, subject: region:mx, unit: "MXN per USD", frequency: daily, higher_is: worse, points: 90, start: 18.42, end: 19.31, volatility: 0.15, decimals: 2}
 - {id: indicator:mx-pmi, name: Manufacturing PMI, subject: region:mx, unit: "index", frequency: monthly, higher_is: better, points: 24, start: 47.2, end: 49.0, volatility: 0.35, decimals: 1}
 
 # Nigeria (weaker naira, dearer petrol, inflation easing from a high level)
 - {id: indicator:ng-cpi, name: Inflation, subject: region:ng, unit: "%", frequency: monthly, higher_is: worse, points: 21, start: 22.9, end: 17.6, volatility: 0.12, decimals: 1}
-- {id: indicator:ng-policy-rate, name: Policy rate, subject: region:ng, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 27.5, end: 27.0, volatility: 0, decimals: 2}
+- {id: indicator:ng-policy-rate, name: Policy rate, subject: region:ng, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 27.5, end: 27.0, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:ng-fx, name: Naira per USD, subject: region:ng, unit: "NGN per USD", frequency: daily, higher_is: worse, points: 90, start: 1488, end: 1642, volatility: 0.12, decimals: 0}
 - {id: indicator:ng-petrol, name: Petrol price, subject: region:ng, unit: "NGN/litre", frequency: monthly, higher_is: worse, points: 19, start: 905, end: 1045, volatility: 0.08, decimals: 0}
 
 # Egypt (weaker pound, food and fuel costs rising)
 - {id: indicator:eg-cpi, name: Inflation, subject: region:eg, unit: "%", frequency: monthly, higher_is: worse, points: 18, start: 12.0, end: 13.6, volatility: 0.25, decimals: 1}
-- {id: indicator:eg-policy-rate, name: Policy rate, subject: region:eg, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 24.0, end: 21.0, volatility: 0, decimals: 2}
+- {id: indicator:eg-policy-rate, name: Policy rate, subject: region:eg, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 24.0, end: 21.0, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:eg-fx, name: Egyptian pound per USD, subject: region:eg, unit: "EGP per USD", frequency: daily, higher_is: worse, points: 79, start: 48.7, end: 51.6, volatility: 0.12, decimals: 2}
 - {id: indicator:eg-petrol, name: Petrol price, subject: region:eg, unit: "EGP/litre", frequency: monthly, higher_is: worse, points: 18, start: 15.25, end: 19.25, volatility: 0.03, decimals: 2}
 
 # Turkey
 - {id: indicator:tr-cpi, name: Inflation, subject: region:tr, unit: "%", frequency: monthly, higher_is: worse, points: 18, start: 38.1, end: 30.4, volatility: 0.1, decimals: 1}
-- {id: indicator:tr-policy-rate, name: Policy rate, subject: region:tr, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 46.0, end: 37.0, volatility: 0, decimals: 2}
+- {id: indicator:tr-policy-rate, name: Policy rate, subject: region:tr, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 46.0, end: 37.0, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:tr-fx, name: Lira per USD, subject: region:tr, unit: "TRY per USD", frequency: daily, higher_is: worse, points: 88, start: 43.8, end: 45.9, volatility: 0.05, decimals: 2}
 - {id: indicator:tr-pmi, name: Manufacturing PMI, subject: region:tr, unit: "index", frequency: monthly, higher_is: better, points: 24, start: 46.9, end: 48.5, volatility: 0.4, decimals: 1}
 
 # Indonesia (the rupiah recovers)
 - {id: indicator:id-cpi, name: Inflation, subject: region:id, unit: "%", frequency: monthly, higher_is: worse, points: 18, start: 1.6, end: 2.6, volatility: 0.25, decimals: 1}
-- {id: indicator:id-policy-rate, name: Policy rate, subject: region:id, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 5.75, end: 4.75, volatility: 0, decimals: 2}
+- {id: indicator:id-policy-rate, name: Policy rate, subject: region:id, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 5.75, end: 4.75, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:id-fx, name: Rupiah per USD, subject: region:id, unit: "IDR per USD", frequency: daily, higher_is: worse, points: 90, start: 16640, end: 16280, volatility: 0.2, decimals: 0}
 - {id: indicator:id-pmi, name: Manufacturing PMI, subject: region:id, unit: "index", frequency: monthly, higher_is: better, points: 24, start: 49.4, end: 51.2, volatility: 0.4, decimals: 1}
 
@@ -109,25 +110,25 @@
 
 # Australia
 - {id: indicator:au-cpi, name: Inflation, subject: region:au, unit: "%", frequency: monthly, higher_is: worse, points: 18, start: 2.1, end: 3.2, volatility: 0.25, decimals: 1}
-- {id: indicator:au-policy-rate, name: Policy rate, subject: region:au, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 4.1, end: 3.6, volatility: 0, decimals: 2}
+- {id: indicator:au-policy-rate, name: Policy rate, subject: region:au, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 4.1, end: 3.6, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:au-fx, name: Aussie dollar per USD, subject: region:au, unit: "AUD per USD", frequency: daily, higher_is: worse, points: 90, start: 1.552, end: 1.508, volatility: 0.15, decimals: 3}
 - {id: indicator:au-diesel, name: Diesel price, subject: region:au, unit: "AUD/litre", frequency: weekly, higher_is: worse, points: 52, start: 1.84, end: 1.95, volatility: 0.15, decimals: 2}
 
 # Saudi Arabia (the riyal is pegged, so no currency series)
 - {id: indicator:sa-cpi, name: Inflation, subject: region:sa, unit: "%", frequency: monthly, higher_is: worse, points: 18, start: 1.9, end: 2.3, volatility: 0.4, decimals: 1}
-- {id: indicator:sa-policy-rate, name: Policy rate, subject: region:sa, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 5.0, end: 4.25, volatility: 0, decimals: 2}
+- {id: indicator:sa-policy-rate, name: Policy rate, subject: region:sa, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 5.0, end: 4.25, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:sa-pmi, name: Non-oil business PMI, subject: region:sa, unit: "index", frequency: monthly, higher_is: better, points: 24, start: 56.3, end: 57.8, volatility: 0.4, decimals: 1}
 - {id: indicator:sa-power-demand, name: Peak power demand, subject: region:sa, unit: "GW", frequency: daily, higher_is: neutral, points: 61, start: 58.6, end: 66.2, volatility: 0.2, decimals: 1}
 
 # South Korea
 - {id: indicator:kr-cpi, name: Inflation, subject: region:kr, unit: "%", frequency: monthly, higher_is: worse, points: 18, start: 1.9, end: 2.4, volatility: 0.35, decimals: 1}
-- {id: indicator:kr-policy-rate, name: Policy rate, subject: region:kr, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 2.75, end: 2.5, volatility: 0, decimals: 2}
+- {id: indicator:kr-policy-rate, name: Policy rate, subject: region:kr, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 2.75, end: 2.5, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:kr-fx, name: Won per USD, subject: region:kr, unit: "KRW per USD", frequency: daily, higher_is: worse, points: 90, start: 1392, end: 1431, volatility: 0.2, decimals: 1}
 - {id: indicator:kr-pmi, name: Manufacturing PMI, subject: region:kr, unit: "index", frequency: monthly, higher_is: better, points: 24, start: 48.9, end: 50.7, volatility: 0.35, decimals: 1}
 
 # South Africa (the rand slips as carry trades unwind)
 - {id: indicator:za-cpi, name: Inflation, subject: region:za, unit: "%", frequency: monthly, higher_is: worse, points: 18, start: 2.8, end: 3.4, volatility: 0.3, decimals: 1}
-- {id: indicator:za-policy-rate, name: Policy rate, subject: region:za, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 7.5, end: 6.75, volatility: 0, decimals: 2}
+- {id: indicator:za-policy-rate, name: Policy rate, subject: region:za, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 7.5, end: 6.75, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:za-fx, name: Rand per USD, subject: region:za, unit: "ZAR per USD", frequency: daily, higher_is: worse, points: 90, start: 17.62, end: 18.41, volatility: 0.15, decimals: 2}
 - {id: indicator:za-petrol, name: Petrol price, subject: region:za, unit: "ZAR/litre", frequency: monthly, higher_is: worse, points: 24, start: 21.1, end: 22.35, volatility: 0.2, decimals: 2}
 
@@ -142,22 +143,22 @@
 
 # Malaysia
 - {id: indicator:my-cpi, name: Inflation, subject: region:my, unit: "%", frequency: monthly, higher_is: worse, points: 18, start: 1.5, end: 1.2, volatility: 0.5, decimals: 1}
-- {id: indicator:my-policy-rate, name: Policy rate, subject: region:my, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 3.0, end: 2.75, volatility: 0, decimals: 2}
+- {id: indicator:my-policy-rate, name: Policy rate, subject: region:my, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 3.0, end: 2.75, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:my-fx, name: Ringgit per USD, subject: region:my, unit: "MYR per USD", frequency: daily, higher_is: worse, points: 90, start: 4.24, end: 4.18, volatility: 0.2, decimals: 3}
 
 # Thailand
 - {id: indicator:th-cpi, name: Inflation, subject: region:th, unit: "%", frequency: monthly, higher_is: worse, points: 18, start: -0.4, end: 0.6, volatility: 0.3, decimals: 1}
-- {id: indicator:th-policy-rate, name: Policy rate, subject: region:th, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 2.0, end: 1.25, volatility: 0, decimals: 2}
+- {id: indicator:th-policy-rate, name: Policy rate, subject: region:th, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 2.0, end: 1.25, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:th-fx, name: Baht per USD, subject: region:th, unit: "THB per USD", frequency: daily, higher_is: worse, points: 90, start: 32.8, end: 32.2, volatility: 0.2, decimals: 2}
 
 # Philippines (rice imports push food prices up)
 - {id: indicator:ph-cpi, name: Inflation, subject: region:ph, unit: "%", frequency: monthly, higher_is: worse, points: 18, start: 1.3, end: 2.4, volatility: 0.3, decimals: 1}
-- {id: indicator:ph-policy-rate, name: Policy rate, subject: region:ph, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 5.5, end: 4.5, volatility: 0, decimals: 2}
+- {id: indicator:ph-policy-rate, name: Policy rate, subject: region:ph, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 5.5, end: 4.5, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:ph-fx, name: Philippine peso per USD, subject: region:ph, unit: "PHP per USD", frequency: daily, higher_is: worse, points: 90, start: 57.4, end: 58.6, volatility: 0.2, decimals: 2}
 
 # Pakistan
 - {id: indicator:pk-cpi, name: Inflation, subject: region:pk, unit: "%", frequency: monthly, higher_is: worse, points: 18, start: 3.2, end: 5.9, volatility: 0.25, decimals: 1}
-- {id: indicator:pk-policy-rate, name: Policy rate, subject: region:pk, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 12.0, end: 10.5, volatility: 0, decimals: 2}
+- {id: indicator:pk-policy-rate, name: Policy rate, subject: region:pk, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 12.0, end: 10.5, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:pk-fx, name: Pakistani rupee per USD, subject: region:pk, unit: "PKR per USD", frequency: daily, higher_is: worse, points: 90, start: 282.9, end: 281.4, volatility: 0.2, decimals: 2}
 
 # Bangladesh
@@ -166,17 +167,17 @@
 
 # Chile (a firmer peso on copper)
 - {id: indicator:cl-cpi, name: Inflation, subject: region:cl, unit: "%", frequency: monthly, higher_is: worse, points: 18, start: 4.5, end: 3.4, volatility: 0.25, decimals: 1}
-- {id: indicator:cl-policy-rate, name: Policy rate, subject: region:cl, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 5.0, end: 4.5, volatility: 0, decimals: 2}
+- {id: indicator:cl-policy-rate, name: Policy rate, subject: region:cl, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 5.0, end: 4.5, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:cl-fx, name: Chilean peso per USD, subject: region:cl, unit: "CLP per USD", frequency: daily, higher_is: worse, points: 90, start: 948, end: 931, volatility: 0.2, decimals: 1}
 
 # Côte d'Ivoire (the CFA franc is pegged to the euro; the policy rate is the BCEAO's)
 - {id: indicator:ci-cpi, name: Inflation, subject: region:ci, unit: "%", frequency: monthly, higher_is: worse, points: 18, start: 2.6, end: 1.2, volatility: 0.3, decimals: 1}
-- {id: indicator:ci-policy-rate, name: Policy rate, subject: region:ci, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 3.5, end: 3.25, volatility: 0, decimals: 2}
+- {id: indicator:ci-policy-rate, name: Policy rate, subject: region:ci, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 3.5, end: 3.25, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:ci-fx, name: CFA franc per USD, subject: region:ci, unit: "XOF per USD", frequency: daily, higher_is: worse, points: 90, start: 571, end: 562, volatility: 0.25, decimals: 1}
 
 # Ghana
 - {id: indicator:gh-cpi, name: Inflation, subject: region:gh, unit: "%", frequency: monthly, higher_is: worse, points: 18, start: 21.2, end: 8.1, volatility: 0.1, decimals: 1}
-- {id: indicator:gh-policy-rate, name: Policy rate, subject: region:gh, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 28.0, end: 18.0, volatility: 0, decimals: 2}
+- {id: indicator:gh-policy-rate, name: Policy rate, subject: region:gh, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 28.0, end: 18.0, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:gh-fx, name: Cedi per USD, subject: region:gh, unit: "GHS per USD", frequency: daily, higher_is: worse, points: 90, start: 11.4, end: 12.1, volatility: 0.2, decimals: 2}
 
 # Argentina
@@ -185,7 +186,7 @@
 
 # Colombia
 - {id: indicator:co-cpi, name: Inflation, subject: region:co, unit: "%", frequency: monthly, higher_is: worse, points: 18, start: 5.1, end: 4.6, volatility: 0.4, decimals: 1}
-- {id: indicator:co-policy-rate, name: Policy rate, subject: region:co, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 9.5, end: 9.0, volatility: 0, decimals: 2}
+- {id: indicator:co-policy-rate, name: Policy rate, subject: region:co, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 9.5, end: 9.0, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:co-fx, name: Colombian peso per USD, subject: region:co, unit: "COP per USD", frequency: daily, higher_is: worse, points: 90, start: 4020, end: 3905, volatility: 0.2, decimals: 0}
 
 # France
@@ -210,12 +211,12 @@
 
 # Canada
 - {id: indicator:ca-cpi, name: Inflation, subject: region:ca, unit: "%", frequency: monthly, higher_is: worse, points: 18, start: 1.9, end: 2.3, volatility: 0.4, decimals: 1}
-- {id: indicator:ca-policy-rate, name: Policy rate, subject: region:ca, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 2.75, end: 2.25, volatility: 0, decimals: 2}
+- {id: indicator:ca-policy-rate, name: Policy rate, subject: region:ca, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 2.75, end: 2.25, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:ca-fx, name: Canadian dollar per USD, subject: region:ca, unit: "CAD per USD", frequency: daily, higher_is: worse, points: 90, start: 1.392, end: 1.371, volatility: 0.2, decimals: 3}
 
 # Russia
 - {id: indicator:ru-cpi, name: Inflation, subject: region:ru, unit: "%", frequency: monthly, higher_is: worse, points: 22, start: 9.9, end: 6.4, volatility: 0.12, decimals: 1}
-- {id: indicator:ru-policy-rate, name: Policy rate, subject: region:ru, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 21.0, end: 14.0, volatility: 0, decimals: 2}
+- {id: indicator:ru-policy-rate, name: Policy rate, subject: region:ru, unit: "%", frequency: monthly, higher_is: neutral, points: 18, start: 21.0, end: 14.0, volatility: 0, decimals: 2, step: 0.25}
 - {id: indicator:ru-fx, name: Rouble per USD, subject: region:ru, unit: "RUB per USD", frequency: daily, higher_is: worse, points: 90, start: 79.6, end: 84.2, volatility: 0.2, decimals: 2}
 
 # Taiwan (chip exports keep the currency firm)

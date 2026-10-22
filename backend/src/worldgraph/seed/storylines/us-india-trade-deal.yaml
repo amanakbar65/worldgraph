@@ -12,7 +12,7 @@ forecasts:
     about: [region:in, region:us, sector:logistics-trade, commodity:apparel]
     end_in_days: 90
     resolution_rule: Resolves YES if both governments publicly announce a concluded trade agreement, or an agreed first stage that lowers tariffs, before the end date.
-    history: {days: 120, start: 0.36, end: 0.58, moves: [{days_ago: 0.5, delta: 0.13}], volume: 264000, liquidity: 34000}
+    history: {days: 120, start: 0.36, end: 0.58, moves: [{days_ago: 0.5, delta: 0.08}], volume: 264000, liquidity: 34000}
 stories:
   - id: story:us-tariffs-weigh-indian-exports
     headline: Higher US tariffs weigh on India's labour-intensive exports

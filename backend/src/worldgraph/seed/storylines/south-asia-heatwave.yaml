@@ -12,7 +12,7 @@ forecasts:
     about: [region:in, commodity:electricity, region:in-dl]
     end_in_days: 40
     resolution_rule: Resolves YES if the national grid operator's daily report shows all-India peak demand met above 270 GW on any day before the end date.
-    history: {days: 45, start: 0.21, end: 0.46, moves: [{days_ago: 0.6, delta: 0.12}], volume: 58000, liquidity: 9500}
+    history: {days: 45, start: 0.21, end: 0.46, moves: [{days_ago: 1.8, delta: 0.09}, {days_ago: 0.3, delta: -0.03}], volume: 58000, liquidity: 9500}
 stories:
   - id: story:heatwave-north-india-pakistan
     headline: Severe heatwave spreads across North India and Pakistan

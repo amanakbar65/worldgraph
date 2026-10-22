@@ -11,7 +11,7 @@ forecasts:
     about: [region:sa, org:opec, policy:opec-plus-quotas, commodity:crude-oil]
     end_in_days: 24
     resolution_rule: Resolves YES if the official statement after the next OPEC+ ministerial meeting keeps the current output cuts in place for at least another quarter.
-    history: {days: 60, start: 0.48, end: 0.72, moves: [{days_ago: 0.4, delta: 0.14}], volume: 412000, liquidity: 58000}
+    history: {days: 60, start: 0.48, end: 0.72, moves: [{days_ago: 0.4, delta: 0.13}], volume: 412000, liquidity: 58000}
 stories:
   - id: story:opec-plus-signals-longer-cuts
     headline: OPEC+ delegates signal output cuts will be extended

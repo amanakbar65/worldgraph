@@ -37,6 +37,10 @@ SAMPLE_SOURCES = (
     "Sample Agri Bulletin",
 )
 
+# The unit of a sample forecast's volume: invented, so never MANA or USD,
+# which would imply a real provider ("128K sample credits volume").
+SAMPLE_VOLUME_UNIT = "sample credits"
+
 
 class SeedError(ValueError):
     """A problem in the sample-data files, with a readable message."""
@@ -180,6 +184,9 @@ def indicator_points(ind: Indicator, today: date) -> list[dict[str, Any]]:
         value = ind.start + (ind.end - ind.start) * eased
         if 0 < i < ind.points - 1:
             value += rng.gauss(0, noise_scale)
+        if ind.step:
+            # Central banks move in whole steps (25 basis points), never 0.01.
+            value = ind.start + round((value - ind.start) / ind.step) * ind.step
         rows.append(
             {
                 "series_id": ind.id,
@@ -390,6 +397,20 @@ def build_bundle(now: datetime | None = None, seed_dir: Path = SEED_DIR) -> Bund
             register(fc.id, "forecast", f"storylines/{sl.id}")
             forecasts[fc.id] = (fc, sl.id)
 
+    # Real companies appear only in true background facts (seed/README.md rule 1):
+    # an invented story or forecast may not be placed at or tagged with one.
+    real_companies = {
+        e.id for e, _ in all_entities if e.type == "organization" and e.subtype == "company" and not e.sample
+    }
+
+    def refuse_real_companies(refs: list[str], where: str) -> None:
+        for ref in refs:
+            if ref in real_companies:
+                raise SeedError(
+                    f"{where}: {ref} is a real company; invented news may not name it "
+                    "(invent a company with sample: true instead)"
+                )
+
     def place(node_id: str, where: str) -> tuple[float, float]:
         if node_id not in known:
             raise SeedError(f"{where}: unknown location {node_id}")
@@ -421,6 +442,7 @@ def build_bundle(now: datetime | None = None, seed_dir: Path = SEED_DIR) -> Bund
         for ref in st.mentions:
             if ref not in known:
                 raise SeedError(f"{where}: mentions unknown id {ref}")
+        refuse_real_companies([st.at, *st.mentions], where)
         primary, country, admin1 = region_chain(st.at)
         first_seen = None if st.kind == "projected" else now - timedelta(hours=st.age_hours or 0)
         # Seen until now, or for six hours at most.
@@ -486,6 +508,7 @@ def build_bundle(now: datetime | None = None, seed_dir: Path = SEED_DIR) -> Bund
         for ref in fc.about:
             if ref not in known:
                 raise SeedError(f"{where}: about unknown id {ref}")
+        refuse_real_companies([fc.location, *fc.about], where)
         bundle.nodes.append(
             _node(
                 fid,
@@ -508,7 +531,7 @@ def build_bundle(now: datetime | None = None, seed_dir: Path = SEED_DIR) -> Bund
                 "category": fc.category,
                 "end_date": now + timedelta(days=fc.end_in_days),
                 "resolution_rule": fc.resolution_rule,
-                "volume_unit": None,
+                "volume_unit": SAMPLE_VOLUME_UNIT,
             }
         )
         bundle.snapshots += forecast_snapshots(fc, now)

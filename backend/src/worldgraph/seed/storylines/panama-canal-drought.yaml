@@ -11,7 +11,7 @@ forecasts:
     about: [region:pa, infra:panama-canal, org:panama-canal-authority, sector:logistics-trade]
     end_in_days: 90
     resolution_rule: Resolves YES if the canal authority announces that the standard maximum authorised draft applies again at the neopanamax locks before the end date.
-    history: {days: 90, start: 0.58, end: 0.35, moves: [{days_ago: 0.6, delta: 0.11}], volume: 128000, liquidity: 17500}
+    history: {days: 90, start: 0.58, end: 0.35, moves: [{days_ago: 2.5, delta: 0.11}, {days_ago: 0.6, delta: -0.03}], volume: 128000, liquidity: 17500}
 stories:
   - id: story:gatun-lake-below-average
     headline: Gatun Lake sits well below its seasonal average after weak rains

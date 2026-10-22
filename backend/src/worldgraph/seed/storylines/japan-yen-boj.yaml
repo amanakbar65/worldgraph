@@ -12,7 +12,7 @@ forecasts:
     about: [region:jp, org:boj, sector:finance]
     end_in_days: 19
     resolution_rule: Resolves YES if the Bank of Japan announces a higher short-term policy rate at the end of its next scheduled meeting.
-    history: {days: 90, start: 0.27, end: 0.58, moves: [{days_ago: 0.7, delta: 0.12}], volume: 238000, liquidity: 31000}
+    history: {days: 90, start: 0.27, end: 0.58, moves: [{days_ago: 0.7, delta: 0.07}], volume: 238000, liquidity: 31000}
 stories:
   - id: story:japan-machine-tool-orders-rise
     headline: Foreign orders for Japanese machine tools climb on a weak yen

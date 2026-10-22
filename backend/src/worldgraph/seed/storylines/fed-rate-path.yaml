@@ -12,7 +12,7 @@ forecasts:
     about: [region:us, org:us-fed, sector:finance]
     end_in_days: 24
     resolution_rule: Resolves YES if the Federal Reserve announces a lower federal funds target range at the end of its next scheduled policy meeting.
-    history: {days: 90, start: 0.36, end: 0.63, moves: [{days_ago: 0.45, delta: 0.14}], volume: 412000, liquidity: 58000}
+    history: {days: 90, start: 0.36, end: 0.63, moves: [{days_ago: 0.45, delta: 0.11}], volume: 412000, liquidity: 58000}
 stories:
   - id: story:turkish-firms-dollar-loan-costs
     headline: Turkish manufacturers pay more to roll over dollar loans

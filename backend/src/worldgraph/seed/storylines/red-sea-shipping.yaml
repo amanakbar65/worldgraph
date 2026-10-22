@@ -11,7 +11,7 @@ forecasts:
     about: [infra:suez-canal, region:eg, sector:logistics-trade]
     end_in_days: 180
     resolution_rule: Resolves YES if the four-week average of container-ship transits reaches the pre-disruption average before the end date.
-    history: {days: 90, start: 0.46, end: 0.31, moves: [{days_ago: 0.6, delta: -0.12}], volume: 186000, liquidity: 26000}
+    history: {days: 90, start: 0.46, end: 0.31, moves: [{days_ago: 0.6, delta: -0.06}], volume: 186000, liquidity: 26000}
 stories:
   - id: story:red-sea-attacks-reroute
     headline: Attacks near Bab-el-Mandeb push container lines onto the Cape route
@@ -114,7 +114,7 @@ stories:
     confidence: 0.55
     sectors: [logistics-trade]
     at: infra:jebel-ali-port
-    mentions: [region:ae, org:dp-world]
+    mentions: [region:ae]
     age_hours: 55
     sources: 8
     actions: [Explore Gulf feeder partnerships]

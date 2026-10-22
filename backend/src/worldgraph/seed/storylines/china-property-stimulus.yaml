@@ -22,7 +22,7 @@ forecasts:
     about: [region:au-wa, commodity:iron-ore, region:cn, region:br]
     end_in_days: 62
     resolution_rule: Resolves YES if the benchmark seaborne iron ore price on the end date is above its level on the opening date.
-    history: {days: 28, start: 0.44, end: 0.55, moves: [{days_ago: 0.8, delta: 0.07}], volume: 64000, liquidity: 9500}
+    history: {days: 28, start: 0.44, end: 0.55, moves: [{days_ago: 0.8, delta: 0.04}], volume: 64000, liquidity: 9500}
 stories:
   - id: story:china-new-home-sales-slide
     headline: New home sales keep falling across major Chinese cities
