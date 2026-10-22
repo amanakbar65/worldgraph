@@ -35,8 +35,15 @@ interface Top {
   stories: { id: string; headline: string }[];
 }
 
-const SAMPLE_ON = { theme: "dark", calm: true, sample: "on" } satisfies Settings;
-const NOT_CONNECTED = "Live data isn't connected · Connectors aren't available in this view.";
+/** A first-time viewer: no Sample data setting saved, so the app's default (off) applies. */
+const APP_DEFAULTS = { theme: "dark", calm: true } satisfies Settings;
+const SAMPLE_ON = { ...APP_DEFAULTS, sample: "on" } satisfies Settings;
+const NO_CONNECTORS = "Connectors aren't available in this view.";
+const NOT_CONNECTED = `Live data isn't connected · ${NO_CONNECTORS}`;
+
+// The shared fixtures turn Sample data on (the website tests' database is all
+// sample data); the test link is tested as a viewer first opens it.
+test.use({ settings: APP_DEFAULTS });
 
 /** Every request the page makes, by path, plus any that left the origin. */
 function recordRequests(page: Page, origin: string) {
@@ -65,7 +72,8 @@ async function snapshotFile<T>(page: Page, file: string): Promise<T> {
 
 /**
  * Make the bundled snapshot say it is of `kind` (and, for a live one, taken
- * at `asOf`), whatever `npm run snapshot` last built.
+ * at `asOf`), whatever `npm run snapshot` last built. A sample one also has
+ * every item marked as sample data, as `npm run snapshot` writes them.
  */
 async function snapshotOfKind(page: Page, kind: "sample" | "live", asOf?: string) {
   await page.route("**/snapshot/manifest.json", async (route) => {
@@ -73,6 +81,24 @@ async function snapshotOfKind(page: Page, kind: "sample" | "live", asOf?: string
     const manifest = (await response.json()) as Record<string, unknown>;
     await route.fulfill({ response, json: { ...manifest, kind, ...(asOf ? { as_of: asOf } : {}) } });
   });
+  if (kind === "sample") {
+    await page.route(/\/snapshot\/(?!manifest\.json)[\w-]+\.json$/, async (route) => {
+      const response = await route.fetch();
+      await route.fulfill({ response, json: markedSample(await response.json()) });
+    });
+  }
+}
+
+/** A copy of a snapshot file with every `is_sample` and `showing_sample` set to true. */
+function markedSample(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(markedSample);
+  if (value === null || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, v]) => [
+      key,
+      key === "is_sample" || key === "showing_sample" ? true : markedSample(v),
+    ]),
+  );
 }
 
 /** The "Top 5 now" rows: the side card on desktop, the swipe strip on phones. */
@@ -285,11 +311,6 @@ test.describe("outside claude.ai, with Sample data not on (a sample snapshot sta
   }
 
   test("the message doesn't claim that sample data is showing", async ({ page }, testInfo) => {
-    // App bug: ErrorState's "offline" copy (src/components/ErrorState.tsx) always ends "Meanwhile the
-    // globe, Forecasts and Brief show sample data.", but with Sample data not on those screens show
-    // this same message and no sample data (LiveWithSnapshot's "disconnected" state). Remove
-    // test.fail() once the copy only says so when the snapshot is on screen.
-    test.fail();
     await page.goto("/#forecasts");
     const problem = page.locator("main").getByRole("alert").first();
     await expect(problem).toContainText("This view needs live data");
@@ -355,7 +376,7 @@ test.describe("outside claude.ai, with Sample data not on (a sample snapshot sta
 
   for (const theme of ["dark", "light"] as const) {
     test.describe(`${theme} theme`, () => {
-      test.use({ settings: { theme, calm: true } });
+      test.use({ settings: { ...APP_DEFAULTS, theme } });
       test("the not-connected first frame has no serious or critical axe problems", async ({ page }) => {
         await page.goto("/");
         await expect(page.locator("canvas.maplibregl-canvas")).toBeVisible();
@@ -367,6 +388,22 @@ test.describe("outside claude.ai, with Sample data not on (a sample snapshot sta
     });
   }
 });
+
+/**
+ * A time as the status pill writes it ("Oct 22, 5:52 PM"; the tests run in
+ * en-US and UTC), with the year only when it isn't this one.
+ */
+function pillClock(iso: string): string {
+  const at = new Date(iso);
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    year: at.getUTCFullYear() === new Date().getUTCFullYear() ? undefined : "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+  }).format(at);
+}
 
 test.describe("outside claude.ai, a live snapshot (real news)", () => {
   // Taken three hours ago: shown to every viewer, with its time, never as live data.
@@ -381,25 +418,87 @@ test.describe("outside claude.ai, a live snapshot (real news)", () => {
     await expect(topRows(page, isPhone)).toHaveCount(Math.min(5, top.stories.length));
     await expect(topRows(page, isPhone).first()).toContainText(top.stories[0]!.headline);
 
-    const clock = new Intl.DateTimeFormat("en-US", {
-      day: "numeric",
-      month: "short",
-      hour: "numeric",
-      minute: "2-digit",
-      timeZone: "UTC",
-    }).format(new Date(asOf));
-    await expect(statusTitle(page)).toHaveAttribute(
-      "title",
-      `Snapshot as of ${clock} · Connectors aren't available in this view.`,
-    );
-    await expect(statusLine(page)).toHaveText(
-      isPhone ? "Snapshot · 3 h ago" : `Snapshot as of ${clock} · Connectors aren't available in this view.`,
-      {
-        useInnerText: true,
-      },
-    );
+    const long = `Snapshot as of ${pillClock(asOf)} · ${NO_CONNECTORS}`;
+    await expect(statusTitle(page)).toHaveAttribute("title", long);
+    await expect(statusLine(page)).toHaveText(isPhone ? "Snapshot · 3 h ago" : long, { useInnerText: true });
     await expect(statusLine(page)).not.toHaveText(/Live data/, { useInnerText: true });
     await snap(page, testInfo, "artifact-live-snapshot");
+  });
+});
+
+/**
+ * The snapshot exactly as it ships in public/snapshot/ (`npm run
+ * snapshot:live`), not rewritten: the test link's real first frame.
+ */
+test.describe("outside claude.ai, the shipped snapshot", () => {
+  interface Manifest {
+    kind?: string;
+    as_of?: string;
+  }
+  interface TopStories {
+    stories: { id: string; headline: string; is_sample: boolean }[];
+  }
+
+  test("is a live snapshot of real news, with the time it was taken", async ({ page }) => {
+    const manifest = await snapshotFile<Manifest>(page, "manifest.json");
+    expect(manifest.kind, "the test link ships real news (npm run snapshot:live)").toBe("live");
+    expect(Date.parse(manifest.as_of ?? ""), `as_of ${manifest.as_of}`).toBeLessThanOrEqual(Date.now());
+    for (const file of ["top-24h.json", "top-7d.json", "top-30d.json"]) {
+      const top = await snapshotFile<TopStories>(page, file);
+      expect(top.stories.filter((s) => s.is_sample).map((s) => s.headline), `sample stories in ${file}`).toEqual(
+        [],
+      );
+    }
+  });
+
+  for (const [label, settings] of [
+    ["Sample data at its default (off)", APP_DEFAULTS],
+    ["Sample data off", { ...APP_DEFAULTS, sample: "off" }],
+  ] as const) {
+    test.describe(label, () => {
+      test.use({ settings });
+      test("the globe shows the live snapshot, labelled 'Snapshot as of …', and nothing invented", async ({
+        page,
+        isPhone,
+      }, testInfo) => {
+        const manifest = await snapshotFile<Manifest>(page, "manifest.json");
+        await page.goto("/");
+        await expect(page.locator("canvas.maplibregl-canvas")).toBeVisible();
+        const top = await snapshotFile<TopStories>(page, "top-7d.json");
+        expect(top.stories.length).toBeGreaterThan(0);
+        const rows = topRows(page, isPhone);
+        await expect(rows).toHaveCount(Math.min(5, top.stories.length));
+        for (const [i, story] of top.stories.slice(0, 5).entries())
+          await expect(rows.nth(i)).toContainText(story.headline);
+
+        const long = `Snapshot as of ${pillClock(manifest.as_of!)} · ${NO_CONNECTORS}`;
+        await expect(statusTitle(page)).toHaveAttribute("title", long);
+        await expect(statusLine(page)).toHaveText(isPhone ? /^Snapshot · \S/ : long, { useInnerText: true });
+        await expect(statusLine(page)).not.toHaveText(/Live data|Sample/, { useInnerText: true });
+        // Real news only: nothing on screen is labelled as sample data.
+        await expect(page.getByText(/^Sample( data| snapshot)?$/).filter({ visible: true })).toHaveCount(0);
+        await snap(page, testInfo, `artifact-shipped-snapshot-${settings.sample ?? "default"}`);
+      });
+    });
+  }
+
+  test.describe("Sample data on", () => {
+    test.use({ settings: SAMPLE_ON });
+    test("sample data is allowed, and the bundled live snapshot still says 'Snapshot as of …'", async ({
+      page,
+      isPhone,
+    }) => {
+      const manifest = await snapshotFile<Manifest>(page, "manifest.json");
+      await page.goto("/");
+      const top = await snapshotFile<TopStories>(page, "top-7d.json");
+      await expect(topRows(page, isPhone)).toHaveCount(Math.min(5, top.stories.length));
+      await expect(topRows(page, isPhone).first()).toContainText(top.stories[0]!.headline);
+      await expect(statusTitle(page)).toHaveAttribute(
+        "title",
+        `Snapshot as of ${pillClock(manifest.as_of!)} · ${NO_CONNECTORS}`,
+      );
+      await expect(statusLine(page)).not.toHaveText(/Live data|Sample snapshot/, { useInnerText: true });
+    });
   });
 });
 

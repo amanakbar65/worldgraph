@@ -3,7 +3,7 @@
  * Shared fixtures and helpers for the end-to-end tests.
  *
  * Every test starts with the viewer's settings in localStorage
- * (`worldgraph.settings.v1`), dark theme and calm motion by default, so
+ * (`worldgraph.settings.v1`), dark theme, calm motion and Sample data on by default, so
  * screenshots and timings are steady. A test can change them with
  * `test.use({ settings: { … } })`. The settings are written only when the
  * key is missing, so a reload keeps whatever the app saved.
@@ -43,7 +43,9 @@ interface Fixtures {
 }
 
 export const test = base.extend<Fixtures>({
-  settings: [{ theme: "dark", calm: true }, { option: true }],
+  // Sample data is off by default in the app, and the test database holds only
+  // sample data (`wg seed load`), so the tests turn it on unless they say otherwise.
+  settings: [{ theme: "dark", calm: true, sample: "on" }, { option: true }],
   // eslint-disable-next-line no-empty-pattern
   isPhone: async ({}, provide, testInfo) => {
     await provide(isPhoneProject(testInfo));
@@ -285,10 +287,13 @@ export async function visibleText(page: Page): Promise<string> {
   return page.locator("body").innerText();
 }
 
-/** Save a full-window screenshot under test-results/final-e2e/ for a person to look at. */
+/** Where `snap()` saves its screenshots (git-ignored); E2E_SHOTS changes the folder under test-results/. */
+const SHOTS = `test-results/${process.env.E2E_SHOTS ?? "screenshots"}`;
+
+/** Save a full-window screenshot under test-results/screenshots/<project>/ for a person to look at. */
 export async function snap(page: Page, testInfo: TestInfo, name: string): Promise<void> {
   await page.screenshot({
-    path: `test-results/final-e2e/${testInfo.project.name}/${name}.png`,
+    path: `${SHOTS}/${testInfo.project.name}/${name}.png`,
     animations: "disabled",
   });
 }

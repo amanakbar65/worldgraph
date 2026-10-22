@@ -85,7 +85,7 @@ test.describe("the logo is Home", () => {
   });
 
   test.describe("with motion on", () => {
-    test.use({ settings: { theme: "dark", calm: false } satisfies Settings });
+    test.use({ settings: { theme: "dark", calm: false, sample: "on" } satisfies Settings });
 
     test("it flies the globe home and starts the slow turn; a key press stops it", async ({ page }) => {
       await openApp(page);

@@ -252,7 +252,7 @@ function describeProblems(problems: AxeProblem[]): string {
 
 for (const theme of ["dark", "light"] as const) {
   test.describe(`accessibility, ${theme} theme`, () => {
-    test.use({ settings: { theme, calm: true } satisfies Settings });
+    test.use({ settings: { theme, calm: true, sample: "on" } satisfies Settings });
     for (const state of STATES) {
       test(`${state.name} has no serious or critical axe problems`, async ({ page, isPhone }) => {
         if (state.before) await state.before(page);
