@@ -211,7 +211,7 @@ export function buildLayers(input: LayerInput): Layer[] {
         getColor: (d) => withAlpha(palette.label, d.kind === "country" ? 0.78 : 0.9) as Rgba,
         getTextAnchor: (d) => (d.kind === "city" ? "start" : "middle"),
         getAlignmentBaseline: "center",
-        getPixelOffset: (d) => (d.kind === "city" ? [6, 0] : [0, 0]),
+        getPixelOffset: (d) => (d.kind === "city" ? [6, 0] : [0, d.dy ?? 0]),
         fontFamily: input.fontFamily,
         fontWeight: 500,
         fontSettings: { sdf: true, fontSize: 48, buffer: 6 },

@@ -22,6 +22,7 @@ import {
   angularDistance,
   cameraForBounds,
   declutterLabels,
+  markerObstacles,
   type ArcDatum,
   type GlobeEvent,
   type HexBin,
@@ -386,17 +387,22 @@ export function GlobeMap(props: GlobeMapProps) {
     };
 
     const relabel = () => {
-      const { labels } = propsRef.current;
+      const { labels, layerInput } = propsRef.current;
       const canvas = map.getCanvas();
       const viewport = { width: canvas.clientWidth, height: canvas.clientHeight };
+      const zoom = map.getZoom();
       const next = declutterLabels(
         labels,
         (lon, lat) => (isVisible(lon, lat) ? map.project([lon, lat]) : null),
         viewport,
-        map.getZoom(),
+        zoom,
+        // Names keep clear of the forecast rings and the bigger dots.
+        { obstacles: markerObstacles({ ...layerInput, zoom }) },
       );
       setPlaced((prev) =>
-        prev.length === next.length && prev.every((l, i) => l.id === next[i].id) ? prev : next,
+        prev.length === next.length && prev.every((l, i) => l.id === next[i].id && l.dy === next[i].dy)
+          ? prev
+          : next,
       );
     };
 
@@ -541,11 +547,13 @@ export function GlobeMap(props: GlobeMapProps) {
     map.setFilter("selected-state-line", ["==", ["get", "id"], id]);
   }, [selectedRegionId, loaded]);
 
-  // New label candidates (fonts loaded, places arrived): place them for the current view.
+  // New label candidates (fonts loaded, places arrived), or new forecast rings
+  // to keep clear of: place them for the current view.
   const { labels } = props;
+  const { forecasts: ringForecasts, toggles: ringToggles } = props.layerInput;
   useEffect(() => {
     if (loaded) relabelRef.current?.();
-  }, [labels, loaded]);
+  }, [labels, loaded, ringForecasts, ringToggles]);
 
   // deck.gl layers, with a light animation loop for pulses (none when calm).
   const { layerInput, animate } = props;

@@ -30,6 +30,7 @@ import {
   lensSummary,
   mainBounds,
   markDimmed,
+  markerObstacles,
   nextRow,
   replayFrame,
   replaySpan,
@@ -537,6 +538,55 @@ describe("labels", () => {
       3,
     ).map((l) => l.id);
     expect(out).toEqual(["a", "c"]);
+  });
+
+  it("keeps names off forecast rings and big dots: a country steps below, a city is left out", () => {
+    const at = [
+      { x: 200, y: 200 }, // Saudi Arabia's label point, under a ring
+      { x: 500, y: 200 }, // a city whose name would cover a big dot
+      { x: 200, y: 200 }, // the ring
+      { x: 520, y: 200 }, // the big dot
+    ];
+    const out = declutterLabels(
+      [label("sa", { name: "Saudi Arabia", lon: 0 }), label("city", { kind: "city", capital: true, priority: 5, lon: 1 })],
+      (lon) => at[lon],
+      { width: 800, height: 600 },
+      4,
+      {
+        obstacles: [
+          { lon: 2, lat: 0, radius: 12 },
+          { lon: 3, lat: 0, radius: 8 },
+        ],
+      },
+    );
+    expect(out.map((l) => l.id)).toEqual(["sa"]);
+    // Moved just below the ring (its box ends 14 px down; the label is 16 px tall).
+    expect(out[0].dy).toBe(23);
+  });
+
+  it("leaves a country out when there is no room below its marker either", () => {
+    const out = declutterLabels(
+      [label("sa", { name: "Saudi Arabia", lon: 0 })],
+      () => ({ x: 200, y: 585 }),
+      { width: 800, height: 600 },
+      4,
+      { obstacles: [{ lon: 0, lat: 0, radius: 12 }] },
+    );
+    expect(out).toEqual([]);
+  });
+
+  it("keeps names off every placed forecast ring (event dots may sit on names, or busy countries lose theirs)", () => {
+    const marks = markerObstacles({
+      forecasts: [
+        { lon: 45, lat: 24 },
+        { lon: null, lat: null },
+      ],
+      toggles: { forecasts: true },
+      zoom: 1.8,
+    });
+    expect(marks).toEqual([{ lon: 45, lat: 24, radius: 12 * zoomScale(1.8) }]);
+    // A hidden layer hides nothing.
+    expect(markerObstacles({ forecasts: [{ lon: 45, lat: 24 }], toggles: { forecasts: false }, zoom: 1.8 })).toEqual([]);
   });
 });
 
