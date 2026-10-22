@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { useNav } from "@/state/nav";
 import type { Alert, AlertRules } from "@/state/profile";
 
-import { alertKey } from "./business-data";
+import { alertKey, volumeText } from "./business-data";
 import { useKnownNames } from "./entity-names";
 
 const LIMIT = 4;
@@ -171,6 +171,15 @@ function AlertRow({ alert }: { alert: Alert }) {
           </span>
           <span aria-hidden>·</span>
           <span>{forecast.provider_name}</span>
+          {/* Every probability shows its volume and when it was last updated. */}
+          <span aria-hidden>·</span>
+          <span>{volumeText(forecast)}</span>
+          {forecast.updated_at && (
+            <>
+              <span aria-hidden>·</span>
+              <TimeAgo value={forecast.updated_at} prefix="Updated" />
+            </>
+          )}
           {forecast.is_sample && <SampleBadge iconOnly />}
         </span>
       </span>
