@@ -92,10 +92,11 @@ export default function OpportunitiesView() {
       <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 pt-6 pb-24 sm:px-6">
         <header className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between gap-3">
-              <h1 className="flex min-w-0 items-center gap-2 text-figure font-semibold tracking-tight">
+            {/* On narrow phones the window toggle moves under the title rather than cutting it short. */}
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+              <h1 className="flex items-center gap-2 text-figure font-semibold tracking-tight">
                 <Lightbulb aria-hidden className="hidden size-6 shrink-0 text-fg-muted sm:block" />
-                <span className="truncate">Opportunities</span>
+                <span>Opportunities</span>
               </h1>
               <Segmented<TimeWindow>
                 aria-label="Time window"
@@ -112,7 +113,8 @@ export default function OpportunitiesView() {
               />
             </div>
             <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-body text-fg-muted">
-              {loading
+              {/* Counts only after a successful load: a failed one says nothing about the news. */}
+              {loading || !query.data
                 ? "Openings in the news: new policies, incentives, demand and supply gaps."
                 : summary.total === 0
                   ? `No openings in the ${windowWords}.`

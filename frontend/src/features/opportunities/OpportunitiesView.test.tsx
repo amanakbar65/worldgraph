@@ -135,6 +135,20 @@ describe("OpportunitiesView", () => {
     expect(top()).toEqual({ kind: "story", id: TRADE_DEAL.story.id });
   });
 
+  it("shows a radar opening's crowd forecast with its source, volume and update, on the chart and in the list", () => {
+    render(<OpportunitiesView />);
+    const facts = (root: HTMLElement) => {
+      const row = within(root).getByText("29% crowd forecast").parentElement!;
+      expect(row.textContent).toMatch(/Manifold/);
+      expect(row.textContent).toMatch(/volume/i);
+      expect(row.textContent).toMatch(/Updated/);
+    };
+    const section = screen.getByRole("region", { name: /Opportunity radar/ });
+    facts(section);
+    fireEvent.click(screen.getByRole("radio", { name: "List" }));
+    facts(screen.getByRole("list", { name: "Openings, best first" }));
+  });
+
   it("offers the radar as a plain list", () => {
     render(<OpportunitiesView />);
     fireEvent.click(screen.getByRole("radio", { name: "List" }));
@@ -225,8 +239,19 @@ describe("OpportunitiesView", () => {
     mocks.errors = { opportunities: new DataError("unavailable", "asleep", true) };
     render(<OpportunitiesView />);
     expect(screen.getByText("The data is taking a moment")).toBeTruthy();
+    // A failed load is not "no openings": the subtitle stays neutral.
+    expect(screen.queryByText(/No openings in the/)).toBeNull();
+    expect(screen.getByText(/^Openings in the news:/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(mocks.refetch).toHaveBeenCalled();
+  });
+
+  it("puts the window toggle under the title on narrow phones instead of truncating it", () => {
+    render(<OpportunitiesView />);
+    const title = screen.getByRole("heading", { level: 1, name: "Opportunities" });
+    expect(title.className).not.toContain("min-w-0");
+    expect(title.querySelector(".truncate")).toBeNull();
+    expect(title.parentElement?.className).toContain("flex-wrap");
   });
 
   it("never invites anyone to bet or trade", () => {
