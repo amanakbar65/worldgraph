@@ -53,14 +53,14 @@ export function Header() {
         ))}
       </nav>
 
-      {/* Phones only: the data status lives here rather than over the content. */}
+      {/* Phones, and every screen but the globe: the data status lives here rather than over the content. */}
       <StatusBar placement="header" />
 
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         <button
           type="button"
           onClick={() => setSearchOpen(true)}
-          className="relative flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-2.5 text-body text-fg-muted transition-colors before:absolute before:-inset-0.5 before:content-[''] hover:border-line-strong hover:text-fg sm:w-56"
+          className="relative flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-2.5 text-body text-fg-muted transition-colors before:absolute before:-inset-0.5 before:content-[''] hover:border-line-strong hover:text-fg sm:w-56 md:w-44 lg:w-56"
           aria-label="Search places, companies, stories and forecasts"
         >
           <Search aria-hidden className="size-4" />

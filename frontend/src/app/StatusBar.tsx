@@ -7,6 +7,7 @@ import { approveWaitingCalls, useConnectorApproval } from "@/api/sources/connect
 import { useIsDesktop } from "@/lib/hooks";
 import { freshnessText } from "@/lib/status-freshness";
 import { cn } from "@/lib/utils";
+import { useNav } from "@/state/nav";
 import { useSettings } from "@/state/settings";
 
 /** Full text on wider screens, a shorter one on phones. */
@@ -64,17 +65,21 @@ function useNow(intervalMs = 30_000): number {
  * AI is doing. It also carries the one control the connector may need:
  * approving live data.
  *
- * On wider screens it floats at the bottom left. On phones it sits in the
- * header instead (`placement="header"`), where it can't cover a list row
- * on the screens that scroll. Each placement renders only at its own width.
+ * On the globe on wider screens it floats at the bottom left, where the
+ * globe's layout leaves room for it. Everywhere else (other screens, and
+ * phones) it sits in the header instead (`placement="header"`), where it
+ * can't cover a list row on the screens that scroll. Exactly one of the two
+ * placements renders.
  */
 export function StatusBar({ placement = "float" }: { placement?: "float" | "header" }) {
   const isDesktop = useIsDesktop();
-  if ((placement === "header") === isDesktop) return null;
-  return <StatusPill placement={placement} />;
+  const onGlobe = useNav((s) => s.view === "globe");
+  const floats = isDesktop && onGlobe;
+  if ((placement === "float") !== floats) return null;
+  return <StatusPill placement={placement} wide={isDesktop} />;
 }
 
-function StatusPill({ placement }: { placement: "float" | "header" }) {
+function StatusPill({ placement, wide }: { placement: "float" | "header"; wide: boolean }) {
   const state = useConnection((s) => s.state);
   const meta = useRpc("meta", {});
   const waiting = useConnectorApproval((s) => s.waiting.length);
@@ -147,8 +152,20 @@ function StatusPill({ placement }: { placement: "float" | "header" }) {
         )}
 
         {fresh && !needsApproval && (
-          // With AI news beside it, the freshness note only shows on wider screens.
-          <span className={cn("shrink-0 items-center gap-2", ai ? "hidden md:flex" : "flex")}>
+          // With AI news beside it, the freshness note only shows on wider screens. In the
+          // desktop header it shares the row with the screen names: only where they leave room.
+          <span
+            className={cn(
+              "shrink-0 items-center gap-2",
+              placement === "header" && wide
+                ? ai
+                  ? "hidden xl:flex"
+                  : "hidden lg:flex"
+                : ai
+                  ? "hidden md:flex"
+                  : "flex",
+            )}
+          >
             <Divider />
             <span className="tabular text-fg-subtle">{text(fresh)}</span>
           </span>

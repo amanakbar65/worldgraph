@@ -6,6 +6,7 @@ import { __testing, useAnalysisStatus } from "@/ai/analysis-runner";
 import { DataError } from "@/api/source";
 import { useConnectorApproval } from "@/api/sources/connector";
 import { freshnessText } from "@/lib/status-freshness";
+import { useNav } from "@/state/nav";
 import { useSettings } from "@/state/settings";
 
 const mocks = vi.hoisted(() => ({ meta: null as unknown }));
@@ -79,6 +80,28 @@ describe("StatusBar", () => {
     render(both());
     expect(screen.getAllByText("Live")).toHaveLength(1);
     expect(screen.getByText("Live").closest("header")).not.toBeNull();
+  });
+
+  it("floats only over the globe on wider screens; other screens show it in the header, off the content", () => {
+    const both = () => (
+      <>
+        <header>
+          <StatusBar placement="header" />
+        </header>
+        <StatusBar />
+      </>
+    );
+    try {
+      for (const view of ["forecasts", "opportunities", "brief"] as const) {
+        useNav.setState({ view });
+        const { unmount } = render(both());
+        expect(screen.getAllByText("Live")).toHaveLength(1);
+        expect(screen.getByText("Live").closest("header"), view).not.toBeNull();
+        unmount();
+      }
+    } finally {
+      useNav.setState({ view: "globe" });
+    }
   });
 
   it("keeps only what needs the viewer in the phone header", () => {
