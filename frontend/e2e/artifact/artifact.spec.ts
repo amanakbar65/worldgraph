@@ -126,7 +126,9 @@ test.describe("artifact build outside claude.ai", () => {
 
     expect(seen.outside, "requests to other hosts").toEqual([]);
     // Only its own files: no API (there is no server behind the test link).
-    const unexpected = seen.paths.filter((p) => !/^\/($|index\.html$|assets\/|geo\/|snapshot\/)/.test(p));
+    const unexpected = seen.paths.filter(
+      (p) => !/^\/($|index\.html$|favicon\.svg$|assets\/|geo\/|snapshot\/)/.test(p),
+    );
     expect(unexpected, "requests other than the page's own files").toEqual([]);
   });
 
@@ -160,8 +162,9 @@ test.describe("artifact build outside claude.ai", () => {
     const panel = detailsPanel(page);
     await expect(panel.getByRole("heading", { level: 2, name: "Ask WorldGraph" })).toBeVisible();
     const box = panel.getByRole("textbox", { name: "Your question" });
+    // (A keyboard hint may follow.)
     await expect(box).toHaveAccessibleDescription(
-      "AI answers aren't available in this view; you'll still see what WorldGraph has stored.",
+      /^AI answers aren't available in this view; you'll still see what WorldGraph has stored\./,
     );
     await box.fill("How do Red Sea attacks affect shipping costs?");
     await box.press("Enter");

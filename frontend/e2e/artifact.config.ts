@@ -25,7 +25,10 @@ export default defineConfig({
   workers: process.env.E2E_WORKERS ? Number(process.env.E2E_WORKERS) : 2,
   timeout: 120_000,
   expect: { timeout: 30_000 },
-  reporter: [["list"], ["html", { outputFolder: "../test-results/playwright-report-artifact", open: "never" }]],
+  reporter: [
+    ["list"],
+    ["html", { outputFolder: "../test-results/playwright-report-artifact", open: "never" }],
+  ],
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
     trace: "retain-on-failure",

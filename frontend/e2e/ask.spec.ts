@@ -25,8 +25,9 @@ test.describe("ask", () => {
     const box = panel.getByRole("textbox", { name: "Your question" });
     await expect(box).toBeVisible();
     // The website's engine is WorldGraph AI; the note says so before anything is sent.
-    await expect(box).toHaveAccessibleDescription("Uses WorldGraph AI, which has a daily limit.");
-    await expect(panel.getByRole("button", { name: "Ask", exact: true })).toBeDisabled();
+    // (A keyboard hint may follow.)
+    await expect(box).toHaveAccessibleDescription(/^Uses WorldGraph AI, which has a daily limit\./);
+    await expect(panel.getByRole("button", { name: "Send", exact: true })).toBeDisabled();
     await expect(page).toHaveURL(/\/#ask$/);
     await snap(page, testInfo, "ask-open");
   });
@@ -39,7 +40,7 @@ test.describe("ask", () => {
     await openApp(page, `#ask=${encodeURIComponent(QUESTION).replace(/%20/g, "+")}`);
     const panel = detailsPanel(page);
     await expect(panel.getByRole("textbox", { name: "Your question" })).toHaveValue(QUESTION);
-    await expect(panel.getByRole("button", { name: "Ask", exact: true })).toBeEnabled();
+    await expect(panel.getByRole("button", { name: "Send", exact: true })).toBeEnabled();
     await page.waitForTimeout(1000);
     expect(aiCalls, "AI calls before the viewer asks").toEqual([]);
   });
