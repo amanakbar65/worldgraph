@@ -173,7 +173,18 @@ describe("SettingsPanel", () => {
     expect(mocks.refetch).toHaveBeenCalled();
   });
 
-  it("explains WorldGraph and opens the design preview", async () => {
+  it("keeps the design preview (invented examples) out of production builds", async () => {
+    vi.stubEnv("DEV", false);
+    try {
+      await renderPanel();
+      expect(within(section("About WorldGraph")).getByText(/WorldGraph shows how world events reach your business/)).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Design preview" })).toBeNull();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("explains WorldGraph and opens the design preview while developing", async () => {
     await renderPanel();
     expect(within(section("About WorldGraph")).getByText(/WorldGraph shows how world events reach your business/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Design preview" }));
