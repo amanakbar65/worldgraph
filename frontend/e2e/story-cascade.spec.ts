@@ -88,7 +88,7 @@ test.describe("story and cascade", () => {
     await expect(cascadeNodes(page)).toHaveCount(one.nodes.length);
   });
 
-  test("on desktop the flow opens with the story and its direct causes and effects in view", async ({
+  test("on desktop the flow opens with the story and its direct causes and effects framed", async ({
     page,
     isPhone,
   }, testInfo) => {
@@ -97,28 +97,73 @@ test.describe("story and cascade", () => {
     const flow = detailsPanel(page).locator(".react-flow");
     await expect(flow).toBeVisible();
     await expect(cascadeNodes(page).first()).toBeVisible();
-    await page.waitForTimeout(1000); // fitView settles after the first layout
+    await page.waitForTimeout(1000); // the opening frame settles after the first layout
     // The flow frames everything when it fits at a readable size (zoom 1, 12 px
-    // labels); otherwise the story and its direct causes and effects
-    // (cascade-layout.ts fitPlan). Either way those must be whole on screen.
+    // labels), else the story and its direct causes and effects (cascade-layout.ts
+    // fitPlan). When even that is too big at zoom 1, it opens from the frame's
+    // left edge (openingViewport), so cards run off only where the viewer pans
+    // next: never cut at the left, and never the story itself.
     const direct = detailsPanel(page).getByRole("button", {
       name: /^(This story|Cause, 1 step back|Effect, 1 step on): /,
     });
     expect(await direct.count()).toBeGreaterThan(1);
     const box = (await flow.boundingBox())!;
     const outside: string[] = [];
+    const cutLeft: string[] = [];
     for (const node of await direct.all()) {
       const b = await node.boundingBox();
       if (!b) continue;
+      const label = ((await node.getAttribute("aria-label")) ?? "").slice(0, 80);
       const inside =
         b.x >= box.x - 1 &&
         b.y >= box.y - 1 &&
         b.x + b.width <= box.x + box.width + 1 &&
         b.y + b.height <= box.y + box.height + 1;
-      if (!inside) outside.push(((await node.getAttribute("aria-label")) ?? "").slice(0, 80));
+      if (!inside) outside.push(label);
+      if (b.x < box.x - 1) cutLeft.push(label);
     }
     await snap(page, testInfo, "cascade-fit");
-    expect(outside, "story cards cut off at the edge of the flow").toEqual([]);
+    if (outside.length > 0) {
+      // Too big to frame: shown at the readable zoom, from the left edge.
+      const transform = await detailsPanel(page).locator(".react-flow__viewport").getAttribute("style");
+      expect(transform, "the opening zoom").toMatch(/scale\(1\)/);
+      expect(cutLeft, "story cards cut off at the left of the flow").toEqual([]);
+    }
+    const story = (await cascadeNodes(page).filter({ hasText: HEADLINE }).first().boundingBox())!;
+    expect(story.x).toBeGreaterThanOrEqual(box.x - 1);
+    expect(story.y).toBeGreaterThanOrEqual(box.y - 1);
+    expect(story.x + story.width).toBeLessThanOrEqual(box.x + box.width + 1);
+    expect(story.y + story.height).toBeLessThanOrEqual(box.y + box.height + 1);
+  });
+
+  test("on desktop the story card opens clear of the flow's legend and controls", async ({
+    page,
+    isPhone,
+  }, testInfo) => {
+    test.skip(isPhone, "Phones open the list.");
+    // App bug: openingViewport (src/features/story/cascade-layout.ts) keeps the story a 24 px
+    // margin from the flow's bottom edge, but the diagram key sits over the bottom-left corner
+    // (about 46 px tall with its margin). When the story is pulled up into view there, its last
+    // line ("Risk ▲ · Yemen · 2 d ago") is hidden under the key. Remove test.fail() once the
+    // bottom margin clears the key.
+    test.fail();
+    await openApp(page, `#cascade=${STORY}`);
+    const flow = detailsPanel(page).locator(".react-flow");
+    await expect(cascadeNodes(page).first()).toBeVisible();
+    await page.waitForTimeout(1000);
+    const story = (await cascadeNodes(page).filter({ hasText: HEADLINE }).first().boundingBox())!;
+    const overlays = await flow
+      .locator(".react-flow__panel")
+      .evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON() as DOMRect));
+    await snap(page, testInfo, "cascade-story-and-key");
+    const covered = overlays.filter(
+      (o) =>
+        o.x < story.x + story.width &&
+        story.x < o.x + o.width &&
+        o.y < story.y + story.height &&
+        story.y < o.y + o.height,
+    );
+    expect(covered, "the legend or controls over the story card").toEqual([]);
   });
 
   test("a link's evidence opens beside the flow and Escape closes only it", async ({
