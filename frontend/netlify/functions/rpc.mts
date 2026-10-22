@@ -40,7 +40,13 @@ export default async function rpc(req: Request, context: NetlifyContext): Promis
   // Refuse a large upload from its declared size, before reading it.
   if (bodyTooLarge(req.headers)) return json(413, { error: "Request too large." });
   const db = getPool();
-  if (!db) return json(503, { error: "The database isn't set up yet." });
+  if (!db) {
+    // Say which: missing, or present but not a postgresql:// address (never echo the value).
+    const error = process.env.DATABASE_URL?.trim()
+      ? "DATABASE_URL isn't a valid postgresql:// address."
+      : "The database isn't set up yet.";
+    return json(503, { error });
+  }
   const code = context.geo?.country?.code;
   const result = await handleRpc(db, await req.text(), {
     viewerCountry: code && /^[A-Z]{2}$/.test(code) ? code : null,
