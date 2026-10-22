@@ -58,3 +58,15 @@ Start with `CLAUDE.md` (layout, commands, conventions), then `PLAN.md` (the desi
 - **Backend:** Python 3.12 with uv. The SQL migrations hold the `api.*` functions every screen reads, and the live pipeline runs on GitHub Actions.
 - **Frontend:** Vite, React and TypeScript, built as both the claude.ai test link and the website.
 - **Website functions** (`frontend/netlify/functions/`, settings in `netlify.toml`): `/api/rpc` serves the data read-only and takes the viewer's country from Netlify's geo data (for forecast rules and India's map borders); `/api/ai` serves Ask and projections. They connect to the database through `frontend/server/db.ts`, which always verifies TLS against Supabase's root CA (bundled, valid until April 2031), so there is no certificate to set up. `DATABASE_CA_CERT` only overrides that CA.
+
+### The test link's snapshot
+
+The test link ships a snapshot (`frontend/public/snapshot/`) that it shows while the Supabase connector starts, and when the connector isn't there. A **live** snapshot is real news with its true dates, and the status pill says "Snapshot as of …". A **sample** snapshot (invented stories) only appears for viewers who set Sample data to On; everyone else sees "Live data isn't connected" instead.
+
+```sh
+cd frontend
+npm run snapshot:live -- https://<website>   # live: reads the website's /api/rpc (sample: false)
+DEV_DATABASE_URL=postgresql://wg:wg@localhost:5432/<db> npm run snapshot   # sample: from a local sample database
+```
+
+Add `--out <folder>` to try a build somewhere else first. A live build refuses to write anything if a call fails, or if the answers hold sample items or forecasts that may be real-money. Rebuild the artifact (`npm run build:artifact`) after a new snapshot.

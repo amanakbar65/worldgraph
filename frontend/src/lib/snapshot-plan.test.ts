@@ -1,14 +1,42 @@
 import { describe, expect, it } from "vitest";
 
-import { snapshotKeyOf, snapshotManifest, snapshotPlan, SNAPSHOT_WINDOWS } from "./snapshot-plan";
+import {
+  liveSnapshotProblems,
+  manifestFile,
+  snapshotKeyOf,
+  snapshotManifest,
+  snapshotPlan,
+  SNAPSHOT_WINDOWS,
+  type SnapshotKind,
+} from "./snapshot-plan";
 import { RESPONSES, type RpcArgs, type RpcName } from "@/api/contract";
 import { snapshotKey } from "@/api/sources/static";
-import { sampleArg } from "@/state/settings";
+import { sampleArg, type Settings } from "@/state/settings";
 
 const files = import.meta.glob<unknown>("../../public/snapshot/*.json", { eager: true, import: "default" });
 const published = Object.fromEntries(
   Object.entries(files).map(([path, data]) => [path.split("/").pop()!, data]),
 );
+
+/** The first-frame calls exactly as the app sends them with this Sample data setting. */
+function firstFrame(setting: Settings["sample"]): [RpcName, unknown, string][] {
+  const sample = sampleArg(setting);
+  const calls: [RpcName, unknown, string][] = [["meta", {}, "meta.json"]];
+  for (const window of SNAPSHOT_WINDOWS) {
+    const lensOff: RpcArgs["globe"][] = [
+      { window, sample },
+      { window, sectors: [], sample },
+    ];
+    for (const args of lensOff) {
+      calls.push(["globe", args, `globe-${window}.json`], ["top", args, `top-${window}.json`]);
+    }
+  }
+  const brief: RpcArgs["brief"] = { profile: undefined, sample };
+  const forecasts: RpcArgs["forecasts"] = { sort: "relevance", sample, sectors: [] };
+  calls.push(["brief", brief, "brief.json"], ["forecasts", forecasts, "forecasts.json"]);
+  calls.push(["forecasts", { sample }, "forecasts.json"]);
+  return calls;
+}
 
 describe("snapshot keys", () => {
   it("are the keys StaticSource looks up", () => {
@@ -22,44 +50,96 @@ describe("snapshot keys", () => {
     for (const [name, args] of cases) expect(snapshotKeyOf(name, args)).toBe(snapshotKey(name, args));
   });
 
-  it("cover the first frame as the app asks for it, whatever the sample setting", () => {
-    const manifest = snapshotManifest();
-    for (const setting of ["auto", "on"] as const) {
-      const sample = sampleArg(setting);
-      for (const window of SNAPSHOT_WINDOWS) {
-        const lensOff: RpcArgs["globe"][] = [
-          { window, sample },
-          { window, sectors: [], sample },
-        ];
-        for (const args of lensOff) {
-          expect(manifest[snapshotKey("globe", args)]).toBe(`globe-${window}.json`);
-          expect(manifest[snapshotKey("top", args)]).toBe(`top-${window}.json`);
-        }
+  it.each([
+    ["live", ["auto", "off", "on"]],
+    ["sample", ["auto", "on"]],
+  ] as const)("cover the first frame of a %s snapshot for Sample data %j", (kind, settings) => {
+    const manifest = snapshotManifest(snapshotPlan(kind));
+    for (const setting of settings) {
+      for (const [name, args, file] of firstFrame(setting)) {
+        expect(manifest[snapshotKey(name, args)], `${name} ${JSON.stringify(args)}`).toBe(file);
       }
-      const brief: RpcArgs["brief"] = { profile: undefined, sample };
-      expect(manifest[snapshotKey("brief", brief)]).toBe("brief.json");
-      const forecasts: RpcArgs["forecasts"] = { sort: "relevance", sample, sectors: [] };
-      expect(manifest[snapshotKey("forecasts", forecasts)]).toBe("forecasts.json");
-      expect(manifest[snapshotKey("forecasts", { sample })]).toBe("forecasts.json");
     }
-    expect(manifest[snapshotKey("meta", {})]).toBe("meta.json");
+  });
+
+  it("never answer Sample data off from a sample snapshot", () => {
+    const manifest = snapshotManifest(snapshotPlan("sample"));
+    for (const [name, args] of firstFrame("off")) {
+      if (name !== "meta") expect(manifest[snapshotKey(name, args)], name).toBeUndefined();
+    }
   });
 
   it("never claim a call that needs live data", () => {
-    const manifest = snapshotManifest();
-    expect(manifest[snapshotKey("globe", { window: "7d", sectors: ["energy"] })]).toBeUndefined();
-    expect(manifest[snapshotKey("story", { id: "story:a" })]).toBeUndefined();
+    for (const kind of ["live", "sample"] as const) {
+      const manifest = snapshotManifest(snapshotPlan(kind));
+      expect(manifest[snapshotKey("globe", { window: "7d", sectors: ["energy"] })]).toBeUndefined();
+      expect(manifest[snapshotKey("story", { id: "story:a" })]).toBeUndefined();
+    }
+  });
+});
+
+describe("the plan", () => {
+  it.each([
+    ["live", false],
+    ["sample", true],
+  ] as const)("asks for a %s snapshot with sample: %s wherever the function takes it", (kind, sample) => {
+    for (const entry of snapshotPlan(kind)) {
+      if (entry.name === "meta") expect(entry.query).toEqual({});
+      else expect(entry.query.sample, entry.file).toBe(sample);
+    }
+  });
+
+  it.each(["live", "sample"] as const)(
+    "writes a %s manifest with its kind and build time",
+    (kind: SnapshotKind) => {
+      const manifest = manifestFile(kind, "2026-10-22T12:00:00.000Z");
+      expect(manifest.kind).toBe(kind);
+      expect(manifest.as_of).toBe("2026-10-22T12:00:00.000Z");
+      expect(manifest.files).toEqual(snapshotManifest(snapshotPlan(kind)));
+    },
+  );
+});
+
+describe("a live snapshot", () => {
+  const forecast = (provider: string) => ({ id: "forecast:x", provider, is_sample: false });
+
+  it("passes with real stories and free forecasts only", () => {
+    expect(
+      liveSnapshotProblems({
+        "top-7d.json": { stories: [{ id: "story:a", is_sample: false }], movers: [forecast("manifold")] },
+        "meta.json": { data: { showing_sample: false } },
+      }),
+    ).toEqual([]);
+  });
+
+  it("refuses sample items and forecasts that may be real-money", () => {
+    expect(
+      liveSnapshotProblems({
+        "globe-7d.json": {
+          events: [{ id: "story:b", is_sample: true }],
+          forecasts: [forecast("polymarket")],
+        },
+        "brief.json": { cards: [{ forecast: forecast("some-new-market") }] },
+      }),
+    ).toEqual([
+      "globe-7d.json: holds sample data",
+      "globe-7d.json: forecasts from polymarket, which may be real-money",
+      "brief.json: forecasts from some-new-market, which may be real-money",
+    ]);
   });
 });
 
 describe("the committed snapshot", () => {
-  it("matches the plan (run `npm run snapshot` after changing it)", () => {
-    expect(published["manifest.json"]).toEqual(snapshotManifest());
-    for (const entry of snapshotPlan()) expect(published[entry.file], entry.file).toBeDefined();
+  it("is a sample snapshot that matches the plan (run `npm run snapshot` after changing it)", () => {
+    const manifest = published["manifest.json"] as ReturnType<typeof manifestFile>;
+    expect(manifest.kind).toBe("sample");
+    expect(Number.isFinite(Date.parse(manifest.as_of))).toBe(true);
+    expect(manifest.files).toEqual(snapshotManifest(snapshotPlan("sample")));
+    for (const entry of snapshotPlan("sample")) expect(published[entry.file], entry.file).toBeDefined();
   });
 
   it("matches the API contract and holds sample data", () => {
-    for (const entry of snapshotPlan()) {
+    for (const entry of snapshotPlan("sample")) {
       const parsed = RESPONSES[entry.name as RpcName].safeParse(published[entry.file]);
       expect(parsed.success, `${entry.file}: ${parsed.error?.message}`).toBe(true);
     }

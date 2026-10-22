@@ -14,6 +14,8 @@ export type ConnectionState =
   | { status: "connecting" }
   | { status: "live"; source: DataSource["kind"] }
   | { status: "snapshot"; reason: DataError }
+  // No live connection, and no snapshot this viewer may see: nothing is shown in its place.
+  | { status: "disconnected"; reason: DataError }
   | { status: "error"; reason: DataError };
 
 export const useConnection = create<{ state: ConnectionState; set: (s: ConnectionState) => void }>((set) => ({
@@ -48,12 +50,22 @@ export function isConnectionFailure(error: unknown): error is DataError {
   );
 }
 
-/** Try the live source; when it can't run in this view, use the snapshot. */
+/** A snapshot that can say whether this viewer may see it (StaticSource). */
+export interface SnapshotSource extends DataSource {
+  available(): Promise<boolean>;
+}
+
+/**
+ * Try the live source; when it can't run in this view, use the snapshot if
+ * this viewer may see it (a sample one only with Sample data on). If not,
+ * the call fails with the live source's own reason, so each screen says
+ * what's wrong and offers its retry instead of showing invented stories.
+ */
 export class LiveWithSnapshot implements DataSource {
   readonly kind = "connector" as const;
   constructor(
     private readonly live: DataSource,
-    private readonly snapshot: DataSource,
+    private readonly snapshot: SnapshotSource,
   ) {}
 
   async call<N extends RpcName>(name: N, args: RpcArgs[N], options?: CallOptions): Promise<RpcResponse<N>> {
@@ -63,6 +75,10 @@ export class LiveWithSnapshot implements DataSource {
       return data;
     } catch (error) {
       if (error instanceof DataError && FALL_BACK_TO_SNAPSHOT.has(error.kind)) {
+        if (!(await this.snapshot.available())) {
+          useConnection.getState().set({ status: "disconnected", reason: error });
+          throw error;
+        }
         useConnection.getState().set({ status: "snapshot", reason: error });
         return this.snapshot.call(name, args, options);
       }
@@ -96,7 +112,9 @@ export const dataSource: DataSource =
 
 /**
  * Test link: show the bundled snapshot as a placeholder while the connector
- * starts (that can take several seconds), then swap in live data.
+ * starts (that can take several seconds), then swap in live data. A sample
+ * snapshot is only there for a viewer with Sample data on (useSnapshot keeps
+ * it from everyone else), so nobody else ever sees invented stories flash up.
  */
 const SNAPSHOT_FIRST_FRAME = TARGET === "artifact";
 if (SNAPSHOT_FIRST_FRAME) void loadSnapshot();
