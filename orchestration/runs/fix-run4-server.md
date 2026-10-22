@@ -1,4 +1,4 @@
-# Relaunch brief for fix (wf_5c8c3ae6-fc1); pass as args.groups to worldgraph-qa-fix.js
+# Relaunch brief for fix:server (wf_5c8c3ae6-fc1); pass as args.groups to worldgraph-qa-fix.js
 
 Your label: fix:server. Your dev-server port: 5402. Your database name: wg_fix_server.
   Files you own: frontend/server/**, frontend/netlify/**, frontend/src/platform/**, frontend/scripts/**, netlify.toml, README.md, .env.example.
