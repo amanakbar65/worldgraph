@@ -10,7 +10,10 @@ import { RPC_NAMES, WRITE_RPCS, type RpcName } from "../src/api/contract";
 export interface RpcContext {
   /** Two-letter country code from the host's geo header, or null when unknown. */
   viewerCountry: string | null;
-  /** Whether write functions (save_analysis) may run. Never true for public visitors. */
+  /**
+   * Whether owner-only functions may run: writes (save_analysis) and the raw
+   * drafts waiting for analysis (pending_analysis). Never true for public visitors.
+   */
   allowWrites: boolean;
 }
 
@@ -19,10 +22,24 @@ export interface RpcResult {
   body: { data?: unknown; error?: string };
 }
 
-const MAX_BODY_BYTES = 64 * 1024;
+export const MAX_BODY_BYTES = 64 * 1024;
+
+/** Only the owner's own tools call these: writes, and un-analysed drafts (raw titles and snippets). */
+const OWNER_ONLY: ReadonlySet<RpcName> = new Set<RpcName>([...WRITE_RPCS, "pending_analysis"]);
+
+/** True when a request declares a body over the limit, so it can be refused before it is read. */
+export function bodyTooLarge(headers: Headers): boolean {
+  const declared = Number(headers.get("content-length"));
+  return Number.isFinite(declared) && declared > MAX_BODY_BYTES;
+}
+
+/** UTF-8 size; a string with more UTF-16 units than the limit is over it without encoding. */
+function tooLarge(text: string): boolean {
+  return text.length > MAX_BODY_BYTES || new TextEncoder().encode(text).length > MAX_BODY_BYTES;
+}
 
 export async function handleRpc(pool: Pool, rawBody: string, ctx: RpcContext): Promise<RpcResult> {
-  if (rawBody.length > MAX_BODY_BYTES) return { status: 413, body: { error: "Request too large." } };
+  if (tooLarge(rawBody)) return { status: 413, body: { error: "Request too large." } };
   let parsed: { fn?: unknown; args?: unknown };
   try {
     parsed = JSON.parse(rawBody) as { fn?: unknown; args?: unknown };
@@ -33,7 +50,7 @@ export async function handleRpc(pool: Pool, rawBody: string, ctx: RpcContext): P
   if (typeof fn !== "string" || !RPC_NAMES.includes(fn as RpcName)) {
     return { status: 404, body: { error: "Unknown function." } };
   }
-  if (WRITE_RPCS.has(fn as RpcName) && !ctx.allowWrites) {
+  if (OWNER_ONLY.has(fn as RpcName) && !ctx.allowWrites) {
     return { status: 403, body: { error: "Not allowed." } };
   }
   const args =
@@ -47,7 +64,13 @@ export async function handleRpc(pool: Pool, rawBody: string, ctx: RpcContext): P
     const result = await pool.query<{ data: unknown }>(`select api.${fn}($1::jsonb) as data`, [
       JSON.stringify(args),
     ]);
-    return { status: 200, body: { data: result.rows[0]?.data ?? null } };
+    const data = result.rows[0]?.data ?? null;
+    // meta also says which country the server decided (Netlify's geo data), so
+    // the app can pick India's map borders; the browser can't claim one.
+    if (fn === "meta" && data && typeof data === "object" && !Array.isArray(data)) {
+      return { status: 200, body: { data: { ...data, viewer_country: ctx.viewerCountry } } };
+    }
+    return { status: 200, body: { data } };
   } catch (error) {
     return rpcFailure(error);
   }

@@ -1,0 +1,11 @@
+{
+  "mcp": { "servers": [{ "server": "Supabase", "tools": ["execute_sql"] }] },
+  "sample": {},
+  "db": {
+    "rules": [
+      { "path": "", "read": "view", "write": "admin" },
+      { "path": "data/users/{self}", "write": "interact" }
+    ]
+  },
+  "user": {}
+}

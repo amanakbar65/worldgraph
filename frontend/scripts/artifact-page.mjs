@@ -24,13 +24,13 @@ const LIMITS = { total: 16 * MB, text: 16 * MB, binary: 15 * MB, files: 255 };
 const TEXT = new Set([".html", ".js", ".mjs", ".css", ".json", ".svg", ".txt", ".md", ".map"]);
 const GENERATED = new Set(["index.html", "artifact-files.json", "ARTIFACT.md"]);
 
-/** What the page asks the claude.ai runtime for (the publish step's `capabilities`). */
-export const CAPABILITIES = {
-  mcp: { servers: [{ server: "Supabase", tools: ["execute_sql"] }] },
-  sample: {},
-  db: { rules: [{ path: "data/users/{self}", write: "interact" }] },
-  user: {},
-};
+/**
+ * What the page asks the claude.ai runtime for (the publish step's `capabilities`),
+ * kept in artifact-capabilities.json so the unit tests can check the db rules.
+ */
+export const CAPABILITIES = JSON.parse(
+  readFileSync(join(frontend, "scripts", "artifact-capabilities.json"), "utf8"),
+);
 
 const problems = [];
 const fail = (message) => problems.push(message);
@@ -121,15 +121,18 @@ ${JSON.stringify(CAPABILITIES, null, 2)}
 \`\`\`
 
 - **mcp**: the viewer's **Supabase** connector, tool \`execute_sql\` only. The page runs
-  \`select api.<fn>($json$...$json$::jsonb)\` against project \`xmznnjpflimsjvwftxpa\`
-  (read functions, plus \`api.save_analysis\` for on-use analysis). The connector wraps rows in
+  \`select api.<fn>($wg$...$wg$::jsonb) as data\` against project \`xmznnjpflimsjvwftxpa\`
+  (read functions, plus \`api.save_analysis\` for on-use analysis); if the JSON contains the
+  dollar-quote tag, it becomes \`$wg1$\`, \`$wg2$\`, and so on. The connector wraps rows in
   \`<untrusted-data-…>\` tags; \`src/api/sql.ts\` unwraps them. Without the connector the page
   shows the bundled sample snapshot (\`snapshot/\`).
 - **sample**: Claude on the viewer's own account, text only (no images). Used for story
   analysis while the owner or an editor has the page open, for Ask and for projections.
   The first call asks the viewer to allow it.
 - **db**: each viewer's own private subtree \`data/users/{self}\` (business profile,
-  watchlist, notes), writable at Contributor level and above. No shared documents.
+  watchlist, notes), writable at Contributor level and above. No shared documents: the
+  root rule makes everything else read-only below Editor (\`write: "admin"\`).
+  Republishing with changed rules needs \`capabilities\` passed explicitly.
 - **user**: the viewer's id (for the private subtree) and whether they are the owner or an
   editor (only they run on-use analysis).
 
