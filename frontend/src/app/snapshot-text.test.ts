@@ -8,7 +8,7 @@ describe("snapshotText", () => {
 
   it("gives a live snapshot its time, in full and as an age", () => {
     const text = snapshotText("live", "2026-10-22T12:05:00Z", now, "en-GB");
-    expect(text.long).toMatch(/^Snapshot as of 22 Oct, \d{2}:\d{2}$/);
+    expect(text.long).toMatch(/^Snapshot as of 22 Oct, \d{1,2}:\d{2}$/);
     expect(text.short).toBe("Snapshot · 3 h ago");
   });
 

@@ -4,14 +4,14 @@ import { relativeTime } from "@/lib/time";
 
 type Text = { long: string; short: string };
 
-/** "22 Oct, 14:05" in the viewer's own time (with the year when it isn't this one). */
+/** "22 Oct, 14:05" (or "Oct 22, 2:05 PM") in the viewer's own time, with the year when it isn't this one. */
 function clock(at: number, now: number, locale?: string): string {
   const sameYear = new Date(at).getFullYear() === new Date(now).getFullYear();
   return new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "short",
     year: sameYear ? undefined : "numeric",
-    hour: "2-digit",
+    hour: "numeric",
     minute: "2-digit",
   }).format(at);
 }
