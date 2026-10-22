@@ -67,15 +67,25 @@ def seed_check() -> None:
 
 
 @seed_app.command("load")
-def seed_load() -> None:
+def seed_load(
+    if_changed: bool = typer.Option(
+        False,
+        "--if-changed",
+        help="Only reload when the sample data's sources changed since the last load (for the pipeline).",
+    ),
+) -> None:
     """Replace the sample data in the database (times are set relative to now)."""
     from worldgraph.db import connect
     from worldgraph.seed.build import build_bundle
-    from worldgraph.seed.load import load_bundle
+    from worldgraph.seed.load import load_bundle, loaded_source_hash, record_source_hash, source_hash
 
-    bundle = build_bundle()
+    digest = source_hash()
     with connect() as conn:
-        counts = load_bundle(conn, bundle)
+        if if_changed and loaded_source_hash(conn) == digest:
+            typer.echo("Sample data unchanged; not reloaded.")
+            return
+        counts = load_bundle(conn, build_bundle())
+        record_source_hash(conn, digest)
     typer.secho("Sample data loaded.", fg=typer.colors.GREEN)
     for label, value in counts.items():
         typer.echo(f"  {label}: {value}")

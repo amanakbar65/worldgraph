@@ -335,3 +335,47 @@ def write_sql_chunks(bundle: Bundle, out_dir: Path, max_bytes: int = 400_000) ->
         )
         paths.append(path)
     return paths
+
+
+# --- Reload only when the sample data changed (the pipeline runs this every time) ---
+
+_SEED_STATE_SQL = """
+create table if not exists public.seed_state (
+    id boolean primary key default true check (id),
+    source_hash text not null,
+    loaded_at timestamptz not null default now()
+);
+alter table public.seed_state enable row level security;
+"""
+
+
+def source_hash() -> str:
+    """A hash of everything the sample data is built from: the seed files and this package's code."""
+    import hashlib
+    from pathlib import Path
+
+    package = Path(__file__).parent
+    digest = hashlib.sha256()
+    for path in sorted(p for p in package.rglob("*") if p.is_file() and "__pycache__" not in p.parts):
+        digest.update(str(path.relative_to(package)).encode())
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def loaded_source_hash(conn: psycopg.Connection) -> str | None:
+    with conn.transaction():
+        conn.execute(_SEED_STATE_SQL)
+    row = conn.execute("select source_hash from public.seed_state").fetchone()
+    if row is None:
+        return None
+    return row["source_hash"] if isinstance(row, dict) else row[0]
+
+
+def record_source_hash(conn: psycopg.Connection, digest: str) -> None:
+    with conn.transaction():
+        conn.execute(_SEED_STATE_SQL)
+        conn.execute(
+            "insert into public.seed_state (id, source_hash) values (true, %s) "
+            "on conflict (id) do update set source_hash = excluded.source_hash, loaded_at = now()",
+            (digest,),
+        )
