@@ -17,7 +17,8 @@ const buttonVariants = cva(
       },
       size: {
         default: "h-10 px-4",
-        sm: "h-8 px-3",
+        // 32 px to the eye, 40 px to the touch (the ::before layer).
+        sm: "relative h-8 px-3 before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']",
         lg: "h-11 px-6",
         icon: "size-10",
       },

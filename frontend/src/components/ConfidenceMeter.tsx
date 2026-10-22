@@ -5,12 +5,15 @@ import { cn } from "@/lib/utils";
 const BARS = 5;
 
 export interface LinkTypeSwatchProps {
-  /** Reported (solid), inferred (dashed), projected or conditional (dotted). */
+  /** Reported (solid), inferred (dashed), projected (dotted) or conditional (dot–dash, violet). */
   linkType: LinkType;
   className?: string;
 }
 
-/** A short line drawn the way the cascade draws this link type. Decorative. */
+/**
+ * A short line drawn the way the cascade draws this link type. Decorative.
+ * Conditional links take the forecast violet, as in the cascade.
+ */
 export function LinkTypeSwatch({ linkType, className }: LinkTypeSwatchProps) {
   const info = LINK_TYPES[linkType];
   return (
@@ -20,7 +23,7 @@ export function LinkTypeSwatch({ linkType, className }: LinkTypeSwatchProps) {
         x2="23"
         y1="2"
         y2="2"
-        className="stroke-fg-muted"
+        className={linkType === "conditional" ? "stroke-forecast" : "stroke-fg-muted"}
         strokeWidth={2}
         strokeLinecap="round"
         strokeDasharray={info?.dasharray}

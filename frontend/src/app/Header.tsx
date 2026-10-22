@@ -1,6 +1,7 @@
 import { MessageCircleQuestion, Search, Settings2 } from "lucide-react";
 
 import { NAV_ITEMS } from "./nav-items";
+import { StatusBar } from "./StatusBar";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
 import { useNav } from "@/state/nav";
@@ -18,13 +19,15 @@ export function Header() {
       <button
         type="button"
         onClick={() => setView("globe")}
-        className="flex items-center gap-2 rounded-md px-1 py-1 text-body font-semibold tracking-tight"
+        // The ::before layers on the header's buttons make each tap area 40 px.
+        className="relative flex items-center gap-2 rounded-md px-1 py-1 text-body font-semibold tracking-tight before:absolute before:-inset-1 before:content-['']"
         aria-label="WorldGraph home"
       >
         <Logo className="size-6" />
         <span className="hidden sm:inline">WorldGraph</span>
       </button>
 
+      {/* Icons only until there is room for every label (xl), so search, Ask and Settings stay on screen. */}
       <nav aria-label="Screens" className="ml-2 hidden items-center gap-0.5 md:flex">
         {NAV_ITEMS.map((item) => (
           <button
@@ -32,22 +35,26 @@ export function Header() {
             type="button"
             onClick={() => setView(item.view)}
             aria-current={view === item.view ? "page" : undefined}
+            title={item.label}
             className={cn(
-              "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-body text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg",
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-body whitespace-nowrap text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg",
               view === item.view && "bg-surface-2 text-fg",
             )}
           >
             <item.icon aria-hidden className="size-4" />
-            {item.label}
+            <span className="sr-only xl:not-sr-only">{item.label}</span>
           </button>
         ))}
       </nav>
 
-      <div className="ml-auto flex items-center gap-1.5">
+      {/* Phones only: the data status lives here rather than over the content. */}
+      <StatusBar placement="header" />
+
+      <div className="ml-auto flex shrink-0 items-center gap-1.5">
         <button
           type="button"
           onClick={() => setSearchOpen(true)}
-          className="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-2.5 text-body text-fg-muted transition-colors hover:border-line-strong hover:text-fg sm:w-56"
+          className="relative flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-2.5 text-body text-fg-muted transition-colors before:absolute before:-inset-0.5 before:content-[''] hover:border-line-strong hover:text-fg sm:w-56"
           aria-label="Search places, companies, stories and forecasts"
         >
           <Search aria-hidden className="size-4" />
@@ -59,7 +66,7 @@ export function Header() {
         <button
           type="button"
           onClick={() => open({ kind: "ask" })}
-          className="flex h-9 items-center gap-1.5 rounded-md px-2.5 text-body text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg"
+          className="relative flex h-9 items-center gap-1.5 rounded-md px-2.5 text-body text-fg-muted transition-colors before:absolute before:-inset-0.5 before:content-[''] hover:bg-surface-2 hover:text-fg"
         >
           <MessageCircleQuestion aria-hidden className="size-4" />
           <span className="hidden lg:inline">Ask</span>
@@ -68,7 +75,7 @@ export function Header() {
         <button
           type="button"
           onClick={() => open({ kind: "settings" })}
-          className="flex size-9 items-center justify-center rounded-md text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg"
+          className="relative flex size-9 items-center justify-center rounded-md text-fg-muted transition-colors before:absolute before:-inset-0.5 before:content-[''] hover:bg-surface-2 hover:text-fg"
           aria-label="Settings"
         >
           <Settings2 aria-hidden className="size-4" />

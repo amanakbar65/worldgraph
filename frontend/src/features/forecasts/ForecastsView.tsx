@@ -465,6 +465,13 @@ function NoForecasts({ active, includeThin, onClear }: { active: boolean; includ
   const setIncludeThin = useForecastFilters((s) => s.setIncludeThin);
   const sampleSetting = useSettings((s) => s.sample);
   const update = useSettings((s) => s.update);
+  // Before blaming thin markets, check there are some: the same list with them in.
+  const thinArgs = useMemo(
+    () =>
+      forecastsArgs({ filters: { ...DEFAULT_FILTERS, includeThin: true }, sectors: [], sample: sampleArg(sampleSetting) }),
+    [sampleSetting],
+  );
+  const withThin = useRpc("forecasts", thinArgs, { enabled: !active && !includeThin });
   if (active) {
     return (
       <EmptyState
@@ -480,7 +487,9 @@ function NoForecasts({ active, includeThin, onClear }: { active: boolean; includ
     sampleSetting === "on"
       ? undefined
       : { label: "Show sample data", onClick: () => update({ sample: "on" }), icon: FlaskConical };
-  if (includeThin) {
+  const noneAtAll = includeThin || withThin.data?.forecasts.length === 0;
+  if (!noneAtAll && withThin.data === undefined && !withThin.isError) return <ListSkeleton />;
+  if (noneAtAll) {
     return (
       <EmptyState
         icon={Users}

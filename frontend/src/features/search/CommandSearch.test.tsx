@@ -147,6 +147,23 @@ describe("CommandSearch", () => {
     expect(useUi.getState().searchOpen).toBe(false);
   });
 
+  it("gives focus back to what had it when Escape closes the search", async () => {
+    render(
+      <>
+        <button type="button">Settings</button>
+        <CommandSearch />
+      </>,
+    );
+    const before = screen.getByRole("button", { name: "Settings" });
+    before.focus();
+    await open();
+    expect(document.activeElement).toBe(input());
+    fireEvent.keyDown(input(), { key: "Escape" });
+    await wait(10);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(before);
+  });
+
   it("offers quick actions before anything is typed", async () => {
     render(<CommandSearch />);
     await open();

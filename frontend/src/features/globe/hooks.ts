@@ -53,15 +53,19 @@ export function usePageFont(): string | null {
 }
 
 // One shared minute clock (for "new in the last hour").
-let minute = Math.floor(Date.now() / 60_000) * 60_000;
+const floorMinute = () => Math.floor(Date.now() / 60_000) * 60_000;
+let minute = floorMinute();
 const listeners = new Set<() => void>();
 let timer: ReturnType<typeof setInterval> | undefined;
 
 function subscribe(listener: () => void) {
   listeners.add(listener);
   if (!timer) {
+    // The clock stood still while no one watched (another screen was open):
+    // catch up now. React reads it again right after subscribing.
+    minute = floorMinute();
     timer = setInterval(() => {
-      minute = Math.floor(Date.now() / 60_000) * 60_000;
+      minute = floorMinute();
       listeners.forEach((l) => l());
     }, 60_000);
   }

@@ -67,7 +67,7 @@ import { TopNowBody, TopNowStrip } from "./TopNow";
 
 const HOME_CENTER: LngLat = [25, 20];
 const COLUMN = 352; // the desktop left column (22rem)
-const STATUS_SPACE = 52; // the app's status pill sits bottom-left
+const STATUS_SPACE = 52; // the app's status pill sits bottom-left on desktop (in the header on phones)
 const TOOLBAR_SPACE = 64;
 const SIDE_PANEL = 464; // PanelHost's desktop side panel plus its margin
 const PHONE_TOP = 60; // the phone's top bar
@@ -348,7 +348,7 @@ export default function GlobeView() {
         top: PHONE_TOP,
         left: 0,
         right: 0,
-        bottom: panel ? Math.round(size.height * 0.5) : Math.min(size.height * 0.45, stripSize.height + 56),
+        bottom: panel ? Math.round(size.height * 0.5) : Math.min(size.height * 0.45, stripSize.height + 20),
       };
   const freeW = Math.max(0, size.width - padding.left - padding.right);
   const freeH = Math.max(0, size.height - padding.top - padding.bottom);
@@ -649,11 +649,13 @@ export default function GlobeView() {
             </div>
 
             {!mapError && (
+              // Right of the left column, so the key never runs under the status pill
+              // (bottom left) on narrower desktops; it wraps instead.
               <div
-                className="pointer-events-auto absolute bottom-3 flex items-end gap-2"
-                style={{ right: rightSpace + 12 }}
+                className="pointer-events-auto absolute bottom-3 flex items-end justify-end gap-2"
+                style={{ right: rightSpace + 12, left: COLUMN + 24 }}
               >
-                <div className={cn(GLASS, "flex h-10 items-center gap-3 rounded-lg px-3")}>
+                <div className={cn(GLASS, "flex min-h-10 min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg px-3 py-2")}>
                   {sample && <SampleBadge compact={sample === "some"} />}
                   <MapKey />
                 </div>
@@ -661,6 +663,7 @@ export default function GlobeView() {
                 <ZoomControls
                   onZoom={(delta) => fly({ kind: "zoom", delta })}
                   onReset={() => fly({ kind: "reset" })}
+                  className="shrink-0"
                 />
               </div>
             )}
@@ -687,13 +690,13 @@ export default function GlobeView() {
 
             {listOpen || mapError ? (
               <div
-                className="pointer-events-auto absolute right-3 bottom-12 left-3 flex flex-col"
+                className="pointer-events-auto absolute right-3 bottom-3 left-3 flex flex-col"
                 style={{ top: PHONE_TOP }}
               >
                 <EventList {...listProps} onClose={mapError ? undefined : () => setListOpen(false)} />
               </div>
             ) : (
-              <div ref={stripRef} className="pointer-events-auto absolute right-3 bottom-12 left-3">
+              <div ref={stripRef} className="pointer-events-auto absolute right-3 bottom-3 left-3">
                 {failure ??
                   (shownSelection ? (
                     <SelectionCard

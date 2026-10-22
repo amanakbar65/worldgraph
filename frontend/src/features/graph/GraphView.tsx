@@ -57,9 +57,9 @@ const DEPTH_OPTIONS = ([1, 2, 3] as const).map((d) => ({
 
 /** Side panel width on desktop plus its margins, so the camera can keep nodes clear of it. */
 const PANEL_INSET = 452;
-/** Room for the app's status pill at the bottom left (desktop / phone). */
+/** Room for the app's status pill at the bottom left on desktop (on phones it sits in the header). */
 const STATUS_SPACE = 52;
-const PHONE_STATUS_SPACE = 44;
+const PHONE_STATUS_SPACE = 12;
 /** On desktop the replay control starts right of the status pill. */
 const DESKTOP_BAR_LEFT = 340;
 
@@ -241,15 +241,6 @@ export default function GraphView() {
         )}
       </div>
 
-      {graph && listView && !empty && (
-        <div
-          className="absolute inset-0 overflow-y-auto px-3 pt-36 pb-16 sm:pt-32"
-          style={{ paddingTop: toolbar.height ? toolbar.height + 24 : undefined, paddingRight: rightInset || undefined }}
-        >
-          <GraphList graph={graph} onOpen={nav.openNode} className="mx-auto max-w-3xl" />
-        </div>
-      )}
-
       {loading && <GraphSkeleton />}
       {failed && (
         <CenterCard>
@@ -278,6 +269,16 @@ export default function GraphView() {
           <Summary graph={graph} truncated={truncated} updating={query.isFetching && query.isPlaceholderData} />
         )}
       </div>
+
+      {/* After the toolbar, so Tab reaches the list the way the eye does (the toolbar stays on top, z-20). */}
+      {graph && listView && !empty && (
+        <div
+          className="absolute inset-0 overflow-y-auto px-3 pt-36 pb-16 sm:pt-32"
+          style={{ paddingTop: toolbar.height ? toolbar.height + 24 : undefined, paddingRight: rightInset || undefined }}
+        >
+          <GraphList graph={graph} onOpen={nav.openNode} className="mx-auto max-w-3xl" />
+        </div>
+      )}
 
       {/* Bottom controls, clear of the app's status pill (bottom left). */}
       {graph && !empty && !listView && isDesktop && (

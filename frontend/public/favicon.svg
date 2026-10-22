@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- WorldGraph: a globe whose meridian is a graph edge. The colours are the
+       dark theme tokens in src/styles/tokens.css: the bg tile, the neutral
+       slate globe, and the opportunity teal edge and nodes. -->
+  <title>WorldGraph</title>
+  <rect width="32" height="32" rx="8" fill="#0d1017"/>
+  <g fill="none" stroke="#8e96a0" stroke-linecap="round">
+    <circle cx="16" cy="16" r="11" stroke-width="2"/>
+    <ellipse cx="16" cy="16" rx="4.75" ry="11" stroke-width="1.5" stroke-opacity="0.7"/>
+    <path d="M5 16h22" stroke-width="1.5" stroke-opacity="0.7"/>
+  </g>
+  <path d="M10 22 22 10" stroke="#4aded0" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="10" cy="22" r="3" fill="#4aded0"/>
+  <circle cx="22" cy="10" r="3" fill="#4aded0"/>
+</svg>

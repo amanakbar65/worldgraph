@@ -15,6 +15,8 @@ import { CALL_TO_ACTION, fakeQuery } from "./test-utils";
 
 const mocks = vi.hoisted(() => ({
   responses: {} as Partial<Record<string, unknown>>,
+  /** The answer when thin markets are included (else `responses.forecasts`). */
+  withThin: undefined as unknown,
   errors: {} as Partial<Record<string, Error>>,
   calls: [] as { name: string; args: unknown }[],
   refetch: null as null | (() => Promise<unknown>),
@@ -24,7 +26,8 @@ vi.mock("@/api/client", () => ({
   useRpc: (name: RpcName, args: unknown, options?: { enabled?: boolean }) => {
     mocks.calls.push({ name, args });
     if (options?.enabled === false) return fakeQuery(undefined);
-    return fakeQuery(mocks.responses[name], mocks.errors[name] ?? null, mocks.refetch ?? undefined);
+    const thin = name === "forecasts" && (args as { include_thin?: boolean }).include_thin && mocks.withThin;
+    return fakeQuery(thin || mocks.responses[name], mocks.errors[name] ?? null, mocks.refetch ?? undefined);
   },
 }));
 
@@ -39,6 +42,7 @@ const FIRST_FRAME = { sectors: [], regions: [], categories: [], sort: "relevance
 beforeEach(() => {
   vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
   mocks.responses = { forecasts: { forecasts: LIST } };
+  mocks.withThin = undefined;
   mocks.errors = {};
   mocks.calls = [];
   mocks.refetch = null;
@@ -202,11 +206,23 @@ describe("ForecastsView", () => {
 
   it("suggests including thin markets when nothing else is open", () => {
     mocks.responses = { forecasts: { forecasts: [] } };
+    mocks.withThin = { forecasts: LIST.filter((f) => f.thin) };
+    expect((mocks.withThin as { forecasts: unknown[] }).forecasts.length).toBeGreaterThan(0);
     render(<ForecastsView />);
     expect(screen.getByText("No forecasts to show")).toBeTruthy();
     expect(screen.getByText("No big moves in the last 24 hours. The crowd's numbers have held steady.")).toBeTruthy();
     fireEvent.click(within(list()).getByRole("button", { name: "Include thin markets" }));
     expect(useForecastFilters.getState().includeThin).toBe(true);
+  });
+
+  it("doesn't blame thin markets when there are no forecasts at all", () => {
+    mocks.responses = { forecasts: { forecasts: [] } };
+    render(<ForecastsView />);
+    expect(forecastCalls()).toContainEqual({ ...FIRST_FRAME, include_thin: true });
+    expect(screen.getByText("No crowd forecasts yet")).toBeTruthy();
+    expect(screen.queryByText(/Thin markets are hidden/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Include thin markets" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Show sample data" })).toBeTruthy();
   });
 
   it("offers sample data when there are no forecasts at all", () => {
