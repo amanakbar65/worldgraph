@@ -60,10 +60,12 @@ const COPY: Record<DataErrorKind | "not_found" | "unknown", Copy> = {
     description: "The database couldn't build it. Try again, or open another view.",
     retry: "Try again",
   },
+  // Only the test link raises this: no connector, and the bundled sample snapshot doesn't cover the view.
   offline: {
     icon: WifiOff,
-    title: "No data source here",
-    description: "This view has no data connection. Open the full app to see live data.",
+    title: "This view needs live data",
+    description:
+      "Live data comes through the Supabase connector in claude.ai. Meanwhile the globe, Forecasts and Brief show sample data.",
     retry: null,
   },
   not_found: {
