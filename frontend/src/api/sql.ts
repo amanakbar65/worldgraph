@@ -18,9 +18,13 @@ export function rpcSql(name: RpcName, args: unknown): string {
 
 /**
  * The Supabase connector's execute_sql answers with text that wraps the
- * rows (a JSON array) between <untrusted-data-…> tags. Accept that, a bare
- * JSON array, or an object carrying either under `result`.
+ * rows (a JSON array) between <untrusted-data-ID> tags, where ID is random.
+ * Accept that, a bare JSON array, or an object carrying either under
+ * `result`. The rows end only at the last closing tag with the same ID, so
+ * a headline that contains "</untrusted-data-…>" can't cut them short.
  */
+const UNTRUSTED_DATA = /<untrusted-data-([^>\s]+)>([\s\S]*)<\/untrusted-data-\1>/;
+
 export function parseExecuteSqlRows(payload: unknown): Record<string, unknown>[] {
   if (Array.isArray(payload)) return payload as Record<string, unknown>[];
   let text: string | null = null;
@@ -31,8 +35,8 @@ export function parseExecuteSqlRows(payload: unknown): Record<string, unknown>[]
     if (typeof result === "string") text = result;
   }
   if (text === null) throw new Error("The database answered in an unexpected format.");
-  const wrapped = /<untrusted-data-[^>]*>\s*([\s\S]*?)\s*<\/untrusted-data-[^>]*>/.exec(text);
-  const body = (wrapped ? wrapped[1] : text).trim();
+  const wrapped = UNTRUSTED_DATA.exec(text);
+  const body = (wrapped ? wrapped[2] : text).trim();
   const start = body.indexOf("[");
   const end = body.lastIndexOf("]");
   if (start === -1 || end < start) throw new Error("The database answer held no rows.");

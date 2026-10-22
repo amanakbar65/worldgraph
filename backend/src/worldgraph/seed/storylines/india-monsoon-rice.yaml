@@ -13,7 +13,7 @@ forecasts:
     about: [region:in, org:rbi, sector:finance]
     end_in_days: 34
     resolution_rule: Resolves YES if the Reserve Bank of India announces a lower policy repo rate at the end of its next scheduled monetary policy meeting.
-    history: {days: 75, start: 0.52, end: 0.29, moves: [{days_ago: 0.7, delta: -0.13}], volume: 88000, liquidity: 13500}
+    history: {days: 75, start: 0.52, end: 0.29, moves: [{days_ago: 0.7, delta: -0.12}], volume: 88000, liquidity: 13500}
   - id: forecast:india-rice-export-curbs
     short_title: Will India restrict non-basmati rice exports within three months?
     question: Will India impose a ban, a minimum export price or a new duty on non-basmati rice exports within three months?

@@ -14,7 +14,7 @@ forecasts:
     about: [region:cn, policy:china-rare-earth-controls, commodity:rare-earths, sector:manufacturing]
     end_in_days: 90
     resolution_rule: Resolves YES if China's commerce ministry publishes a notice adding rare-earth elements, magnet products or related technologies to its export-control list before the end date.
-    history: {days: 120, start: 0.36, end: 0.63, moves: [{days_ago: 0.4, delta: 0.14}], volume: 152000, liquidity: 21000}
+    history: {days: 120, start: 0.36, end: 0.63, moves: [{days_ago: 0.4, delta: 0.06}], volume: 152000, liquidity: 21000}
 stories:
   - id: story:china-tightens-rare-earth-licensing
     headline: China tightens export licensing for rare earths and magnets

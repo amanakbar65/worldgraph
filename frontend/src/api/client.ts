@@ -7,6 +7,7 @@ import { ConnectorSource } from "./sources/connector";
 import { HttpSource } from "./sources/http";
 import { loadSnapshot, snapshotKey, StaticSource, useSnapshot } from "./sources/static";
 import { TARGET } from "@/platform/runtime";
+import { sampleArg, useIndiaBorders, useSettings } from "@/state/settings";
 
 /** What the app is currently showing: live data, the bundled snapshot, or nothing. */
 export type ConnectionState =
@@ -42,7 +43,9 @@ const CONNECTION_FAILURES: ReadonlySet<DataError["kind"]> = new Set([
 ]);
 
 export function isConnectionFailure(error: unknown): error is DataError {
-  return error instanceof DataError && CONNECTION_FAILURES.has(error.kind) && !/^not found/i.test(error.message);
+  return (
+    error instanceof DataError && CONNECTION_FAILURES.has(error.kind) && !/^not found/i.test(error.message)
+  );
 }
 
 /** Try the live source; when it can't run in this view, use the snapshot. */
@@ -102,12 +105,67 @@ export function rpcKey<N extends RpcName>(name: N, args: RpcArgs[N]) {
   return ["rpc", name, stableJson(args)] as const;
 }
 
+/**
+ * Functions that take `sample`: every read but meta (whose counts are only
+ * for the status line, and whose snapshot has one shape).
+ */
+const SAMPLE_ARG: ReadonlySet<RpcName> = new Set<RpcName>([
+  "globe",
+  "top",
+  "region",
+  "story",
+  "cascade",
+  "entity",
+  "graph",
+  "local_graph",
+  "forecasts",
+  "forecast",
+  "search",
+  "affects",
+  "opportunities",
+  "compare",
+  "brief",
+  "ask_context",
+]);
+/** Functions that name or place regions differently in India's view. */
+const WORLDVIEW_ARG: ReadonlySet<RpcName> = new Set<RpcName>(["search", "region"]);
+
+export interface ViewerChoices {
+  /** The Sample data setting as an argument (undefined: "auto", the database decides). */
+  sample: boolean | undefined;
+  /** Whether the viewer sees India's official borders. */
+  india: boolean;
+}
+
+/**
+ * The arguments a call is sent with: the screen's own, plus the viewer's
+ * Sample data setting and worldview wherever the screen left them out.
+ */
+export function withViewerArgs<N extends RpcName>(
+  name: N,
+  args: RpcArgs[N],
+  viewer: ViewerChoices,
+): RpcArgs[N] {
+  const own = args as Record<string, unknown>;
+  let out = own;
+  if (viewer.sample !== undefined && SAMPLE_ARG.has(name) && own.sample === undefined) {
+    out = { ...out, sample: viewer.sample };
+  }
+  if (viewer.india && WORLDVIEW_ARG.has(name) && own.worldview === undefined) {
+    out = { ...out, worldview: "india" };
+  }
+  return out as RpcArgs[N];
+}
+
 /** Fetch one api function with caching, polling and cancellation. */
 export function useRpc<N extends RpcName>(
   name: N,
-  args: RpcArgs[N],
+  screenArgs: RpcArgs[N],
   options: Omit<UseQueryOptions<RpcResponse<N>, Error>, "queryKey" | "queryFn"> = {},
 ) {
+  const sample = sampleArg(useSettings((s) => s.sample));
+  const india = useIndiaBorders();
+  const args = withViewerArgs(name, screenArgs, { sample, india });
   const placeholder = useSnapshot((s) =>
     SNAPSHOT_FIRST_FRAME ? (s.data.get(snapshotKey(name, args)) as RpcResponse<N> | undefined) : undefined,
   );

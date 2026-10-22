@@ -7,7 +7,7 @@ Each source used by WorldGraph has a row here before it is integrated: what we u
 - ⏳ **To verify before use**: noted from the brief or from memory. These must be read and confirmed before the integration is built.
 - ⛔ **Excluded**: not to be used.
 
-Last updated: 7 Oct 2026.
+Last updated: 22 Oct 2026.
 
 ## In use now
 
@@ -17,8 +17,9 @@ Last updated: 7 Oct 2026.
 | [Supabase](https://supabase.com/pricing) (hosting, not data) | Postgres database | Free plan: 500 MB database and 2 projects; pauses after 7 days without activity (the 15-minute pipeline keeps it active) | See terms | n/a | Account (created) | ✅ 6 Oct 2026 |
 | [GDELT 2.1 GKG](https://www.gdeltproject.org/about.html#termsofuse) | Worldwide news signals every 15 minutes: headline, link, outlet, themes, places, organisations, tone | "Available for unlimited and unrestricted use for any academic, commercial, or governmental use of any kind without fee." Any use must cite the GDELT Project and link to gdeltproject.org. We keep only headline, URL, outlet and date; never article text. | One 15-minute file per run (HTTPS only) | "News signals: The GDELT Project" + link | No | ✅ 7 Oct 2026 |
 | [USGS earthquake feeds](https://earthquake.usgs.gov/earthquakes/feed/) | Significant earthquakes (M6+, or PAGER alerts) as hazard stories | "USGS-authored or produced data and information are considered to be in the U.S. Public Domain." | Public feed, polled every 15 minutes | "Earthquakes: U.S. Geological Survey" + link to the event page | No | ✅ 7 Oct 2026 |
+| [GDACS](https://www.gdacs.org) (Global Disaster Alert and Coordination System) | Orange and red alerts for tropical cyclones, floods, droughts, volcanic eruptions and wildfires as hazard stories (earthquakes come from USGS); we keep the alert title, link, date, position and a one-sentence snippet | A joint European Commission and United Nations service that publishes its alerts as a public RSS feed for anyone to use, with attribution. The exact licence text was not reachable when this row was written (22 Oct 2026: www.gdacs.org did not resolve from the build machine) and must be read and confirmed. | Public RSS feed (`gdacs.org/xml/rss.xml`), polled every 15 minutes, one request per run | "Disaster alerts: GDACS (European Commission and United Nations)" + link to the alert page | No | ⏳ licence text to confirm before public launch (in use for the private test link) |
 | Business news feeds (below) | Headlines and links from business desks and official bodies | Each feed's own terms. We store only the headline, URL, outlet, date and at most a one-sentence snippet, and always link to the original. Some publishers allow feeds for personal, non-commercial use only. | One request per feed per run, with ETag / Last-Modified | Outlet name + link | No | ✅ fine for the private test link; ⏳ check each publisher's feed terms before public launch |
-| [Anthropic Claude API](https://www.anthropic.com/legal) (website only, after deployment) | Story analysis and Ask | Paid per use; capped at US$2/day by the pipeline | Daily budget in code | n/a | **Yes (paid)** | Not active until deployment |
+| [Anthropic Claude API](https://www.anthropic.com/legal) (website only, after deployment) | Story analysis and Ask | Paid per use; capped at US$2/day, shared by the pipeline and the website | Daily budget in the database (llm_usage; the website reserves each call's worst case first, migration 0015) | n/a | **Yes (paid)** | Not active until deployment |
 
 ### News feeds in the pipeline
 
@@ -56,7 +57,7 @@ These follow the brief's prediction-market rules: information only, one provider
 | Provider | Money? | Used for | Terms / notes | Key | Default | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | [Manifold](https://docs.manifold.markets/api) | Play money only (real-money mode ended 28 Mar 2025) | Live forecasts: open yes/no business questions with 15+ forecasters, probability every hour, 30-day history | API docs (7 Oct 2026): integrations are a permitted use; 500 requests/minute per IP; no AI training on API data for commercial purposes. The docs also say "Academic research, personal projects, and non-commercial use are permitted. Contact data@manifold.markets for commercial licensing." | No | **On** | ✅ fine for the private test link; ⏳ ask Manifold before a commercial public launch |
-| [Polymarket](https://docs.polymarket.com/) | **Real money** | Adapter built in Phase 2 against sample responses from its docs | Blocked in India by MeitY order (21 May 2026). Never linked or shown where restricted; never accessed via VPN, proxy or mirror. Display and commercial terms to read before any use. | No | **Off** | ✅ India block (6 Oct 2026); ⏳ terms |
+| [Polymarket](https://docs.polymarket.com/) | **Real money** | Adapter built in Phase 2 against sample responses from its docs | Blocked in India by MeitY order (21 May 2026), and geoblocked by Polymarket itself in many countries (including the US, UK, France, Germany, Italy, Belgium and Australia). Shown only to viewers in countries on its allow-list (`forecast_provider.allowed_countries`, migration 0016), which stays empty until legal advice names them; never accessed via VPN, proxy or mirror. Display and commercial terms to read before any use. | No | **Off** | ✅ India block (6 Oct 2026); ⏳ terms |
 | [Metaculus](https://www.metaculus.com) | No money | Possible extra provider | Every API call needs a token from a free account; check terms for commercial display | **Yes (free account)** | Off | ✅ token requirement (6 Oct 2026); ⏳ terms |
 | Kalshi | **Real money** | Not planned | Reported in 2026 to be next in line for an Indian block | n/a | Off | n/a |
 

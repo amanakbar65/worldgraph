@@ -12,7 +12,7 @@ forecasts:
     about: [region:vn, commodity:smartphones, sector:tech, sector:manufacturing]
     end_in_days: 95
     resolution_rule: Resolves YES if official full-year customs figures show goods exports more than 10% higher than in the previous calendar year.
-    history: {days: 120, start: 0.49, end: 0.64, moves: [{days_ago: 0.6, delta: 0.07}], volume: 54000, liquidity: 8200}
+    history: {days: 120, start: 0.49, end: 0.64, moves: [{days_ago: 0.6, delta: 0.05}], volume: 54000, liquidity: 8200}
   - id: forecast:vietnam-power-price-rise
     short_title: Vietnam raises retail electricity prices within three months?
     question: Will Vietnam announce an increase in the average retail electricity price within three months?

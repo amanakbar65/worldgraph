@@ -156,11 +156,21 @@ class Indicator(Strict):
     end: float  # latest value
     volatility: Annotated[float, Field(ge=0)] = 0.0  # noise as a fraction of |end - start| or of the level
     decimals: Annotated[int, Field(ge=0, le=4)] = 1
+    # Values move only in whole steps from `start` (policy rates: 0.25 points).
+    step: Annotated[float, Field(gt=0)] | None = None
 
     @field_validator("id")
     @classmethod
     def _id(cls, v: str) -> str:
         return _check_id(v, "indicator:")
+
+    @model_validator(mode="after")
+    def _whole_steps(self) -> Indicator:
+        if self.step is not None:
+            steps = (self.end - self.start) / self.step
+            if abs(steps - round(steps)) > 1e-6:
+                raise ValueError(f"end - start must be a whole number of {self.step} steps")
+        return self
 
 
 # ---------------------------------------------------------------------------

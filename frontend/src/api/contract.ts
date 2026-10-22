@@ -132,7 +132,7 @@ export const ForecastSummary = z.object({
   probability: Prob, // P(YES), latest snapshot
   change_24h: z.number().min(-1).max(1).nullable(), // in probability units (0.08 = ▲ 8 points)
   volume: z.number().min(0).nullable(),
-  volume_unit: z.string().nullable(), // "USD", "MANA", null for sample
+  volume_unit: z.string().nullable(), // "USD", "MANA", "sample credits" (invented); null when not reported
   liquidity: z.number().min(0).nullable(),
   thin: z.boolean(), // below the liquidity/volume threshold
   end_date: Iso.nullable(),
@@ -626,16 +626,23 @@ export const WRITE_RPCS: ReadonlySet<RpcName> = new Set(["save_analysis"]);
 
 /**
  * `sample`: include sample data. Omitted means "include it only while there
- * is no live data yet" (the SQL helper api._use_sample decides).
+ * is no live data yet" (the SQL helper api._use_sample decides). useRpc
+ * fills it in from the Sample data setting when a screen leaves it out.
+ *
+ * `worldview`: "india" names and places regions as India's official view
+ * does (search and region; migration 0018). useRpc sets it whenever the
+ * viewer sees India's borders.
  */
+export type Worldview = "india";
+
 export interface RpcArgs {
   meta: Record<string, never>;
   globe: { window: TimeWindow; sectors?: SectorId[]; sample?: boolean };
   top: { window: TimeWindow; sectors?: SectorId[]; sample?: boolean };
-  region: { id: string; window: TimeWindow; sample?: boolean };
-  story: { id: string };
-  cascade: { id: string; depth?: number };
-  entity: { id: string };
+  region: { id: string; window: TimeWindow; sample?: boolean; worldview?: Worldview };
+  story: { id: string; sample?: boolean };
+  cascade: { id: string; depth?: number; sample?: boolean };
+  entity: { id: string; sample?: boolean };
   graph: {
     types?: EntityType[];
     sectors?: SectorId[];
@@ -645,7 +652,7 @@ export interface RpcArgs {
     limit?: number;
     sample?: boolean;
   };
-  local_graph: { id: string; depth: 1 | 2 | 3; limit?: number };
+  local_graph: { id: string; depth: 1 | 2 | 3; limit?: number; sample?: boolean };
   forecasts: {
     sectors?: SectorId[];
     regions?: string[];
@@ -655,8 +662,8 @@ export interface RpcArgs {
     profile?: Profile;
     sample?: boolean;
   };
-  forecast: { id: string };
-  search: { q: string; types?: EntityType[]; limit?: number };
+  forecast: { id: string; sample?: boolean };
+  search: { q: string; types?: EntityType[]; limit?: number; sample?: boolean; worldview?: Worldview };
   affects: { profile: Profile; window?: TimeWindow; sample?: boolean };
   opportunities: {
     sectors?: SectorId[];

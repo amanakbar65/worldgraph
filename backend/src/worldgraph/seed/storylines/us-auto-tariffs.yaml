@@ -14,7 +14,7 @@ forecasts:
     about: [region:us, policy:usmca, policy:us-section-232-tariffs, region:mx, region:ca]
     end_in_days: 90
     resolution_rule: Resolves YES if an official US notice exempts USMCA-qualifying auto parts from the latest auto-parts tariffs, in full or in part, before the end date.
-    history: {days: 60, start: 0.31, end: 0.49, moves: [{days_ago: 0.6, delta: 0.12}], volume: 97000, liquidity: 14000}
+    history: {days: 60, start: 0.31, end: 0.49, moves: [{days_ago: 3.5, delta: 0.1}, {days_ago: 0.6, delta: 0.03}], volume: 97000, liquidity: 14000}
   - id: forecast:usmca-extended-at-review
     short_title: Will USMCA partners agree to extend the agreement?
     question: Will the United States, Mexico and Canada each confirm that they want to extend the USMCA's term at the current joint review?

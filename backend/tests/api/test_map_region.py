@@ -149,7 +149,10 @@ def add_link(conn: psycopg.Connection, src: str, dst: str, link_type: str = "rep
 
 def add_polymarket_forecast(conn: psycopg.Connection) -> None:
     """A real-money forecast about India that moved 30 points today, provider enabled."""
-    conn.execute("update forecast_provider set enabled = true where id = 'polymarket'")
+    # Switched on and allowed in the US only (by default it is off and allowed nowhere).
+    conn.execute(
+        "update forecast_provider set enabled = true, allowed_countries = '{US}' where id = 'polymarket'"
+    )
     conn.execute(
         """insert into node (id, type, subtype, name, geom, is_sample)
            values (%s, 'forecast', 'binary', 'Test market', st_geogfromtext('SRID=4326;POINT(77.2 28.6)'),
@@ -226,6 +229,13 @@ def test_meta_sources_include_enabled_providers_once(sdb):
     assert "metaculus" not in source_ids
     manifold = next(s for s in data["sources"] if s["id"] == "manifold")
     assert manifold["homepage"] == "https://manifold.markets"
+
+
+def test_meta_sources_cover_every_live_source(sdb):
+    """Settings → Data sources: GDELT, the news feeds, USGS and GDACS all appear with attribution."""
+    sources = {s["id"]: s for s in call(sdb, "meta")["sources"]}
+    assert {"gdelt", "news-feeds", "usgs", "gdacs"} <= set(sources)
+    assert "each story names and links its outlet" in sources["news-feeds"]["attribution"]
 
 
 def test_meta_with_live_data(sdb):

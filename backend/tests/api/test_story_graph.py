@@ -122,7 +122,10 @@ def add_real_money_forecast(
     relates_to: tuple[str, ...] = (FOCUS,),
 ) -> None:
     """A live Polymarket forecast with plenty of volume, provider switched on."""
-    conn.execute("update forecast_provider set enabled = true where id = 'polymarket'")
+    # Switched on and allowed in the US only (by default it is off and allowed nowhere).
+    conn.execute(
+        "update forecast_provider set enabled = true, allowed_countries = '{US}' where id = 'polymarket'"
+    )
     conn.execute(
         """insert into node (id, type, subtype, name, summary, geom)
            values (%s, 'forecast', 'binary', %s, %s, st_geogfromtext('SRID=4326;POINT(78.9 21.1)'))""",

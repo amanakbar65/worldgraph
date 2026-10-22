@@ -1,19 +1,54 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { costUsd, handleAi, type AiDb, type AiDeps } from "../../server/ai";
+import {
+  MAX_OUTPUT_TOKENS,
+  costUsd,
+  handleAi,
+  replyCost,
+  worstCaseCostUsd,
+  type AiDb,
+  type AiDeps,
+} from "../../server/ai";
 import { WEB_PROMPTS } from "../../server/prompts.generated";
 
-/** A fake llm_usage table. */
+interface UsageRow {
+  id: number;
+  purpose: string;
+  model: string;
+  input: number;
+  output: number;
+  cost: number;
+  reserved: boolean;
+}
+
+/**
+ * A fake llm_usage table behind api._ai_reserve and api._ai_settle
+ * (migration 0015; the SQL itself is tested in backend/tests/test_ai_budget.py).
+ * `spent` is what other calls already spent today.
+ */
 function fakeDb(spent = 0) {
-  const inserts: unknown[][] = [];
+  const rows: UsageRow[] = [];
+  let nextId = 1;
+  const total = () => spent + rows.reduce((sum, r) => sum + r.cost, 0);
   const db: AiDb = {
-    query: vi.fn(async (text: string, params?: unknown[]) => {
-      if (text.startsWith("select")) return { rows: [{ spent: String(spent) }] };
-      inserts.push(params ?? []);
-      return { rows: [] };
+    query: vi.fn(async (text: string, params: unknown[] = []) => {
+      if (text.includes("api._ai_reserve(")) {
+        const [purpose, model, estimate, budget] = params as [string, string, number, number];
+        if (total() + estimate > budget) return { rows: [{ id: null }] };
+        const id = nextId++;
+        rows.push({ id, purpose, model, input: 0, output: 0, cost: estimate, reserved: true });
+        return { rows: [{ id: String(id) }] }; // bigint arrives as a string
+      }
+      if (text.includes("api._ai_settle(")) {
+        const [id, model, input, output, cost] = params as [number, string | null, number, number, number];
+        const row = rows.find((r) => r.id === id && r.reserved);
+        if (row) Object.assign(row, { model: model ?? row.model, input, output, cost, reserved: false });
+        return { rows: [{ found: Boolean(row) }] };
+      }
+      throw new Error(`unexpected query: ${text}`);
     }) as AiDb["query"],
   };
-  return { db, inserts };
+  return { db, rows, total };
 }
 
 const claudeReply = (body: Record<string, unknown>, status = 200) =>
@@ -46,7 +81,7 @@ const body = (task: string, input: unknown = { q: "oil", context: {} }) => JSON.
 
 describe("POST /api/ai", () => {
   it("answers Ask with the Claude API and logs the cost", async () => {
-    const { db, inserts } = fakeDb(0.5);
+    const { db, rows } = fakeDb(0.5);
     const fetchMock = claudeReply(message);
     const result = await handleAi(body("ask"), deps({ db, fetch: fetchMock as unknown as typeof fetch }));
     expect(result).toEqual({ status: 200, body: { data: answer } });
@@ -67,10 +102,122 @@ describe("POST /api/ai", () => {
       format: { type: "json_schema", schema: WEB_PROMPTS.ask.schema },
     });
     expect(request.output_config.format.schema.$comment).toBeUndefined();
+    expect(request.max_tokens).toBe(MAX_OUTPUT_TOKENS);
 
-    expect(inserts).toEqual([
-      ["claude-opus-5-5", "ask", 1000, 500, costUsd("claude-opus-5-5", message.usage)],
+    // Reserved first, then settled at the real cost.
+    expect(rows).toEqual([
+      {
+        id: 1,
+        purpose: "ask",
+        model: "claude-opus-5-5",
+        input: 1000,
+        output: 500,
+        cost: costUsd("claude-opus-5-5", message.usage),
+        reserved: false,
+      },
     ]);
+  });
+
+  it("reserves the worst case before calling Claude", async () => {
+    const { db } = fakeDb();
+    const order: string[] = [];
+    const query = db.query;
+    db.query = (async (text: string, params?: unknown[]) => {
+      order.push(text.includes("_ai_reserve") ? "reserve" : "settle");
+      return query(text, params);
+    }) as AiDb["query"];
+    const fetchMock = vi.fn(async () => {
+      order.push("claude");
+      return new Response(JSON.stringify(message));
+    });
+    await handleAi(body("ask"), deps({ db, fetch: fetchMock as unknown as typeof fetch }));
+    expect(order).toEqual(["reserve", "claude", "settle"]);
+  });
+
+  it("lets concurrent calls pass the cap only while their worst cases fit", async () => {
+    // $1 already spent of $2: twenty calls at once.
+    const { db, rows, total } = fakeDb(1);
+    const fetchMock = vi.fn(async () => {
+      await new Promise((r) => setTimeout(r, 5));
+      return new Response(JSON.stringify(message));
+    });
+    const d = deps({ db, fetch: fetchMock as unknown as typeof fetch });
+    const results = await Promise.all(Array.from({ length: 20 }, () => handleAi(body("ask"), d)));
+    const reserve = worstCaseCostUsd("claude-opus-5-5", 3000, true);
+    const served = results.filter((r) => r.status === 200).length;
+    expect(served).toBeGreaterThan(0);
+    expect(served).toBeLessThanOrEqual(Math.floor(1 / reserve));
+    expect(fetchMock).toHaveBeenCalledTimes(served);
+    expect(results.filter((r) => r.status === 402)).toHaveLength(20 - served);
+    expect(rows.every((r) => !r.reserved)).toBe(true);
+    expect(total()).toBeLessThanOrEqual(2);
+  });
+
+  it("stops before the cap when each answer costs a lot", async () => {
+    // A long answer: about $0.28 a call (the reviewer's case), budget $2.
+    const pricey = { ...message, usage: { input_tokens: 9000, output_tokens: 12000 } };
+    const { db, total } = fakeDb();
+    const fetchMock = claudeReply(pricey);
+    const d = deps({ db, fetch: fetchMock as unknown as typeof fetch });
+    const statuses: number[] = [];
+    for (let i = 0; i < 12; i += 1) statuses.push((await handleAi(body("ask"), d)).status);
+    expect(statuses).toContain(402);
+    expect(total()).toBeLessThanOrEqual(2);
+  });
+
+  it("keeps the worst case for a call that timed out (Claude may still bill it)", async () => {
+    const { db, rows } = fakeDb();
+    const timeout = vi.fn(async () => {
+      throw new DOMException("The operation timed out.", "TimeoutError");
+    });
+    const result = await handleAi(body("ask"), deps({ db, fetch: timeout as unknown as typeof fetch }));
+    expect(result.status).toBe(503);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].reserved).toBe(true);
+    expect(rows[0].cost).toBeGreaterThan(0.15);
+  });
+
+  it("keeps the worst case when the reply can't be read", async () => {
+    const { db, rows } = fakeDb();
+    const broken = vi.fn(async () => new Response("<html>oops</html>", { status: 200 }));
+    expect((await handleAi(body("ask"), deps({ db, fetch: broken as unknown as typeof fetch }))).status).toBe(
+      503,
+    );
+    expect(rows[0].reserved).toBe(true);
+  });
+
+  it("releases the reservation when Claude answers with an error (nothing billed)", async () => {
+    const { db, rows } = fakeDb();
+    const busy = claudeReply({ error: {} }, 429);
+    expect((await handleAi(body("ask"), deps({ db, fetch: busy as unknown as typeof fetch }))).status).toBe(
+      429,
+    );
+    expect(rows).toEqual([expect.objectContaining({ cost: 0, reserved: false })]);
+  });
+
+  it("fails closed: no reservation, no Claude call", async () => {
+    vi.spyOn(console, "error").mockImplementationOnce(() => {});
+    const fetchMock = vi.fn();
+    const db: AiDb = {
+      query: vi.fn(async () => {
+        throw new Error("permission denied for function _ai_reserve");
+      }) as AiDb["query"],
+    };
+    const result = await handleAi(body("ask"), deps({ db, fetch: fetchMock }));
+    expect(result.status).toBe(503);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("still answers when settling fails, and the reservation keeps its worst case", async () => {
+    vi.spyOn(console, "error").mockImplementationOnce(() => {});
+    const { db, rows } = fakeDb();
+    const query = db.query;
+    db.query = (async (text: string, params?: unknown[]) => {
+      if (text.includes("_ai_settle")) throw new Error("connection lost");
+      return query(text, params);
+    }) as AiDb["query"];
+    expect((await handleAi(body("ask"), deps({ db }))).status).toBe(200);
+    expect(rows[0].reserved).toBe(true);
   });
 
   it("puts a follow-up's earlier turns before the data, as user and assistant messages", async () => {
@@ -176,7 +323,7 @@ describe("POST /api/ai", () => {
   });
 
   it("logs usage even when the answer can't be used", async () => {
-    const { db, inserts } = fakeDb();
+    const { db, rows } = fakeDb();
     const refusal = claudeReply({ ...message, stop_reason: "refusal", content: [] });
     expect(
       (await handleAi(body("ask"), deps({ db, fetch: refusal as unknown as typeof fetch }))).status,
@@ -185,7 +332,51 @@ describe("POST /api/ai", () => {
     expect(
       (await handleAi(body("ask"), deps({ db, fetch: garbled as unknown as typeof fetch }))).status,
     ).toBe(422);
-    expect(inserts).toHaveLength(2);
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => [r.reserved, r.cost])).toEqual([
+      [false, costUsd("claude-opus-5-5", message.usage)],
+      [false, costUsd("claude-opus-5-5", message.usage)],
+    ]);
+  });
+
+  it("prices every attempt after a refusal fallback", () => {
+    const usage = {
+      input_tokens: 2000,
+      output_tokens: 400,
+      iterations: [
+        { type: "message", input_tokens: 2000, output_tokens: 0 },
+        { type: "fallback_message", input_tokens: 2000, output_tokens: 400 },
+      ],
+    };
+    const got = replyCost("claude-opus-5-5", "claude-opus-5", usage);
+    expect(got.input).toBe(4000);
+    expect(got.output).toBe(400);
+    // The declined attempt at Opus 5.5 rates, the fallback at Opus 5 rates.
+    expect(got.cost).toBeCloseTo(
+      costUsd("claude-opus-5-5", { input_tokens: 2000 }) +
+        costUsd("claude-opus-5", { input_tokens: 2000, output_tokens: 400 }),
+      5,
+    );
+    // Without iterations, the top-level usage at the serving model's rates.
+    expect(replyCost("claude-opus-5-5", "claude-opus-5-5", message.usage).cost).toBe(
+      costUsd("claude-opus-5-5", message.usage),
+    );
+  });
+
+  it("prices the worst case as a full-length answer plus every byte sent", () => {
+    // 2,000 bytes ≈ at most 1,000 tokens at the cache-write price, plus 8,000 output tokens.
+    expect(worstCaseCostUsd("claude-opus-5-5", 2000, false)).toBeCloseTo(
+      (1000 * 4 * 1.25 + MAX_OUTPUT_TOKENS * 20) / 1e6,
+      5,
+    );
+    // With fallbacks: input twice, at the dearer fallback model's prices.
+    expect(worstCaseCostUsd("claude-opus-5-5", 2000, true)).toBeCloseTo(
+      (2 * 1000 * 5 * 1.25 + MAX_OUTPUT_TOKENS * 25) / 1e6,
+      5,
+    );
+    // Always at least what a real reply of that size can cost.
+    const real = costUsd("claude-opus-5-5", { input_tokens: 1000, output_tokens: MAX_OUTPUT_TOKENS });
+    expect(worstCaseCostUsd("claude-opus-5-5", 4000, true)).toBeGreaterThan(real);
   });
 
   it("prices tokens like the pipeline", () => {

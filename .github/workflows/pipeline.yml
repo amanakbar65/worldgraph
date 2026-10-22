@@ -5,6 +5,11 @@ name: Live data
 # ANTHROPIC_API_KEY is optional and only for the deployed website: without it
 # the job skips AI analysis (the test link analyses stories on the owner's own
 # Claude account instead).
+#
+# Secrets reach only the two steps that use them (migrations and the
+# pipeline), never the third-party actions or the install. Actions are pinned
+# to commit SHAs (the tag each one was is in the comment); checkout keeps no
+# token in .git/config.
 
 on:
   schedule:
@@ -23,8 +28,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 14
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       WG_ENV: production
       FASTEMBED_CACHE_PATH: ${{ github.workspace }}/.fastembed
     defaults:
@@ -34,18 +37,22 @@ jobs:
       - name: Check configuration
         id: config
         working-directory: .
+        env:
+          HAS_DATABASE_URL: ${{ secrets.DATABASE_URL != '' }}
         run: |
-          if [ -z "$DATABASE_URL" ]; then
+          if [ "$HAS_DATABASE_URL" != "true" ]; then
             echo "::notice::Add the DATABASE_URL repository secret to turn on live data. Skipping."
             echo "ready=false" >> "$GITHUB_OUTPUT"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         if: steps.config.outputs.ready == 'true'
+        with:
+          persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         if: steps.config.outputs.ready == 'true'
         with:
           enable-cache: true
@@ -53,7 +60,7 @@ jobs:
 
       - name: Embedding model cache
         if: steps.config.outputs.ready == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: .fastembed
           key: fastembed-paraphrase-multilingual-mpnet-base-v2-v1
@@ -64,8 +71,13 @@ jobs:
 
       - name: Database migrations
         if: steps.config.outputs.ready == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: uv run wg db migrate
 
       - name: Pipeline
         if: steps.config.outputs.ready == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: uv run wg pipeline run
