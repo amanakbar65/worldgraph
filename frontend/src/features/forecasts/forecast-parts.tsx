@@ -70,9 +70,10 @@ export function ThinTag({ className }: { className?: string }) {
 }
 
 /**
- * A quiet line of facts separated by small dots. Each fact stays whole, and
- * when the line wraps no row starts or ends with a dot: every item draws
- * the dot before it, and the first item of each row has its dot clipped.
+ * A quiet line of facts separated by "·", the same separator as StoryCard
+ * and ForecastRow. Each fact stays whole, and when the line wraps no row
+ * starts or ends with a separator: every item brings the "·" before it,
+ * and the first item of each row has its "·" clipped.
  */
 export function MetaList({ children, className }: { children: ReactNode; className?: string }) {
   const items = Children.toArray(children);
@@ -82,10 +83,8 @@ export function MetaList({ children, className }: { children: ReactNode; classNa
         {items.map((item, i) => (
           <span
             key={i}
-            className={cn(
-              "relative inline-flex min-w-0 items-center gap-1.5 pl-3 whitespace-nowrap empty:hidden",
-              "before:absolute before:top-1/2 before:left-[4.5px] before:size-[3px] before:-translate-y-1/2 before:rounded-full before:bg-fg-subtle before:content-['']",
-            )}
+            // The "·" is generated (with empty alt text), so an item whose content renders nothing stays :empty and hidden.
+            className="relative inline-flex min-w-0 items-center gap-1.5 pl-3 whitespace-nowrap empty:hidden before:absolute before:left-[0.3rem] before:content-['·'_/_'']"
           >
             {item}
           </span>
