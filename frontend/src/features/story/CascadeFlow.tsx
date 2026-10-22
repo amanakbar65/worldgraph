@@ -30,7 +30,15 @@ import { useCalm } from "@/state/settings";
 import { CascadeUiContext, type CascadeUi } from "./cascade-context";
 import type { CascadeModel, CascadeNode } from "./cascade-data";
 import { flowEdges, flowNodes } from "./cascade-flow-elements";
-import { fitPlan, neighbour, READABLE_ZOOM, type ArrowKey, type CascadeLayout } from "./cascade-layout";
+import {
+  FIT_PADDING,
+  fitPlan,
+  neighbour,
+  openingViewport,
+  READABLE_ZOOM,
+  type ArrowKey,
+  type CascadeLayout,
+} from "./cascade-layout";
 import { CascadeEdgeView } from "./CascadeEdge";
 import { LaneNodeView, StoryNodeView } from "./CascadeNodes";
 
@@ -92,14 +100,19 @@ function FlowCanvas({ model, layout, selectedEdge, onOpenNode, onOpenEvidence, o
     seenAi.current = ai;
     const frame = requestAnimationFrame(() => {
       const rect = container.current?.getBoundingClientRect();
-      const plan = fitPlan(model, layout, { width: rect?.width ?? 0, height: rect?.height ?? 0 }, newAi);
-      void flow.fitView({
-        nodes: plan.ids?.map((id) => ({ id })),
-        padding: 0.12,
-        maxZoom: 1,
-        minZoom: plan.minZoom,
-        duration: firstFit.current ? 0 : duration,
-      });
+      const box = { width: rect?.width ?? 0, height: rect?.height ?? 0 };
+      const plan = fitPlan(model, layout, box, newAi);
+      const opening = openingViewport(layout, plan.ids, model.focus, box);
+      const animate = { duration: firstFit.current ? 0 : duration };
+      if (opening) void flow.setViewport(opening, animate);
+      else
+        void flow.fitView({
+          nodes: plan.ids?.map((id) => ({ id })),
+          padding: FIT_PADDING,
+          maxZoom: 1,
+          minZoom: plan.minZoom,
+          ...animate,
+        });
       firstFit.current = false;
     });
     return () => cancelAnimationFrame(frame);
@@ -250,7 +263,7 @@ function FlowCanvas({ model, layout, selectedEdge, onOpenNode, onOpenEvidence, o
           minZoom={0.2}
           maxZoom={1.75}
           fitView
-          fitViewOptions={{ padding: 0.12, maxZoom: 1, minZoom: READABLE_ZOOM }}
+          fitViewOptions={{ padding: FIT_PADDING, maxZoom: 1, minZoom: READABLE_ZOOM }}
           zoomOnDoubleClick={false}
           className="bg-transparent"
         >

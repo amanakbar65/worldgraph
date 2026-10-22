@@ -8,6 +8,7 @@ import {
   layoutCascade,
   midpoint,
   neighbour,
+  openingViewport,
   READABLE_ZOOM,
   SIZES,
 } from "./cascade-layout";
@@ -224,6 +225,50 @@ describe("fitPlan", () => {
     );
     const plan = fitPlan(withAi, layoutCascade(withAi), { width: 4000, height: 3000 }, true);
     expect(plan.ids).toEqual([FOCUS_ID, "ai:projections"]);
+  });
+});
+
+describe("openingViewport", () => {
+  const layout = layoutCascade(model, "LR");
+  const bounds = (ids: readonly string[] | null) => {
+    const groups = new Map(layout.groups.map((g) => [g.id, g]));
+    const boxes = (ids ?? [...layout.nodes.keys()]).map((id) => layout.nodes.get(id) ?? groups.get(id)!);
+    return {
+      minX: Math.min(...boxes.map((b) => b.x)),
+      minY: Math.min(...boxes.map((b) => b.y)),
+      maxX: Math.max(...boxes.map((b) => b.x + b.width)),
+      maxY: Math.max(...boxes.map((b) => b.y + b.height)),
+    };
+  };
+
+  it("leaves a frame that fits to fitView", () => {
+    expect(openingViewport(layout, null, FOCUS_ID, { width: 4000, height: 3000 })).toBeNull();
+    expect(openingViewport(layout, null, FOCUS_ID, { width: 0, height: 0 })).toBeNull();
+  });
+
+  it("never cuts the frame at the top or left: it runs off only to the right and bottom", () => {
+    for (const box of [
+      { width: 600, height: 400 },
+      { width: 1400, height: 500 },
+      { width: 700, height: 2000 },
+    ]) {
+      const plan = fitPlan(model, layout, box, false);
+      const v = openingViewport(layout, plan.ids, FOCUS_ID, box)!;
+      expect(v, JSON.stringify(box)).not.toBeNull();
+      expect(v.zoom).toBe(READABLE_ZOOM);
+      const b = bounds(plan.ids);
+      const story = layout.nodes.get(FOCUS_ID)!;
+      // The story is always fully in view.
+      expect(story.x + v.x).toBeGreaterThanOrEqual(0);
+      expect(story.y + v.y).toBeGreaterThanOrEqual(0);
+      expect(story.x + story.width + v.x).toBeLessThanOrEqual(box.width);
+      expect(story.y + story.height + v.y).toBeLessThanOrEqual(box.height);
+      // Top and left edges show unless the story needs the room.
+      const fitsX = (b.maxX - b.minX) * 1.12 <= box.width;
+      const fitsY = (b.maxY - b.minY) * 1.12 <= box.height;
+      if (fitsX) expect(Math.abs(b.minX + v.x - (box.width - (b.maxX + v.x)))).toBeLessThan(1);
+      if (!fitsY && story.y + story.height - b.minY + 48 <= box.height) expect(b.minY + v.y).toBe(24);
+    }
   });
 });
 

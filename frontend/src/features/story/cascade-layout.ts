@@ -312,6 +312,55 @@ export function fitPlan(
   return { ids: [...ids], minZoom: READABLE_ZOOM };
 }
 
+/** The fit test React Flow's fitView applies with `padding: FIT_PADDING`. */
+export const FIT_PADDING = 0.12;
+
+/**
+ * Where a cascade opens when the frame `ids` (null: all of it) is too big
+ * for the box at a readable zoom. Centring it there (what fitView does)
+ * would cut cards off on every side, so instead: zoom 1, the frame's
+ * top-left corner at the margin (still centred on an axis where it fits),
+ * so cards only run off the right and the bottom, where the viewer
+ * naturally pans; and the story itself always fully in view.
+ * Null when the frame fits: then fitView frames it as usual.
+ */
+export function openingViewport(
+  layout: CascadeLayout,
+  ids: readonly string[] | null,
+  focus: string,
+  box: { width: number; height: number },
+  margin = 24,
+): { x: number; y: number; zoom: number } | null {
+  if (box.width <= 0 || box.height <= 0) return null;
+  const groups = new Map<string, Box>(layout.groups.map((g) => [g.id, g]));
+  const boxes: Box[] = [];
+  for (const id of ids ?? [...layout.nodes.keys(), ...groups.keys()]) {
+    const b = layout.nodes.get(id) ?? groups.get(id);
+    if (b) boxes.push(b);
+  }
+  if (boxes.length === 0) return null;
+  const minX = Math.min(...boxes.map((b) => b.x));
+  const minY = Math.min(...boxes.map((b) => b.y));
+  const width = Math.max(...boxes.map((b) => b.x + b.width)) - minX;
+  const height = Math.max(...boxes.map((b) => b.y + b.height)) - minY;
+  const zoom = READABLE_ZOOM;
+  const fitsX = width * zoom * (1 + FIT_PADDING) <= box.width;
+  const fitsY = height * zoom * (1 + FIT_PADDING) <= box.height;
+  if (fitsX && fitsY) return null;
+
+  let x = fitsX ? (box.width - width * zoom) / 2 - minX * zoom : margin - minX * zoom;
+  let y = fitsY ? (box.height - height * zoom) / 2 - minY * zoom : margin - minY * zoom;
+  const story = layout.nodes.get(focus);
+  if (story) {
+    // Keep the story in view: pull the frame up or left just enough.
+    const right = (story.x + story.width) * zoom + x;
+    const bottom = (story.y + story.height) * zoom + y;
+    if (right > box.width - margin) x -= right - (box.width - margin);
+    if (bottom > box.height - margin) y -= bottom - (box.height - margin);
+  }
+  return { x, y, zoom };
+}
+
 // ---------------------------------------------------------------------------
 // Drawing links
 // ---------------------------------------------------------------------------
