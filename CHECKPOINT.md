@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 22 Oct 2026. Test link v2: https://claude.ai/artifact/XfUP7NoqKsf471epDNFRJN. **In flight:** QA run `wf_1734d928-feb` (`worldgraph-qa.js`, args `{"only":["e2e","review:rules","review:artifact-security","review:polish"],"resume":{"e2e":"wip/wf_5401d9b0-dd2-1"}}`). Worktrees are `wf_1734d928-feb-<n>`, saved to `wip/` of the same name. If it is interrupted, relaunch with `only` = the labels that did not report and `resume` = their wip branches. Then: one fix round (`worldgraph-qa-fix.js`), merge e2e, republish. The website waits on the owner's 3 steps (below).
+**Last updated:** 22 Oct 2026, 12:05 UTC. Test link v2: https://claude.ai/artifact/XfUP7NoqKsf471epDNFRJN. **In flight:** fix run `wf_5c8c3ae6-fc1` (`worldgraph-qa-fix.js`, 3 groups: backend, server, ui) for the 43 findings in `orchestration/qa-notes/qa-run4-findings.md`. The group briefs are in `orchestration/runs/fix-run4-*.md`. Worktrees are `wf_5c8c3ae6-fc1-<n>`, saved to `wip/` of the same name. **Then:** merge, then a final e2e agent that merges `wip/wf_1734d928-feb-1` (20 files of specs) and makes it green on the fixed main, then republish. QA run 4 loss: 39.9 L, 81% retained. The website waits on the owner's 3 steps.
 
 ## How to resume (any new session)
 
@@ -77,6 +77,7 @@ Then fix the remaining items with `worldgraph-qa-fix.js`: the shell agent did no
 | When | Run | Spent | Retained | Lost | Notes |
 | --- | --- | --- | --- | --- | --- |
 | 15 Oct 11:50 UTC limit | QA `wf_fe3c223c-34c` | 7.8 L | 45% | 55% | e2e 100% kept (1,167 lines of tests); correctness reviewer 0% kept (notes were in an ignored folder). Its 2 findings were rescued by hand from its transcript into `orchestration/qa-notes/`. The saver now keeps notes files. |
+| 22 Oct 07:50 UTC limit | QA `wf_1734d928-feb` | 39.9 L | 81% | 19% | 3 reviews finished (43 findings saved); e2e 71% kept on `wip/wf_1734d928-feb-1` |
 | 21 Oct 17:30 UTC limit | fixes `wf_c203058a-8f7` (a11y) | 4.4 L | 96% | 4% | all 12 commits plus the WIP snapshot merged |
 | 15 Oct 21:50 UTC limit | QA `wf_5401d9b0-dd2` + fixes `wf_46134b48-10a` | 15.8 L | 54% | 46% | Fixers 99% kept and merged; e2e 50%; a11y reviewer 0% (notes unsaved). |
 | 15 Oct 12:45 UTC limit | QA `wf_4ef20849-b70` | 10.5 L | 93% | 7% | correctness finished (100%); e2e 87% kept on `wip/wf_4ef20849-b70-1`. The other 4 reviewers had not started. |

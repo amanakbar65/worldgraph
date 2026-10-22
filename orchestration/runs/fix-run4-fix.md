@@ -1,0 +1,10 @@
+# Relaunch brief for fix (wf_5c8c3ae6-fc1); pass as args.groups to worldgraph-qa-fix.js
+
+Your label: fix:server. Your dev-server port: 5402. Your database name: wg_fix_server.
+  Files you own: frontend/server/**, frontend/netlify/**, frontend/src/platform/**, frontend/scripts/**, netlify.toml, README.md, .env.example.
+  Note: Do NOT edit frontend/server/ai*.ts or frontend/netlify/functions/ai.mts (the backend agent owns the AI budget there). Supabase's root CA certificate is public; shipping it in the repo so TLS is verified by default (with DATABASE_CA_CERT as an override) is acceptable if you can obtain the official file; otherwise document the owner step in README.md.
+  Findings (fix all of them, most severe first):
+  Fix these findings from orchestration/qa-notes/qa-run4-findings.md (read each entry; re-verify first): [minor] the website's database TLS is not verified unless DATABASE_CA_CERT is set; [minor] borders 'auto' ignores the website's geo header (timezone only) and the code comment says otherwise (use the Netlify geo country on the website, keep timezone/locale as the artifact fallback); [minor] Artifact db rules leave all shared data writable by any Contributor (update the capabilities that the artifact build writes into ARTIFACT.md so everything outside data/users/{self} is read-only for non-admins: a prefix rule that sets both read and write, plus the self rule); [nit] public website visitors can call pending_analysis; [nit] RPC body limit counts characters, not bytes, and the function reads the whole body first; [nit] ARTIFACT.md names a $json$ tag but the code uses $wg$/$wgN$.
+
+---
+You are running in an isolated git worktree at `/home/user/worldgraph/.claude/worktrees/wf_5c8c3ae6-fc1-2` (a separate working copy of the repo). Changes you make here do NOT affect the main working directory (`/home/user/worldgraph`) or other agents. Work normally — the worktree will be cleaned up automatically if you made no changes, or preserved for review if you did.
