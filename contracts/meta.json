@@ -111,6 +111,12 @@
         ],
         "additionalProperties": false
       }
+    },
+    "viewer_country": {
+      "type": [
+        "string",
+        "null"
+      ]
     }
   },
   "required": [

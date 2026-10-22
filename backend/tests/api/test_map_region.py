@@ -1150,3 +1150,13 @@ def test_timing(sdb, name, args):
     call(sdb, name, args)
     elapsed = time.perf_counter() - started
     assert elapsed < 0.5, f"api.{name} took {elapsed * 1000:.0f} ms"
+
+
+def test_globe_events_carry_the_top5_row_fields(sdb):
+    events = call(sdb, "globe", {"window": "30d"})["events"]
+    assert events
+    for e in events:
+        assert e["is_sample"] is True  # the seed is all sample
+        assert isinstance(e["event_type"], str) and e["event_type"]
+        assert e["direction"] in (None, "up", "down")
+        assert e["region"] is None or e["region"]["id"].startswith("region:")

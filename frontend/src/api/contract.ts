@@ -281,6 +281,11 @@ export const GlobeResponse = z.object({
       // pipeline. api.globe always sends it (optional here until the
       // globe's test fixtures carry it).
       analysed: z.boolean().optional(),
+      // Since 0020 (optional for older fixtures): sample label and the Top 5 row fields.
+      is_sample: z.boolean().optional(),
+      event_type: z.string().optional(),
+      direction: Direction.nullable().optional(),
+      region: RegionRef.nullable().optional(),
     }),
   ),
   // True when `events` holds only the 1,500 most important events of the
