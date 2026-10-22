@@ -57,3 +57,4 @@ Start with `CLAUDE.md` (layout, commands, conventions), then `PLAN.md` (the desi
 
 - **Backend:** Python 3.12 with uv. The SQL migrations hold the `api.*` functions every screen reads, and the live pipeline runs on GitHub Actions.
 - **Frontend:** Vite, React and TypeScript, built as both the claude.ai test link and the website.
+- **Website functions** (`frontend/netlify/functions/`, settings in `netlify.toml`): `/api/rpc` serves the data read-only and takes the viewer's country from Netlify's geo data (for forecast rules and India's map borders); `/api/ai` serves Ask and projections. They connect to the database through `frontend/server/db.ts`, which always verifies TLS against Supabase's root CA (bundled, valid until April 2031), so there is no certificate to set up. `DATABASE_CA_CERT` only overrides that CA.
