@@ -162,3 +162,50 @@ test.describe("settings", () => {
     await expect(panel.getByRole("region", { name: "AI" })).toContainText(/WorldGraph AI/);
   });
 });
+
+test.describe("Sample data at its default (a first-time viewer)", () => {
+  // Nothing saved: the app's own default applies. This database holds only sample data.
+  test.use({ settings: { theme: "dark", calm: true } });
+
+  test("is off: no sample story, forecast or brief item is shown", async ({ page, isPhone }, testInfo) => {
+    await openApp(page);
+    const top = page
+      .getByRole("list", { name: "Top 5 now" })
+      .or(page.getByRole("list", { name: "Top stories and crowd moves, swipe for more" }));
+    await expect(page.locator("main").getByText("Nothing in the last 7 days")).toBeVisible();
+    await expect(top.locator(":scope > li > button")).toHaveCount(0);
+    await snap(page, testInfo, "sample-default-globe");
+
+    const panel = await openSettings(page);
+    await expect(
+      panel.getByRole("radiogroup", { name: "Sample data" }).getByRole("radio", { name: "Off" }),
+    ).toBeChecked();
+    await expect(
+      panel.getByText("Never shown. Some screens stay empty until live news arrives."),
+    ).toBeVisible();
+    if (isPhone) await panel.getByRole("button", { name: "Close panel" }).click();
+    else await page.keyboard.press("Escape");
+    await expect(panel).toBeHidden();
+
+    await goToView(page, "forecasts");
+    await expect(page.getByRole("heading", { level: 2, name: "All forecasts 0" })).toBeAttached();
+    await expect(page.locator("main").getByText("No crowd forecasts yet")).toBeVisible();
+    await goToView(page, "brief");
+    await expect(page.locator("main").getByText("Nothing to brief on yet")).toBeVisible();
+    // (The status pill is checked on its own below.)
+    await expect(page.locator("main").getByText(/^Sample( data)?$/).filter({ visible: true })).toHaveCount(0);
+  });
+
+  test("the status doesn't say sample data is showing", async ({ page }, testInfo) => {
+    // App bug: StatusBar (src/app/StatusBar.tsx) labels the data "Sample data" whenever api.meta
+    // says showing_sample, but meta answers for the "auto" setting (it takes no `sample`
+    // argument). With Sample data off and no live news yet, every screen is empty, as it should
+    // be, and the pill still says "Sample data". Remove test.fail() once the pill follows the
+    // viewer's setting (e.g. showing_sample only counts when Sample data isn't off).
+    test.fail();
+    await openApp(page);
+    await expect(page.locator("main").getByText("Nothing in the last 7 days")).toBeVisible();
+    await snap(page, testInfo, "sample-default-status");
+    await expect(appStatus(page)).not.toHaveText(/Sample/, { useInnerText: true });
+  });
+});

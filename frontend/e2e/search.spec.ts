@@ -15,6 +15,16 @@ import {
   test,
 } from "./fixtures";
 
+/**
+ * App bug (phones): while the details sheet is open, nothing outside it takes a tap. vaul 1.1.2
+ * renders its Radix dialog as modal whatever `modal={false}` says, and puts <body>'s
+ * pointer-events back only when vaul itself opens the sheet; PanelHost (src/app/PanelHost.tsx)
+ * opens it from app state, so <body> keeps `pointer-events: none` and the header's Search and
+ * Settings buttons ignore taps until the sheet is closed. Remove these test.fail() markers once
+ * an open sheet leaves the rest of the page tappable.
+ */
+const SHEET_BLOCKS_TAPS = "App bug: an open sheet leaves <body> with pointer-events: none on phones";
+
 test.describe("command search", () => {
   test("Ctrl+K opens it with quick actions, and Escape closes it", async ({ page, isPhone }, testInfo) => {
     await openApp(page);
@@ -49,6 +59,8 @@ test.describe("command search", () => {
     page,
     isPhone,
   }, testInfo) => {
+    // The second search starts from the header while the first result's sheet is open.
+    test.fail(isPhone, SHEET_BLOCKS_TAPS);
     await openApp(page);
     const box = await openSearch(page, isPhone);
     await box.fill("fed cut");
@@ -79,6 +91,7 @@ test.describe("command search", () => {
   });
 
   test("after a search opens a panel, the rest of the page still takes taps", async ({ page, isPhone }) => {
+    test.fail(isPhone, SHEET_BLOCKS_TAPS);
     await openApp(page);
     await searchAndOpen(page, isPhone, "Gujarat", "Gujarat");
     await expect(detailsPanel(page).getByRole("heading", { level: 2, name: "Gujarat" })).toBeVisible();
@@ -89,7 +102,28 @@ test.describe("command search", () => {
     await expect(detailsPanel(page).getByRole("heading", { level: 2, name: "Settings" })).toBeVisible();
   });
 
+  test("with a panel open from the globe, the header's search still takes taps", async ({
+    page,
+    isPhone,
+  }) => {
+    test.fail(isPhone, SHEET_BLOCKS_TAPS);
+    await openApp(page);
+    const row = isPhone
+      ? page
+          .getByRole("list", { name: "Top stories and crowd moves, swipe for more" })
+          .locator(":scope > li > button")
+          .first()
+      : page.getByRole("list", { name: "Top 5 now" }).locator(":scope > li > button").first();
+    await row.click();
+    await expect(detailsPanel(page).getByRole("article").getByRole("heading", { level: 2 })).toBeVisible();
+    const box = await openSearch(page, isPhone);
+    await box.fill("Gujarat");
+    await expect(page.getByRole("option").first()).toContainText("Gujarat");
+  });
+
   test("a search shows up under Recent next time", async ({ page, isPhone }) => {
+    // It opens search from the header while the first result's sheet is open.
+    test.fail(isPhone, SHEET_BLOCKS_TAPS);
     await openApp(page);
     await searchAndOpen(page, isPhone, "Mumbai", "Mumbai");
     await expect(detailsPanel(page).getByRole("heading", { level: 2, name: "Mumbai" })).toBeVisible();

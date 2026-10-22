@@ -187,6 +187,10 @@ test.describe("story and cascade", () => {
     await expect(drawer.getByRole("heading", { name: /^Evidence/ })).toBeVisible();
     await expect(drawer).toContainText("Asia–Europe container rates jump as ships sail around Africa");
     await snap(page, testInfo, "cascade-evidence");
+    // Focus moves into it (so its Escape is its own, not the panel's).
+    await expect
+      .poll(() => drawer.evaluate((el) => el.contains(document.activeElement)), { message: "focus in the evidence" })
+      .toBe(true);
 
     await page.keyboard.press("Escape");
     await expect(drawer).toBeHidden();

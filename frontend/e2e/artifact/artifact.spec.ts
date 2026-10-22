@@ -451,9 +451,9 @@ test.describe("outside claude.ai, the shipped snapshot", () => {
     }
   });
 
-  for (const [label, settings] of [
-    ["Sample data at its default (off)", APP_DEFAULTS],
-    ["Sample data off", { ...APP_DEFAULTS, sample: "off" }],
+  for (const [label, settings, slug] of [
+    ["Sample data at its default (off)", APP_DEFAULTS, "default"],
+    ["Sample data off", { ...APP_DEFAULTS, sample: "off" }, "off"],
   ] as const) {
     test.describe(label, () => {
       test.use({ settings });
@@ -477,7 +477,7 @@ test.describe("outside claude.ai, the shipped snapshot", () => {
         await expect(statusLine(page)).not.toHaveText(/Live data|Sample/, { useInnerText: true });
         // Real news only: nothing on screen is labelled as sample data.
         await expect(page.getByText(/^Sample( data| snapshot)?$/).filter({ visible: true })).toHaveCount(0);
-        await snap(page, testInfo, `artifact-shipped-snapshot-${settings.sample ?? "default"}`);
+        await snap(page, testInfo, `artifact-shipped-snapshot-${slug}`);
       });
     });
   }
