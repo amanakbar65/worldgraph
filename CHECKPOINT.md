@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 22 Oct 2026. Test link https://claude.ai/artifact/XfUP7NoqKsf471epDNFRJN is **version 2** (Ask chat, globe idle turn, logo as Home, the a11y and design fixes, favicon). Nothing is in flight. 935 frontend tests pass. **Next:** the 3 reviews never run (rules, artifact-security, polish), finish the e2e suite (`wip/wf_5401d9b0-dd2-1`, about 50%; it must cover the new Ask chat and focus behaviour), then one fix round and a republish.
+**Last updated:** 22 Oct 2026. Test link v2: https://claude.ai/artifact/XfUP7NoqKsf471epDNFRJN. **In flight:** QA run `wf_1734d928-feb` (`worldgraph-qa.js`, args `{"only":["e2e","review:rules","review:artifact-security","review:polish"],"resume":{"e2e":"wip/wf_5401d9b0-dd2-1"}}`). Worktrees are `wf_1734d928-feb-<n>`, saved to `wip/` of the same name. If it is interrupted, relaunch with `only` = the labels that did not report and `resume` = their wip branches. Then: one fix round (`worldgraph-qa-fix.js`), merge e2e, republish. The website waits on the owner's 3 steps (below).
 
 ## How to resume (any new session)
 
