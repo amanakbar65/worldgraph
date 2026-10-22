@@ -196,7 +196,8 @@ export function TopNowBody(props: TopNowProps) {
           Top 5 now
         </h2>
         <p className="min-w-0 flex-1 truncate text-label text-fg-muted">
-          {WINDOW_LABELS[props.window].long} · most important first
+          {/* api.top ranks by importance with a boost for recent news; the window control above names the window. */}
+          Important and recent first
         </p>
         {allSample && <SampleBadge />}
       </div>

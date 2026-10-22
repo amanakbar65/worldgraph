@@ -5,6 +5,7 @@ import {
   activeFilterCount,
   buildGraphArgs,
   DEFAULT_FILTERS,
+  defaultFilters,
   DEFAULT_TYPES,
   describeGraph,
   filterGraph,
@@ -78,6 +79,14 @@ describe("buildGraphArgs", () => {
 });
 
 describe("activeFilterCount", () => {
+  it("counts the screen's own starting limit as no filter (100 on phones, 250 wider)", () => {
+    expect(defaultFilters(true).limit).toBe(100);
+    expect(defaultFilters(false).limit).toBe(250);
+    expect(activeFilterCount(defaultFilters(true), true)).toBe(0);
+    expect(activeFilterCount(defaultFilters(false), false)).toBe(0);
+    expect(activeFilterCount(defaultFilters(false), true)).toBe(1);
+  });
+
   it("counts each changed filter once", () => {
     expect(activeFilterCount(DEFAULT_FILTERS)).toBe(0);
     expect(

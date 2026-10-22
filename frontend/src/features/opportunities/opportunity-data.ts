@@ -117,7 +117,7 @@ export function radarCaption(measure: RadarMeasure, forYou: boolean): string {
     : `Closer to the centre: gaining pace faster. Bigger dot: ${fit}.`;
 }
 
-/** "Rupee firms…: Finance, fit 84%, momentum 94%, crowd forecast 58%" for a dot or a row. */
+/** "Rupee firms…: Finance, fit 84%, momentum 94%, crowd forecast 58% from Manifold" for a dot or a row. */
 export function describeItem(item: OpportunityItem, sector: SectorId | null, forYou: boolean): string {
   const names = scoreNames(forYou);
   const parts = [item.story.headline];
@@ -126,7 +126,7 @@ export function describeItem(item: OpportunityItem, sector: SectorId | null, for
   else if (item.story.kind === "projected") parts.push("projected");
   parts.push(`${names.relevance.toLowerCase()} ${formatProbability(item.relevance)}`);
   parts.push(`momentum ${formatProbability(item.momentum)}`);
-  if (item.forecast) parts.push(`crowd forecast ${formatProbability(item.forecast.probability)}`);
+  if (item.forecast) parts.push(`crowd forecast ${formatProbability(item.forecast.probability)} from ${item.forecast.provider_name}`);
   if (item.story.is_sample) parts.push("sample data");
   return parts.join(", ");
 }

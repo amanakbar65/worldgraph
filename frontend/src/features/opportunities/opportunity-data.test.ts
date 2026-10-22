@@ -95,7 +95,7 @@ describe("words", () => {
 
   it("describes a dot for screen readers, with the crowd forecast and sample label", () => {
     expect(describeItem(RUPEE, "finance", true)).toBe(
-      "Rupee firms as a softer dollar draws funds into India, Finance, fit 77%, momentum 84%, crowd forecast 29%, sample data",
+      "Rupee firms as a softer dollar draws funds into India, Finance, fit 77%, momentum 84%, crowd forecast 29% from Manifold, sample data",
     );
     expect(describeItem(APPAREL, "manufacturing", false)).toContain(", projected, importance 39%");
     expect(describeItem(DRAFT, "energy", true)).toContain("draft awaiting analysis");

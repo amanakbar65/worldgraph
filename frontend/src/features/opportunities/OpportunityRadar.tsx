@@ -1,9 +1,11 @@
 import { List, Radar, Sparkles, Target, Telescope, Users } from "lucide-react";
 import { useId, useMemo, useRef, type KeyboardEvent } from "react";
 
-import type { SectorId } from "@/api/contract";
+import type { ForecastSummary, SectorId } from "@/api/contract";
 import { SampleBadge } from "@/components/SampleBadge";
 import { SectionHeader } from "@/components/SectionHeader";
+import { TimeAgo } from "@/components/TimeAgo";
+import { volumeText } from "@/features/business/business-data";
 import { Segmented } from "@/components/ui/segmented";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatProbability } from "@/lib/format";
@@ -75,6 +77,7 @@ export function OpportunityRadar(props: OpportunityRadarProps) {
         id={headingId}
         title="Opportunity radar"
         icon={Radar}
+        wrap
         description={radarCaption(measure, forYou)}
         action={
           <Segmented<"chart" | "list">
@@ -363,16 +366,33 @@ function ActiveStrip({
           <span>
             {names.momentum} {formatProbability(item.momentum)}
           </span>
-          {item.forecast && (
-            <span className="inline-flex items-center gap-1 text-forecast">
-              <Users aria-hidden className="size-3.5" />
-              {formatProbability(item.forecast.probability)} crowd forecast
-            </span>
-          )}
+          {item.forecast && <CrowdFacts forecast={item.forecast} />}
           {item.story.is_sample && <SampleBadge iconOnly />}
         </span>
       </span>
     </button>
+  );
+}
+
+/** A crowd forecast's probability, always with its source, volume and last update. */
+function CrowdFacts({ forecast }: { forecast: ForecastSummary }) {
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+      <span className="inline-flex items-center gap-1 text-forecast">
+        <Users aria-hidden className="size-3.5" />
+        {formatProbability(forecast.probability)} crowd forecast
+      </span>
+      <span aria-hidden>·</span>
+      <span>{forecast.provider_name}</span>
+      <span aria-hidden>·</span>
+      <span>{volumeText(forecast)}</span>
+      {forecast.updated_at && (
+        <>
+          <span aria-hidden>·</span>
+          <TimeAgo value={forecast.updated_at} prefix="Updated" />
+        </>
+      )}
+    </span>
   );
 }
 
@@ -463,13 +483,7 @@ function RadarList({ items, sectors, forYou, onOpen, active, onActive }: Opportu
                   <span>
                     {names.momentum} {formatProbability(item.momentum)}
                   </span>
-                  {item.forecast && (
-                    <span className="inline-flex items-center gap-1 text-forecast">
-                      <Users aria-hidden className="size-3.5" />
-                      {formatProbability(item.forecast.probability)}
-                      <span className="sr-only"> crowd forecast</span>
-                    </span>
-                  )}
+                  {item.forecast && <CrowdFacts forecast={item.forecast} />}
                   {item.story.is_sample && <SampleBadge iconOnly />}
                 </span>
               </span>

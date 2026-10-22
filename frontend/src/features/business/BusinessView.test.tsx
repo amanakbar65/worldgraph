@@ -99,7 +99,7 @@ describe("BusinessView: first run", () => {
     const steps = screen.getByRole("navigation", { name: "Setup steps" });
     expect(within(steps).getAllByRole("button")).toHaveLength(3);
     expect(screen.getByText("Saved in this browser")).toBeTruthy();
-    expect(screen.getByText(/Only ids and keywords, nothing personal/)).toBeTruthy();
+    expect(screen.getByText(/Only your choices and keywords, nothing personal/)).toBeTruthy();
     expect(affectsCalls()).toEqual([]);
   });
 
@@ -254,6 +254,10 @@ describe("BusinessView: alerts since the last visit", () => {
     const alerts = screen.getByRole("region", { name: "4 new for you" });
     expect(within(alerts).getByText(/Matches your business and your watchlist/)).toBeTruthy();
     expect(within(alerts).getByText(/▲ 16 points in a day/)).toBeTruthy();
+    // A probability always comes with its source, volume and last update.
+    const move = within(alerts).getByText(/▲ 16 points in a day/).closest("button")!;
+    expect(within(move).getByText("52K MANA volume")).toBeTruthy();
+    expect(within(move).getByText(/Updated/)).toBeTruthy();
     // This visit is recorded for next time; today's alerts stay until marked as seen.
     expect(profileStore.stores.lastSeen.getState().value).toBe(new Date(NOW).toISOString());
     fireEvent.click(within(alerts).getByRole("button", { name: "Mark all as seen" }));

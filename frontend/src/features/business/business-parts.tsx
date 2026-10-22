@@ -257,7 +257,7 @@ export function StoreNote({
       <span>
         {error ? "Couldn't save just now; your changes are kept for this visit." : copy.text}
         {showDetail && !error && (
-          <span className="text-fg-subtle"> · {copy.detail} Only ids and keywords, nothing personal.</span>
+          <span className="text-fg-subtle"> · {copy.detail} Only your choices and keywords, nothing personal.</span>
         )}
       </span>
     </p>

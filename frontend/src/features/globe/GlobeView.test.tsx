@@ -277,8 +277,8 @@ describe("GlobeView on a desktop", () => {
     expect(within(row).getByText("Source: Sample forecast")).toBeTruthy();
     expect(within(row).getByText(/MANA volume/)).toBeTruthy();
     expect(within(row).getByText(/Updated/)).toBeTruthy();
-    // One "Sample data" badge on the card (plus the one in the map key), not one per row.
-    expect(screen.getAllByText("Sample data")).toHaveLength(2);
+    // One "Sample data" badge on the card, not one per row (the status pill says it too; the map key doesn't repeat it).
+    expect(screen.getAllByText("Sample data")).toHaveLength(1);
     expect(screen.queryByText(/\b(bet|betting|trade now|wager)\b/i)).toBeNull();
   });
 
@@ -422,6 +422,52 @@ describe("GlobeView on a desktop", () => {
     expect(notes[0].closest("li")?.textContent).toContain("Bab-el-Mandeb");
   });
 
+  it("marks each sample row when sample data is switched on beside live news", () => {
+    const [first, second, third] = GLOBE.events;
+    useSettings.setState({ sample: "on" });
+    mocks.responses = {
+      globe: {
+        ...GLOBE,
+        events: [
+          { ...first, is_sample: true },
+          { ...second, is_sample: false },
+          { ...third, is_sample: false },
+        ],
+      },
+      top: TOP_LIVE,
+      meta: { ...META, data: { ...META.data, live_stories: 2, showing_sample: false } },
+    };
+    try {
+      renderGlobe();
+      fireEvent.click(screen.getByRole("radio", { name: "List of all events" }));
+      const list = screen.getByRole("list", { name: "All events" });
+      const marked = within(list).getAllByText("Sample");
+      expect(marked).toHaveLength(1);
+      expect(marked[0].closest("li")?.textContent).toContain("Bab-el-Mandeb");
+      expect(screen.getByText("Includes")).toBeTruthy();
+    } finally {
+      useSettings.setState({ sample: "auto" });
+    }
+  });
+
+  it("shows a Top 5 story the same way in the List: its icon, arrow and place", () => {
+    const [first, ...rest] = GLOBE.events;
+    const topStory = {
+      ...TOP.stories[0],
+      region: { id: "region:ye.aden", name: "Aden", subtype: "city", country_id: "region:ye" },
+    };
+    mocks.responses = {
+      ...mocks.responses,
+      globe: { ...GLOBE, events: [first, ...rest] },
+      top: { ...TOP, stories: [topStory, ...TOP.stories.slice(1)] },
+    };
+    renderGlobe();
+    fireEvent.click(screen.getByRole("radio", { name: "List of all events" }));
+    const list = screen.getByRole("list", { name: "All events" });
+    const row = within(list).getByText(first.headline).closest("li")!;
+    expect(row.textContent).toContain("Aden");
+  });
+
   it("fades links that don't touch the open region's country", () => {
     useNav.setState({ panels: [{ kind: "region", id: "region:fr" }] });
     renderGlobe();
@@ -523,6 +569,15 @@ describe("GlobeView on a phone", () => {
     expect(screen.getByRole("button", { name: "Show the top stories" }).getAttribute("aria-expanded")).toBe(
       "false",
     );
+  });
+
+  it("never squeezes the time window below its labels (the browser check is toolbar.mjs in fix-ui)", () => {
+    renderGlobe();
+    const group = screen.getByRole("radiogroup", { name: "Time window" });
+    // Not narrower than its content, with tight segments so the bar fits at 360 px.
+    expect(group.className).toContain("min-w-fit");
+    expect(group.className).not.toContain("min-w-0");
+    expect(group.className).toContain("[&>*]:px-1.5");
   });
 
   it("opens the list from the bar and closes it again", () => {

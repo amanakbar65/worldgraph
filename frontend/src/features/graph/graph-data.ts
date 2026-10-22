@@ -33,6 +33,18 @@ export const DEFAULT_TYPES: readonly EntityType[] = GRAPH_TYPES.filter((t) => t 
 export const LIMIT_OPTIONS = [100, 250, 500, 1000] as const;
 export type NodeLimit = (typeof LIMIT_OPTIONS)[number];
 export const DEFAULT_LIMIT: NodeLimit = 250;
+/** Phones: fewer, so the graph opens readable on a small screen rather than as a hairball. */
+export const PHONE_LIMIT: NodeLimit = 100;
+
+/** The starting limit for this screen size. */
+export function defaultLimit(phone: boolean): NodeLimit {
+  return phone ? PHONE_LIMIT : DEFAULT_LIMIT;
+}
+
+/** The starting filters for this screen size. */
+export function defaultFilters(phone: boolean): GraphFilters {
+  return { ...DEFAULT_FILTERS, limit: defaultLimit(phone) };
+}
 
 export type GraphWindow = TimeWindow | "all";
 
@@ -100,12 +112,12 @@ export function buildGraphArgs(
 }
 
 /** How many filters differ from the defaults (for the Filters button badge). Sectors count via the lens. */
-export function activeFilterCount(filters: GraphFilters): number {
+export function activeFilterCount(filters: GraphFilters, phone = false): number {
   let n = 0;
   if (!sameTypes(filters.types, DEFAULT_TYPES)) n += 1;
   if (filters.regions.length) n += 1;
   if (filters.minConfidence > 0) n += 1;
-  if (filters.limit !== DEFAULT_LIMIT) n += 1;
+  if (filters.limit !== defaultLimit(phone)) n += 1;
   return n;
 }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { StorySummary } from "@/api/contract";
 import type { GlobePalette, Rgba } from "@/lib/globe-color";
 
 import {
@@ -29,6 +30,7 @@ import {
   lensSummary,
   mainBounds,
   markDimmed,
+  markerObstacles,
   nextRow,
   replayFrame,
   replaySpan,
@@ -36,6 +38,7 @@ import {
   sampleLabelling,
   screenRadius,
   sortEventsForList,
+  storyForEvent,
   unwrapRing,
   visibleCap,
   zoomForScreenRadius,
@@ -370,6 +373,47 @@ describe("the list view", () => {
     expect(eventAsStory(event("a", { analysed: false }), { isSample: false }).analysed).toBe(false);
     expect(eventAsStory(event("a", { analysed: false }), { isSample: false }).so_what).toBeNull();
   });
+
+  it("marks sample events beside live news by the API's flag, and every event when all is sample", () => {
+    const invented = event("a", { is_sample: true });
+    const real = event("b", { is_sample: false });
+    expect(storyForEvent(invented, "some").is_sample).toBe(true);
+    expect(storyForEvent(real, "some").is_sample).toBe(false);
+    // Without the flag, an event beside live news isn't claimed as sample.
+    expect(storyForEvent(event("c"), "some").is_sample).toBe(false);
+    expect(storyForEvent(real, "all").is_sample).toBe(true);
+    expect(storyForEvent(invented, null).is_sample).toBe(false);
+  });
+
+  it("shows a story the Top 5 already sent the same way: its icon, arrow and place", () => {
+    const top: StorySummary = {
+      ...eventAsStory(event("a"), { isSample: true }),
+      event_type: "jobs_data",
+      direction: "down",
+      region: { id: "region:us.washington-dc", name: "Washington, D.C.", subtype: "city", country_id: "region:us" },
+    };
+    const known = new Map([[top.id, top]]);
+    const story = storyForEvent(event("a"), "some", known);
+    expect(story.event_type).toBe("jobs_data");
+    expect(story.direction).toBe("down");
+    expect(story.region?.name).toBe("Washington, D.C.");
+    expect(story.is_sample).toBe(true);
+    expect(storyForEvent(event("a"), null, known).is_sample).toBe(false);
+  });
+
+  it("uses the event's own icon, arrow and place when the API sends them", () => {
+    const story = eventAsStory(
+      event("a", {
+        event_type: "port_disruption",
+        direction: "up",
+        region: { id: "region:in-gj", name: "Gujarat", subtype: "state", country_id: "region:in" },
+      }),
+      { isSample: false },
+    );
+    expect(story.event_type).toBe("port_disruption");
+    expect(story.direction).toBe("up");
+    expect(story.region?.name).toBe("Gujarat");
+  });
 });
 
 describe("geometry", () => {
@@ -494,6 +538,55 @@ describe("labels", () => {
       3,
     ).map((l) => l.id);
     expect(out).toEqual(["a", "c"]);
+  });
+
+  it("keeps names off forecast rings and big dots: a country steps below, a city is left out", () => {
+    const at = [
+      { x: 200, y: 200 }, // Saudi Arabia's label point, under a ring
+      { x: 500, y: 200 }, // a city whose name would cover a big dot
+      { x: 200, y: 200 }, // the ring
+      { x: 520, y: 200 }, // the big dot
+    ];
+    const out = declutterLabels(
+      [label("sa", { name: "Saudi Arabia", lon: 0 }), label("city", { kind: "city", capital: true, priority: 5, lon: 1 })],
+      (lon) => at[lon],
+      { width: 800, height: 600 },
+      4,
+      {
+        obstacles: [
+          { lon: 2, lat: 0, radius: 12 },
+          { lon: 3, lat: 0, radius: 8 },
+        ],
+      },
+    );
+    expect(out.map((l) => l.id)).toEqual(["sa"]);
+    // Moved just below the ring (its box ends 14 px down; the label is 16 px tall).
+    expect(out[0].dy).toBe(23);
+  });
+
+  it("leaves a country out when there is no room below its marker either", () => {
+    const out = declutterLabels(
+      [label("sa", { name: "Saudi Arabia", lon: 0 })],
+      () => ({ x: 200, y: 585 }),
+      { width: 800, height: 600 },
+      4,
+      { obstacles: [{ lon: 0, lat: 0, radius: 12 }] },
+    );
+    expect(out).toEqual([]);
+  });
+
+  it("keeps names off every placed forecast ring (event dots may sit on names, or busy countries lose theirs)", () => {
+    const marks = markerObstacles({
+      forecasts: [
+        { lon: 45, lat: 24 },
+        { lon: null, lat: null },
+      ],
+      toggles: { forecasts: true },
+      zoom: 1.8,
+    });
+    expect(marks).toEqual([{ lon: 45, lat: 24, radius: 12 * zoomScale(1.8) }]);
+    // A hidden layer hides nothing.
+    expect(markerObstacles({ forecasts: [{ lon: 45, lat: 24 }], toggles: { forecasts: false }, zoom: 1.8 })).toEqual([]);
   });
 });
 

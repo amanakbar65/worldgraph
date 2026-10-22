@@ -10,11 +10,22 @@ import { SECTORS } from "@/lib/icons";
 import { mix, withAlpha, type GlobePalette, type Rgba } from "@/lib/globe-color";
 
 /**
- * An event as api.globe sends it. `analysed` is read when the API sends it
- * (false marks a draft from the live news pipeline); without it, an event
- * counts as analysed.
+ * An event as api.globe sends it. The optional fields are read when the API
+ * sends them:
+ * - `analysed`: false marks a draft from the live news pipeline; without it,
+ *   an event counts as analysed.
+ * - `is_sample`: marks an invented sample story when sample data is shown
+ *   beside live news; without it, only the list's header can say so.
+ * - `event_type`, `direction` and `region` (the city or state, else the
+ *   country): the same icon, ▲ ▼ and place as the story's other cards.
  */
-export type GlobeEvent = GlobeResponse["events"][number] & { analysed?: boolean };
+export type GlobeEvent = GlobeResponse["events"][number] & {
+  analysed?: boolean;
+  is_sample?: boolean;
+  event_type?: string;
+  direction?: StorySummary["direction"];
+  region?: StorySummary["region"];
+};
 export type GlobeArc = GlobeResponse["arcs"][number];
 export type GlobeCountry = GlobeResponse["countries"][number];
 export type LngLat = [number, number];
@@ -486,8 +497,9 @@ export function countryName(countryId: string | null | undefined): string | null
 
 /**
  * A globe event as a story summary, so the UI kit's StoryCard can show it.
- * The globe call doesn't send the analysis fields: the so-what stays null
- * (never invented) and the event icon falls back to the generic one.
+ * The globe call doesn't send the so-what (it stays null, never invented).
+ * The event icon, ▲ ▼ and place come from the event when the API sends
+ * them, else the generic icon, no arrow and the country.
  */
 export function eventAsStory(event: GlobeEvent, options: { isSample: boolean }): StorySummary {
   const name = countryName(event.country_id);
@@ -496,9 +508,9 @@ export function eventAsStory(event: GlobeEvent, options: { isSample: boolean }):
     kind: "event",
     headline: event.headline,
     so_what: null,
-    event_type: "",
+    event_type: event.event_type ?? "",
     impact: event.impact,
-    direction: null,
+    direction: event.direction ?? null,
     magnitude: event.magnitude,
     horizon: null,
     confidence: null,
@@ -506,15 +518,36 @@ export function eventAsStory(event: GlobeEvent, options: { isSample: boolean }):
     sectors: event.sectors,
     first_seen: event.first_seen,
     region:
-      event.country_id && name
+      event.region ??
+      (event.country_id && name
         ? { id: event.country_id, name, subtype: "country", country_id: event.country_id }
-        : null,
+        : null),
     lon: event.lon,
     lat: event.lat,
     source_count: 0,
     analysed: event.analysed !== false,
     is_sample: options.isSample,
   };
+}
+
+/** Sample data on the globe: all of it (no live data yet), some (switched on beside live data), or none. */
+export type GlobeSample = "all" | "some" | null;
+
+/**
+ * The card for a globe event, with `is_sample` true when it is invented
+ * sample data. When another call already sent the full story (the Top 5),
+ * that summary is used, so the same story shows the same icon, ▲ ▼ and
+ * place everywhere.
+ */
+export function storyForEvent(
+  event: GlobeEvent,
+  sample: GlobeSample,
+  known?: ReadonlyMap<string, StorySummary>,
+): StorySummary {
+  const story = known?.get(event.id);
+  const isSample =
+    sample === "all" || (sample === "some" && (event.is_sample === true || story?.is_sample === true));
+  return story ? { ...story, is_sample: isSample } : eventAsStory(event, { isSample });
 }
 
 // ---------------------------------------------------------------------------
@@ -689,6 +722,31 @@ export interface LabelCandidate {
   kind: "country" | "city";
   /** Cities: national capitals show from a lower zoom. */
   capital?: boolean;
+  /** Pixels the label moves down, set when it steps aside for a marker. */
+  dy?: number;
+}
+
+/** A mark on the globe that place names keep clear of: where it is and its radius in pixels. */
+export interface MarkerObstacle {
+  lon: number;
+  lat: number;
+  radius: number;
+}
+
+/**
+ * The marks place names must not cover: the forecast rings (a ring with a
+ * name through it reads as neither). Event dots stay coverable: busy
+ * countries such as India would otherwise lose their names entirely. The
+ * size follows layers.ts.
+ */
+export function markerObstacles(input: {
+  forecasts: readonly Pick<ForecastSummary, "lon" | "lat">[];
+  toggles: { forecasts: boolean };
+  zoom: number;
+}): MarkerObstacle[] {
+  if (!input.toggles.forecasts) return [];
+  const radius = 12 * zoomScale(input.zoom);
+  return input.forecasts.flatMap((f) => (f.lon !== null && f.lat !== null ? [{ lon: f.lon, lat: f.lat, radius }] : []));
 }
 
 /** Whether a label belongs at this zoom at all (before collisions). */
@@ -702,9 +760,15 @@ export function labelShowsAt(label: LabelCandidate, zoom: number): boolean {
   return zoom >= 4.6 && label.priority >= 4_000_000 / 2 ** (zoom - 4.6);
 }
 
+type ScreenBox = { x0: number; y0: number; x1: number; y1: number };
+const overlaps = (a: ScreenBox, b: ScreenBox) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+
 /**
  * Pick the labels to draw: those that belong at this zoom, are on screen and
- * on the near side, placed greedily by priority without overlapping.
+ * on the near side, placed greedily by priority without overlapping each
+ * other or the `obstacles` (forecast rings, big event dots). A country name
+ * that would sit on a marker steps down below it (`dy`), or is left out
+ * when there is no room there either; a city name is left out.
  * `project` gives the screen position of a place, or null when it's hidden.
  */
 export function declutterLabels<T extends LabelCandidate>(
@@ -712,9 +776,16 @@ export function declutterLabels<T extends LabelCandidate>(
   project: (lon: number, lat: number) => { x: number; y: number } | null,
   viewport: { width: number; height: number },
   zoom: number,
-  max = 70,
+  { max = 70, obstacles = [] }: { max?: number; obstacles?: readonly MarkerObstacle[] } = {},
 ): T[] {
-  const placed: { x0: number; y0: number; x1: number; y1: number }[] = [];
+  const marks: ScreenBox[] = [];
+  for (const o of obstacles) {
+    const p = project(o.lon, o.lat);
+    const r = o.radius + 2;
+    if (p) marks.push({ x0: p.x - r, y0: p.y - r, x1: p.x + r, y1: p.y + r });
+  }
+  const onScreen = (b: ScreenBox) => b.x0 >= 0 && b.y0 >= 0 && b.x1 <= viewport.width && b.y1 <= viewport.height;
+  const placed: ScreenBox[] = [];
   const out: T[] = [];
   const ranked = candidates
     .filter((c) => labelShowsAt(c, zoom))
@@ -734,10 +805,21 @@ export function declutterLabels<T extends LabelCandidate>(
       label.kind === "country"
         ? { x0: p.x - width / 2, y0: p.y - height / 2, x1: p.x + width / 2, y1: p.y + height / 2 }
         : { x0: p.x - 4, y0: p.y - height / 2, x1: p.x + width, y1: p.y + height / 2 };
-    if (box.x0 < 0 || box.y0 < 0 || box.x1 > viewport.width || box.y1 > viewport.height) continue;
-    if (placed.some((b) => b.x0 < box.x1 && box.x0 < b.x1 && b.y0 < box.y1 && box.y0 < b.y1)) continue;
-    placed.push(box);
-    out.push(label);
+    if (!onScreen(box)) continue;
+    if (placed.some((b) => overlaps(b, box))) continue;
+    const hits = marks.filter((m) => overlaps(m, box));
+    if (hits.length === 0) {
+      placed.push(box);
+      out.push(label);
+      continue;
+    }
+    if (label.kind !== "country") continue;
+    // Step down to just below the marker(s) it would cover.
+    const dy = Math.max(...hits.map((m) => m.y1)) - box.y0 + 1;
+    const moved = { ...box, y0: box.y0 + dy, y1: box.y1 + dy };
+    if (!onScreen(moved) || placed.some((b) => overlaps(b, moved)) || marks.some((m) => overlaps(m, moved))) continue;
+    placed.push(moved);
+    out.push({ ...label, dy: Math.round(dy) });
   }
   return out;
 }

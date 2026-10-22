@@ -243,6 +243,17 @@ describe("GraphView", () => {
     expect(lastGraphArgs()).toMatchObject({ limit: 500 });
   });
 
+  it("opens readable on a phone: 100 items, no invitation to show more, and that isn't counted as a filter", () => {
+    mocks.desktop = false;
+    mocks.responses.graph = { ...GRAPH, truncated: true };
+    // The store picks its starting limit for the screen it starts on.
+    useGraphState.getState().resetFilters();
+    render(<GraphView />);
+    expect(lastGraphArgs()).toMatchObject({ limit: 100 });
+    expect(screen.queryByRole("button", { name: /^Show up to/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Filters" })).toBeTruthy();
+  });
+
   it("keeps the phone layout compact: the key starts closed", () => {
     mocks.desktop = false;
     render(<GraphView />);

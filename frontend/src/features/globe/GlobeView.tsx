@@ -58,6 +58,7 @@ import {
   shapeSize,
   type ArcDatum,
   type GlobeEvent,
+  type GlobeSample,
   type LabelCandidate,
   type LngLat,
 } from "./model";
@@ -126,7 +127,7 @@ export default function GlobeView() {
   const meta = useRpc("meta", {});
 
   /** Sample data on the globe: all of it (no live data yet), some (switched on beside live data), or none. */
-  const sample: "all" | "some" | null = useMemo(() => {
+  const sample: GlobeSample = useMemo(() => {
     if (sampleSetting === "off") return null;
     const showing = meta.data?.data.showing_sample;
     if (showing === undefined && top.data) {
@@ -513,9 +514,11 @@ export default function GlobeView() {
       (selected.kind === "forecast" && !forecasts.some((f) => f.id === selected.id)));
   const shownSelection = isDesktop || selectionGone ? null : selected;
 
+  // The Top 5 sends full stories, so the list and the cards show those the same way.
+  const knownStories = useMemo(() => new Map((top.data?.stories ?? []).map((s) => [s.id, s])), [top.data]);
   const pickContext: PickContext = useMemo(
-    () => ({ allSample: sample === "all", eventsById, countriesById }),
-    [sample, eventsById, countriesById],
+    () => ({ sample, eventsById, countriesById, knownStories }),
+    [sample, eventsById, countriesById, knownStories],
   );
 
   const onInteract = useCallback(() => setInteracted(), [setInteracted]);
@@ -573,6 +576,7 @@ export default function GlobeView() {
     events,
     window: timeWindow,
     sample,
+    knownStories,
     note: listNote,
     onOpen: openStory,
     onFocusItem: setItemFocus,
@@ -675,7 +679,9 @@ export default function GlobeView() {
                 style={{ right: rightSpace + 12, left: COLUMN + 24 }}
               >
                 <div className={cn(GLASS, "flex min-h-10 min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg px-3 py-2")}>
-                  {sample && <SampleBadge compact={sample === "some"} />}
+                  {/* All sample: the Top 5 card and the status pill already say so. Beside live
+                      news, the key is the map's only note that some dots are invented. */}
+                  {sample === "some" && <SampleBadge compact />}
                   <MapKey />
                 </div>
                 <LayersButton toggles={toggles} onToggle={setToggle} />
@@ -689,11 +695,12 @@ export default function GlobeView() {
           </>
         ) : (
           <>
-            <div className="pointer-events-auto absolute top-3 right-3 left-3 flex items-center gap-2">
+            <div className="pointer-events-auto absolute top-3 right-3 left-3 flex items-center gap-1.5">
+              {/* Never narrower than its labels ("24 h / 7 d / 30 d" in tight segments), so they don't truncate at 360 px. */}
               <WindowControl
                 value={timeWindow}
                 onChange={setWindow}
-                className="min-w-0 flex-1 [&>*]:flex-1"
+                className="min-w-fit flex-1 [&>*]:flex-1 [&>*]:px-1.5"
               />
               {!mapError && replayButton}
               <SectorLensButton selected={sectors} onToggle={toggleSector} onClear={clearSectors} />

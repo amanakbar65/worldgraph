@@ -6,6 +6,8 @@ import { __testing, useAnalysisStatus } from "@/ai/analysis-runner";
 import { DataError } from "@/api/source";
 import { useConnectorApproval } from "@/api/sources/connector";
 import { freshnessText } from "@/lib/status-freshness";
+import { useNav } from "@/state/nav";
+import { useSettings } from "@/state/settings";
 
 const mocks = vi.hoisted(() => ({ meta: null as unknown }));
 
@@ -80,6 +82,28 @@ describe("StatusBar", () => {
     expect(screen.getByText("Live").closest("header")).not.toBeNull();
   });
 
+  it("floats only over the globe on wider screens; other screens show it in the header, off the content", () => {
+    const both = () => (
+      <>
+        <header>
+          <StatusBar placement="header" />
+        </header>
+        <StatusBar />
+      </>
+    );
+    try {
+      for (const view of ["forecasts", "opportunities", "brief"] as const) {
+        useNav.setState({ view });
+        const { unmount } = render(both());
+        expect(screen.getAllByText("Live")).toHaveLength(1);
+        expect(screen.getByText("Live").closest("header"), view).not.toBeNull();
+        unmount();
+      }
+    } finally {
+      useNav.setState({ view: "globe" });
+    }
+  });
+
   it("keeps only what needs the viewer in the phone header", () => {
     viewport(390);
     useConnectorApproval.setState({
@@ -103,6 +127,20 @@ describe("StatusBar", () => {
     render(<StatusBar />);
     expect(screen.getByText("Live data")).toBeTruthy();
     expect(screen.getByText("Updated 4 min ago")).toBeTruthy();
+  });
+
+  it("says when sample data is switched on beside live data, on phones too", () => {
+    useSettings.setState({ sample: "on" });
+    try {
+      const { unmount } = render(<StatusBar />);
+      expect(screen.getByText("Live data with sample data")).toBeTruthy();
+      unmount();
+      viewport(390);
+      render(<StatusBar placement="header" />);
+      expect(screen.getByText("Live + sample")).toBeTruthy();
+    } finally {
+      useSettings.setState({ sample: "auto" });
+    }
   });
 
   it("labels sample data and leaves out the freshness note", () => {

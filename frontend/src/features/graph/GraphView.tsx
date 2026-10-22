@@ -425,7 +425,8 @@ function ViewToggle() {
 function FiltersButton({ local }: { local: boolean }) {
   const filters = useGraphState((s) => s.filters);
   const sectors = useNav((s) => s.sectors);
-  const count = activeFilterCount(filters) + (local ? 0 : sectors.length);
+  const phone = !useIsDesktop();
+  const count = activeFilterCount(filters, phone) + (local ? 0 : sectors.length);
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -449,7 +450,8 @@ function FiltersButton({ local }: { local: boolean }) {
 function Summary({ graph, truncated, updating }: { graph: VizGraph; truncated: boolean; updating: boolean }) {
   const filters = useGraphState((s) => s.filters);
   const setLimit = useGraphState((s) => s.setLimit);
-  const next = LIMIT_OPTIONS.find((n) => n > filters.limit);
+  // Phones don't invite more: a bigger graph doesn't read on a small screen (Filters still offers it).
+  const next = useIsDesktop() ? LIMIT_OPTIONS.find((n) => n > filters.limit) : undefined;
   return (
     <div className="flex max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-line bg-glass px-2.5 py-1 text-label text-fg-muted shadow-panel backdrop-blur-xl">
       <span className="tabular-nums">

@@ -1,7 +1,7 @@
 import { ListX, X } from "lucide-react";
 import { useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
-import type { TimeWindow } from "@/api/contract";
+import type { StorySummary, TimeWindow } from "@/api/contract";
 import { EmptyState } from "@/components/EmptyState";
 import { SampleBadge } from "@/components/SampleBadge";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -12,7 +12,7 @@ import { WINDOW_LABELS } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 import { GLASS } from "./GlobeControls";
-import { eventAsStory, nextRow, sortEventsForList, type GlobeEvent } from "./model";
+import { nextRow, sortEventsForList, storyForEvent, type GlobeEvent, type GlobeSample } from "./model";
 import { DraftNote } from "./TopNow";
 
 const LIST_PAGE = 40;
@@ -21,7 +21,9 @@ export interface EventListProps {
   events: readonly GlobeEvent[];
   window: TimeWindow;
   /** Sample data on the globe: "all" (no live data yet) or "some" (sample switched on beside live data). */
-  sample: "all" | "some" | null;
+  sample: GlobeSample;
+  /** Full stories another call already sent (the Top 5), so a story looks the same in both. */
+  knownStories?: ReadonlyMap<string, StorySummary>;
   /** Shown above the rows, e.g. when the list stands in for a globe that can't be drawn. */
   note?: ReactNode;
   onOpen: (event: GlobeEvent) => void;
@@ -46,6 +48,7 @@ export function EventListBody({
   events,
   window,
   sample,
+  knownStories,
   note,
   onOpen,
   onFocusItem,
@@ -61,6 +64,11 @@ export function EventListBody({
   const [shown, setShown] = useState(LIST_PAGE);
   const list = useRef<HTMLUListElement>(null);
   const visible = sorted.slice(0, shown);
+  const rowStory = (event: GlobeEvent) => {
+    const story = storyForEvent(event, sample, knownStories);
+    // One badge above covers a list that is all sample data; beside live news, each sample row carries its own.
+    return sample === "all" ? { ...story, is_sample: false } : story;
+  };
 
   const onKeyDown = (e: KeyboardEvent<HTMLUListElement>) => {
     const buttons = Array.from(
@@ -130,8 +138,7 @@ export function EventListBody({
                   onBlur={() => onFocusItem(null)}
                 >
                   <StoryCard
-                    // One badge above covers a list that is all sample data.
-                    story={eventAsStory(event, { isSample: false })}
+                    story={rowStory(event)}
                     variant="compact"
                     rank={i + 1}
                     onOpen={() => onOpen(event)}

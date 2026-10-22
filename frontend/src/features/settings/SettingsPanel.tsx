@@ -53,7 +53,8 @@ import {
   storeCopy,
 } from "./settings-data";
 
-const DesignPreview = lazy(() => import("./DesignPreview"));
+// Development only: in production builds this branch is dropped, and the preview's chunk with it.
+const DesignPreview = import.meta.env.DEV ? lazy(() => import("./DesignPreview")) : () => null;
 
 const THEME_ICONS: Record<Settings["theme"], LucideIcon> = { dark: Moon, light: Sun, system: Monitor };
 const STORE_ICONS: Record<UserStore["kind"], LucideIcon> = { cloud: Cloud, browser: HardDrive, memory: Hourglass };
@@ -359,10 +360,20 @@ function SourceRow({ source }: { source: Source }) {
 // ---------------------------------------------------------------------------
 
 function About() {
-  const [preview, setPreview] = useState(false);
   return (
     <Section title="About WorldGraph" icon={Info}>
       <p className="text-body text-fg-muted">{ABOUT_TEXT}</p>
+      {/* A tool for building the app: its invented examples never reach the test link or the website. */}
+      {import.meta.env.DEV && <DesignPreviewButton />}
+    </Section>
+  );
+}
+
+/** Development only: every UI kit component with example data. */
+function DesignPreviewButton() {
+  const [preview, setPreview] = useState(false);
+  return (
+    <>
       <div>
         <Button variant="outline" onClick={() => setPreview(true)}>
           <Palette aria-hidden />
@@ -398,7 +409,7 @@ function About() {
           </DialogContent>
         )}
       </Dialog>
-    </Section>
+    </>
   );
 }
 

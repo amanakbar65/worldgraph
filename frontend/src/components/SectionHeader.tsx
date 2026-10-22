@@ -17,6 +17,8 @@ export interface SectionHeaderProps {
   as?: "h2" | "h3" | "h4";
   /** Id for the heading, so a section can use aria-labelledby. */
   id?: string;
+  /** Put the action on its own line when both don't fit, instead of truncating the title. */
+  wrap?: boolean;
   className?: string;
 }
 
@@ -29,11 +31,12 @@ export function SectionHeader({
   action,
   as: Heading = "h2",
   id,
+  wrap = false,
   className,
 }: SectionHeaderProps) {
   return (
-    <div className={cn("flex min-h-10 items-center gap-3", className)}>
-      <div className="min-w-0 flex-1">
+    <div className={cn("flex min-h-10 items-center gap-3", wrap && "flex-wrap gap-y-2", className)}>
+      <div className={cn("min-w-0 flex-1", wrap && "basis-48")}>
         <Heading id={id} className="flex items-center gap-2 text-body font-semibold text-fg">
           {Icon && <Icon aria-hidden className="size-4 shrink-0 text-fg-muted" />}
           <span className="truncate">{title}</span>
