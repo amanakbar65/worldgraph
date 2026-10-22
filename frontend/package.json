@@ -18,6 +18,9 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "e2e": "playwright test",
+    "e2e:artifact": "npm run build:artifact && playwright test -c e2e/artifact.config.ts",
+    "e2e:artifact:run": "playwright test -c e2e/artifact.config.ts",
+    "e2e:all": "playwright test && npm run e2e:artifact",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "contracts": "node --experimental-strip-types scripts/export-contracts.ts"
