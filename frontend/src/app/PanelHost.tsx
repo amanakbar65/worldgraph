@@ -1,8 +1,9 @@
 import { ArrowLeft, X } from "lucide-react";
-import { Suspense, useEffect, useRef, type ReactNode, type Ref } from "react";
+import { Suspense, useEffect, useRef, useState, type ReactNode, type Ref } from "react";
 import { Drawer } from "vaul";
 
 import { usePanelFocus } from "./panel-focus";
+import { openingSnap, SNAP_POINTS } from "./panel-snap";
 import { PANEL_COMPONENTS, WIDE_PANELS } from "./registry";
 import { useIsDesktop } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
@@ -85,10 +86,21 @@ export function PanelHost() {
   const scroller = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLElement>(null);
   const close = usePanelFocus(panel, root);
+  const [snap, setSnap] = useState<number | string | null>(SNAP_POINTS[0]);
+  const kind = panel?.kind ?? null;
+  const shownKind = useRef<Panel["kind"] | null>(null);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: 0 });
   }, [panel]);
+
+  // Phones: Ask and the cascade open at full height; other panels open at
+  // half height and then keep whatever height the viewer dragged to.
+  useEffect(() => {
+    const next = openingSnap(kind, shownKind.current);
+    shownKind.current = kind;
+    if (next !== null) setSnap(next);
+  }, [kind]);
 
   if (isDesktop) {
     if (!panel) return null;
@@ -98,8 +110,9 @@ export function PanelHost() {
         ref={root}
         aria-label="Details"
         className={cn(
-          "absolute z-20 flex flex-col overflow-hidden rounded-xl border border-line bg-glass shadow-panel backdrop-blur-xl",
-          wide ? "inset-3" : "top-3 right-3 bottom-3 w-[min(440px,calc(100%-24px))]",
+          "absolute z-20 flex flex-col overflow-hidden rounded-xl border border-line shadow-panel",
+          // The full-width panels cover the globe: opaque, so its controls don't show through.
+          wide ? "inset-3 bg-surface" : "top-3 right-3 bottom-3 w-[min(440px,calc(100%-24px))] bg-glass backdrop-blur-xl",
         )}
       >
         <Controls depth={depth} closeRef={close} />
@@ -114,7 +127,9 @@ export function PanelHost() {
     <Drawer.Root
       open={panel !== null}
       onOpenChange={(open) => !open && closePanels()}
-      snapPoints={[0.5, 0.94]}
+      snapPoints={[...SNAP_POINTS]}
+      activeSnapPoint={snap}
+      setActiveSnapPoint={setSnap}
       modal={false}
     >
       <Drawer.Portal>
