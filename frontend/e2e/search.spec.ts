@@ -7,6 +7,7 @@ import {
   currentHash,
   detailsPanel,
   expect,
+  expectTakesTaps,
   openApp,
   openSearch,
   searchAndOpen,
@@ -82,8 +83,9 @@ test.describe("command search", () => {
     await searchAndOpen(page, isPhone, "Gujarat", "Gujarat");
     await expect(detailsPanel(page).getByRole("heading", { level: 2, name: "Gujarat" })).toBeVisible();
     // The search dialog has closed: nothing may stay blocked behind it.
-    expect(await page.evaluate(() => getComputedStyle(document.body).pointerEvents)).not.toBe("none");
-    await page.locator('header button[aria-label="Settings"]').click({ timeout: 20_000 });
+    const settings = page.locator('header button[aria-label="Settings"]');
+    await expectTakesTaps(settings, "the header's Settings button");
+    await settings.click();
     await expect(detailsPanel(page).getByRole("heading", { level: 2, name: "Settings" })).toBeVisible();
   });
 

@@ -157,13 +157,38 @@ export async function openSearch(page: Page, isPhone: boolean): Promise<Locator>
   // tree on phones, but the button is still there to tap (and must take the tap).
   if (isPhone) {
     const button = page.locator('header button[aria-label^="Search"]');
-    await button.click({ timeout: 20_000 }).catch((error: unknown) => {
-      throw new Error(`The header's Search button didn't take the tap.\n${String(error)}`);
-    });
+    await expectTakesTaps(button, "the header's Search button");
+    await button.click();
   } else await page.keyboard.press("Control+K");
   const box = page.getByPlaceholder("Search places, companies, stories, forecasts…");
   await expect(box).toBeFocused();
   return box;
+}
+
+/**
+ * A tap on the middle of `target` reaches it: nothing covers it and nothing
+ * blocks pointer events (as `pointer-events: none` left on <body> would).
+ */
+export async function expectTakesTaps(target: Locator, what: string): Promise<void> {
+  await expect(target).toBeVisible();
+  // Polled: a dialog's closing animation may cover it for a moment, and a page
+  // busy drawing its first globe frame can take a while to answer.
+  await expect
+    .poll(
+      () =>
+        target.evaluate((el) => {
+          const box = el.getBoundingClientRect();
+          const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+          if (hit !== null && el.contains(hit)) return "reaches it";
+          // Say what is in the way instead.
+          const name = hit
+            ? `<${hit.tagName.toLowerCase()} class="${hit.getAttribute("class") ?? ""}">`
+            : "nothing";
+          return `${name}; body pointer-events: ${getComputedStyle(document.body).pointerEvents}`;
+        }),
+      { message: `a tap on ${what}`, timeout: 45_000 },
+    )
+    .toBe("reaches it");
 }
 
 /**
