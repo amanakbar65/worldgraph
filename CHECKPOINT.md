@@ -30,6 +30,14 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 | CI and live-data job | `.github/workflows/` | CI green; live data waits for the `DATABASE_URL` secret |
 | Supabase | project `xmznnjpflimsjvwftxpa` | Migrations 0001–0005, 0007–0009; sample data; pg_cron sample clock every 30 min |
 
+## Website (Netlify), 22 Oct
+The owner approved deploying. Project `worldgraph-kuq2` (site id `7ab098b6-0af0-4e4e-bed4-e7b608301c41`), https://worldgraph-kuq2.netlify.app. Team login is required on previews only; production is open.
+Migration 0014 (role `wg_web_reader`) is applied. The auto-mode classifier blocked me from generating the password and from uploading the repo with the Netlify CLI, so **the owner does 3 steps:**
+(B) In the Supabase SQL editor: `create role wg_web login password '...' in role wg_web_reader;`
+(C) In Netlify, the env var `DATABASE_URL` (secret) = the transaction pooler URI with user `wg_web.xmznnjpflimsjvwftxpa`.
+(A) Link the GitHub repo in Netlify, which auto-deploys `main`.
+Then verify: `curl -s https://worldgraph-kuq2.netlify.app/api/rpc` with the meta call. AI stays off until `ANTHROPIC_API_KEY` is set (with the $2/day cap, `WG_AI_DAILY_BUDGET_USD`).
+
 ## In flight
 
 Nothing is running. Main has all 8 screens plus QA fix run 1 (850 frontend + 451 backend tests pass). Live data comes in every 15 minutes (2,578 live stories on 19 Oct). Migrations 0010-0013 are applied by the next pipeline run (`wg db migrate`). Check with `select version from schema_migrations order by version desc limit 4`.
