@@ -66,7 +66,12 @@ test.describe("globe", () => {
     const topCard = isPhone
       ? page.getByRole("region", { name: "Top 5 now" })
       : page.getByRole("region", { name: "Top stories and all events" });
-    await expect(topCard.getByText(/^Sample( data)?$/).first()).toBeVisible();
+    await expect(
+      topCard
+        .getByText(/^Sample( data)?$/)
+        .filter({ visible: true })
+        .first(),
+    ).toBeVisible();
     await snap(page, testInfo, "globe-home");
   });
 

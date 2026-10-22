@@ -102,6 +102,8 @@ test.describe("product rules", () => {
       page
         .locator("main")
         .getByText(/^Sample( data)?$/)
+        // Some labels have a short and a long form, one hidden by screen width.
+        .filter({ visible: true })
         .first(),
     ).toBeVisible();
   });

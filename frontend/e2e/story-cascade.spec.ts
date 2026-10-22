@@ -88,7 +88,7 @@ test.describe("story and cascade", () => {
     await expect(cascadeNodes(page)).toHaveCount(one.nodes.length);
   });
 
-  test("on desktop the flow fits the whole cascade in view when it opens", async ({
+  test("on desktop the flow opens with the story and its direct causes and effects in view", async ({
     page,
     isPhone,
   }, testInfo) => {
@@ -98,9 +98,16 @@ test.describe("story and cascade", () => {
     await expect(flow).toBeVisible();
     await expect(cascadeNodes(page).first()).toBeVisible();
     await page.waitForTimeout(1000); // fitView settles after the first layout
+    // The flow frames everything when it fits at a readable size (zoom 1, 12 px
+    // labels); otherwise the story and its direct causes and effects
+    // (cascade-layout.ts fitPlan). Either way those must be whole on screen.
+    const direct = detailsPanel(page).getByRole("button", {
+      name: /^(This story|Cause, 1 step back|Effect, 1 step on): /,
+    });
+    expect(await direct.count()).toBeGreaterThan(1);
     const box = (await flow.boundingBox())!;
     const outside: string[] = [];
-    for (const node of await cascadeNodes(page).all()) {
+    for (const node of await direct.all()) {
       const b = await node.boundingBox();
       if (!b) continue;
       const inside =

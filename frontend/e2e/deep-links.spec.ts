@@ -41,7 +41,8 @@ test.describe("deep links", () => {
 
   test("a link keeps the screen, the panel, the window and the sector lens together", async ({ page }) => {
     await openApp(page, `#forecasts&forecast=forecast:fed-cut-next-meeting&w=30d&s=finance`);
-    await expect(page.getByRole("heading", { level: 1, name: "Crowd forecasts" })).toBeVisible();
+    // CSS, not the role: on phones the open sheet hides the screen behind it from the accessibility tree.
+    await expect(page.locator("main h1")).toHaveText("Crowd forecasts");
     await expect(
       detailsPanel(page).getByRole("heading", {
         level: 2,
@@ -56,7 +57,7 @@ test.describe("deep links", () => {
     await expect(detailsPanel(page).getByText("Activity in the last 24 hours")).toBeVisible();
   });
 
-  test("Back and Forward walk through what was opened", async ({ page, isPhone }) => {
+  test("Back and Forward walk through what was opened", async ({ page }) => {
     await openApp(page, `#story=${STORY}`);
     const panel = detailsPanel(page);
     await expect(panel.getByRole("heading", { level: 2, name: HEADLINE })).toBeVisible();
@@ -74,9 +75,9 @@ test.describe("deep links", () => {
     await expect(panel.getByRole("article", { name: HEADLINE })).toBeVisible();
 
     // A screen change is a step too.
-    if (isPhone) await page.keyboard.press("Escape");
     await page.goto(`/#forecasts`);
-    await expect(page.getByRole("heading", { level: 1, name: "Crowd forecasts" })).toBeVisible();
+    await expect(page.locator("main h1")).toHaveText("Crowd forecasts");
+    await expect(panel).toBeHidden();
     await page.goBack();
     await expect.poll(() => currentHash(page)).toBe(`#story=${STORY}`);
     await expect(panel.getByRole("article", { name: HEADLINE })).toBeVisible();

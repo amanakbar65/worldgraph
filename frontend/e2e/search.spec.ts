@@ -77,6 +77,16 @@ test.describe("command search", () => {
     ).toBeVisible();
   });
 
+  test("after a search opens a panel, the rest of the page still takes taps", async ({ page, isPhone }) => {
+    await openApp(page);
+    await searchAndOpen(page, isPhone, "Gujarat", "Gujarat");
+    await expect(detailsPanel(page).getByRole("heading", { level: 2, name: "Gujarat" })).toBeVisible();
+    // The search dialog has closed: nothing may stay blocked behind it.
+    expect(await page.evaluate(() => getComputedStyle(document.body).pointerEvents)).not.toBe("none");
+    await page.locator('header button[aria-label="Settings"]').click({ timeout: 20_000 });
+    await expect(detailsPanel(page).getByRole("heading", { level: 2, name: "Settings" })).toBeVisible();
+  });
+
   test("a search shows up under Recent next time", async ({ page, isPhone }) => {
     await openApp(page);
     await searchAndOpen(page, isPhone, "Mumbai", "Mumbai");

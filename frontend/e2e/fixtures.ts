@@ -131,6 +131,12 @@ export type ViewName = keyof typeof VIEW_LABELS;
 /** Switch screens the way a viewer would: the header on desktop, the tab bar (and "More") on phones. */
 export async function goToView(page: Page, view: ViewName): Promise<void> {
   const label = VIEW_LABELS[view];
+  // On phones an open sheet covers the tab bar: close it first, as a viewer would.
+  const sheet = page.getByRole("dialog", { name: "Details" });
+  if (await sheet.isVisible()) {
+    await sheet.getByRole("button", { name: "Close panel" }).click();
+    await expect(sheet).toBeHidden();
+  }
   const nav = page.getByRole("navigation", { name: "Screens" });
   const phoneTabs = nav.filter({ has: page.getByRole("button", { name: "More" }) });
   if (await phoneTabs.isVisible()) {
@@ -147,12 +153,14 @@ export async function goToView(page: Page, view: ViewName): Promise<void> {
 
 /** Open Ctrl/Cmd+K search: the shortcut on desktop, the header button on phones. Returns its text box. */
 export async function openSearch(page: Page, isPhone: boolean): Promise<Locator> {
-  if (isPhone)
-    await page
-      .locator("header")
-      .getByRole("button", { name: /^Search/ })
-      .click();
-  else await page.keyboard.press("Control+K");
+  // CSS, not the role: an open sheet hides the header from the accessibility
+  // tree on phones, but the button is still there to tap (and must take the tap).
+  if (isPhone) {
+    const button = page.locator('header button[aria-label^="Search"]');
+    await button.click({ timeout: 20_000 }).catch((error: unknown) => {
+      throw new Error(`The header's Search button didn't take the tap.\n${String(error)}`);
+    });
+  } else await page.keyboard.press("Control+K");
   const box = page.getByPlaceholder("Search places, companies, stories, forecasts…");
   await expect(box).toBeFocused();
   return box;
