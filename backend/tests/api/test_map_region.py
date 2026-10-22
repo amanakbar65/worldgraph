@@ -231,6 +231,13 @@ def test_meta_sources_include_enabled_providers_once(sdb):
     assert manifold["homepage"] == "https://manifold.markets"
 
 
+def test_meta_sources_cover_every_live_source(sdb):
+    """Settings → Data sources: GDELT, the news feeds, USGS and GDACS all appear with attribution."""
+    sources = {s["id"]: s for s in call(sdb, "meta")["sources"]}
+    assert {"gdelt", "news-feeds", "usgs", "gdacs"} <= set(sources)
+    assert "each story names and links its outlet" in sources["news-feeds"]["attribution"]
+
+
 def test_meta_with_live_data(sdb):
     add_story(sdb, "story:live-meta-test", hours_ago=2)
     data = check("meta", call(sdb, "meta"))
