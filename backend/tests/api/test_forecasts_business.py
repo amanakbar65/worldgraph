@@ -290,7 +290,10 @@ def add_forecast(
 ) -> None:
     """A live forecast with two snapshots (3 days and 1 hour ago)."""
     if provider == "polymarket":
-        conn.execute("update forecast_provider set enabled = true where id = 'polymarket'")
+        # Switched on and allowed in the US only (by default it is off and allowed nowhere).
+        conn.execute(
+            "update forecast_provider set enabled = true, allowed_countries = '{US}' where id = 'polymarket'"
+        )
     conn.execute(
         """insert into node (id, type, subtype, name, summary, geom)
            values (%s, 'forecast', 'binary', %s, %s, st_geogfromtext('SRID=4326;POINT(78.9 21.1)'))""",
@@ -640,6 +643,39 @@ def test_forecast_not_found(sdb: psycopg.Connection) -> None:
 def test_forecast_real_money_not_found(sdb: psycopg.Connection, viewer: dict[str, Any]) -> None:
     add_real_money(sdb)
     assert_not_found(sdb, "forecast", {"id": REAL_MONEY, **viewer})
+
+
+@pytest.mark.parametrize("country", ["GB", "FR", "AU", "XX"])
+def test_real_money_shows_only_on_the_allow_list(sdb: psycopg.Connection, country: str) -> None:
+    """Allowed in the US only: everywhere else (blocked there or unknown) fails closed, link and all."""
+    add_real_money(sdb)
+    other = {"_viewer": {"country": country}}
+    assert_not_found(sdb, "forecast", {"id": REAL_MONEY, **other})
+    assert REAL_MONEY not in forecast_ids(call(sdb, "forecasts", {**other, "sample": False}))
+    assert "polymarket" not in {s["id"] for s in call(sdb, "meta", other)["sources"]}
+    # The viewer country is compared in upper case.
+    assert REAL_MONEY in forecast_ids(call(sdb, "forecasts", {"_viewer": {"country": "us"}, "sample": False}))
+
+
+def test_real_money_provider_is_off_and_allowed_nowhere_by_default(sdb: psycopg.Connection) -> None:
+    row = sdb.execute(
+        "select enabled, allowed_countries, attribution from forecast_provider where id = 'polymarket'"
+    ).fetchone()
+    assert row is not None
+    assert (row["enabled"], row["allowed_countries"]) == (False, [])
+    assert "odds" not in row["attribution"].lower()
+    # Switched on but with an empty allow-list: still shown nowhere.
+    add_real_money(sdb)
+    sdb.execute("update forecast_provider set allowed_countries = '{}' where id = 'polymarket'")
+    assert REAL_MONEY not in forecast_ids(call(sdb, "forecasts", {**US, "sample": False}))
+    # A blocked country stays blocked even when listed.
+    sdb.execute("update forecast_provider set allowed_countries = '{US,IN}' where id = 'polymarket'")
+    assert_not_found(sdb, "forecast", {"id": REAL_MONEY, **IN})
+
+
+def test_allow_list_takes_only_country_codes(sdb: psycopg.Connection) -> None:
+    with pytest.raises(psycopg.errors.CheckViolation):
+        sdb.execute("update forecast_provider set allowed_countries = '{us}' where id = 'polymarket'")
 
 
 def test_forecast_real_money_for_allowed_viewer(sdb: psycopg.Connection) -> None:
