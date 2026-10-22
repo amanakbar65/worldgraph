@@ -145,3 +145,7 @@ See `SOURCES.md`. Each source's terms are checked before it's integrated and its
 - **Make the GitHub repo public:** worldgraph → Settings → General → Danger Zone → Change visibility.
 - **When the pipeline is ready, add one secret** (`DATABASE_URL`) to GitHub. Claude will give exact steps.
 - **Open the test link** and allow it to use the Supabase connector and Claude when asked.
+
+## Owner decision: sample data (22 Oct 2026)
+- **Now (testing):** the app runs on live news by default. The Settings → Sample data switch stays, off by default (change the default from `auto` to `off`), so a demo can turn it on.
+- **At the commercial launch:** remove sample data and everything that exists only for it: the seed loader and sample clock (pg_cron `wg-sample-clock`), the sample snapshot mode, the Settings switch, the sample labels and the `is_sample` filters. The app then runs on live data only. Tests keep their own fixtures.
