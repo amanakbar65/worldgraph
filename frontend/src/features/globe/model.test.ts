@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { StorySummary } from "@/api/contract";
 import type { GlobePalette, Rgba } from "@/lib/globe-color";
 
 import {
@@ -36,6 +37,7 @@ import {
   sampleLabelling,
   screenRadius,
   sortEventsForList,
+  storyForEvent,
   unwrapRing,
   visibleCap,
   zoomForScreenRadius,
@@ -369,6 +371,47 @@ describe("the list view", () => {
     expect(eventAsStory(event("a"), { isSample: false }).analysed).toBe(true);
     expect(eventAsStory(event("a", { analysed: false }), { isSample: false }).analysed).toBe(false);
     expect(eventAsStory(event("a", { analysed: false }), { isSample: false }).so_what).toBeNull();
+  });
+
+  it("marks sample events beside live news by the API's flag, and every event when all is sample", () => {
+    const invented = event("a", { is_sample: true });
+    const real = event("b", { is_sample: false });
+    expect(storyForEvent(invented, "some").is_sample).toBe(true);
+    expect(storyForEvent(real, "some").is_sample).toBe(false);
+    // Without the flag, an event beside live news isn't claimed as sample.
+    expect(storyForEvent(event("c"), "some").is_sample).toBe(false);
+    expect(storyForEvent(real, "all").is_sample).toBe(true);
+    expect(storyForEvent(invented, null).is_sample).toBe(false);
+  });
+
+  it("shows a story the Top 5 already sent the same way: its icon, arrow and place", () => {
+    const top: StorySummary = {
+      ...eventAsStory(event("a"), { isSample: true }),
+      event_type: "jobs_data",
+      direction: "down",
+      region: { id: "region:us.washington-dc", name: "Washington, D.C.", subtype: "city", country_id: "region:us" },
+    };
+    const known = new Map([[top.id, top]]);
+    const story = storyForEvent(event("a"), "some", known);
+    expect(story.event_type).toBe("jobs_data");
+    expect(story.direction).toBe("down");
+    expect(story.region?.name).toBe("Washington, D.C.");
+    expect(story.is_sample).toBe(true);
+    expect(storyForEvent(event("a"), null, known).is_sample).toBe(false);
+  });
+
+  it("uses the event's own icon, arrow and place when the API sends them", () => {
+    const story = eventAsStory(
+      event("a", {
+        event_type: "port_disruption",
+        direction: "up",
+        region: { id: "region:in-gj", name: "Gujarat", subtype: "state", country_id: "region:in" },
+      }),
+      { isSample: false },
+    );
+    expect(story.event_type).toBe("port_disruption");
+    expect(story.direction).toBe("up");
+    expect(story.region?.name).toBe("Gujarat");
   });
 });
 

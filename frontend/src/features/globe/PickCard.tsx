@@ -1,6 +1,7 @@
 import { ArrowRight, MousePointerClick, Users, X, ZoomIn } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
+import type { StorySummary } from "@/api/contract";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import { ForecastRow } from "@/components/ForecastRow";
 import { ImpactBadge } from "@/components/ImpactBadge";
@@ -13,15 +14,17 @@ import { cn } from "@/lib/utils";
 
 import type { PickInfo } from "./GlobeMap";
 import { GLASS } from "./GlobeControls";
-import { countryName, eventAsStory, type GlobeCountry, type GlobeEvent } from "./model";
+import { countryName, storyForEvent, type GlobeCountry, type GlobeEvent, type GlobeSample } from "./model";
 import { useGlobeHover } from "./store";
 import { DraftNote } from "./TopNow";
 
 export interface PickContext {
-  /** Every event on the globe is sample data (no live data yet). */
-  allSample: boolean;
+  /** Sample data on the globe: all of it (no live data yet), some (beside live news), or none. */
+  sample: GlobeSample;
   eventsById: ReadonlyMap<string, GlobeEvent>;
   countriesById: ReadonlyMap<string, GlobeCountry>;
+  /** Full stories another call already sent (the Top 5), by id. */
+  knownStories?: ReadonlyMap<string, StorySummary>;
 }
 
 /** Risk / opportunity / neutral counts, each with its icon. */
@@ -80,7 +83,10 @@ export function PickContent({
     case "event":
       return (
         <>
-          <StoryCard story={eventAsStory(info.event, { isSample: context.allSample })} variant="compact" />
+          <StoryCard
+            story={storyForEvent(info.event, context.sample, context.knownStories)}
+            variant="compact"
+          />
           {info.event.analysed === false && <DraftNote className="-mt-1.5 pb-2 pl-14" />}
           {hint && <Hint icon={MousePointerClick}>Click to open the story</Hint>}
         </>
@@ -132,7 +138,11 @@ export function PickContent({
     }
     case "hex": {
       const { hex } = info;
-      const lead = hex.ids.map((id) => context.eventsById.get(id)).find(Boolean);
+      const members = hex.ids.map((id) => context.eventsById.get(id)).filter((e) => e !== undefined);
+      const lead = members[0];
+      const sampleCount = members.filter(
+        (e) => storyForEvent(e, context.sample, context.knownStories).is_sample,
+      ).length;
       return (
         <>
           <div className="flex flex-col gap-1.5 p-3">
@@ -141,7 +151,12 @@ export function PickContent({
             </p>
             <ImpactCounts risk={hex.risk} opportunity={hex.opportunity} neutral={hex.neutral} />
             {lead && <p className="line-clamp-2 text-label text-fg-muted">Biggest: {lead.headline}</p>}
-            {context.allSample && <SampleBadge className="self-start" />}
+            {sampleCount > 0 && sampleCount === members.length && <SampleBadge className="self-start" />}
+            {sampleCount > 0 && sampleCount < members.length && (
+              <span className="flex items-center gap-1 text-label text-fg-muted">
+                Includes <SampleBadge />
+              </span>
+            )}
           </div>
           {hint && <Hint icon={ZoomIn}>Click to zoom in</Hint>}
         </>

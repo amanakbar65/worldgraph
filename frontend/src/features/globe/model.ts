@@ -10,11 +10,22 @@ import { SECTORS } from "@/lib/icons";
 import { mix, withAlpha, type GlobePalette, type Rgba } from "@/lib/globe-color";
 
 /**
- * An event as api.globe sends it. `analysed` is read when the API sends it
- * (false marks a draft from the live news pipeline); without it, an event
- * counts as analysed.
+ * An event as api.globe sends it. The optional fields are read when the API
+ * sends them:
+ * - `analysed`: false marks a draft from the live news pipeline; without it,
+ *   an event counts as analysed.
+ * - `is_sample`: marks an invented sample story when sample data is shown
+ *   beside live news; without it, only the list's header can say so.
+ * - `event_type`, `direction` and `region` (the city or state, else the
+ *   country): the same icon, ▲ ▼ and place as the story's other cards.
  */
-export type GlobeEvent = GlobeResponse["events"][number] & { analysed?: boolean };
+export type GlobeEvent = GlobeResponse["events"][number] & {
+  analysed?: boolean;
+  is_sample?: boolean;
+  event_type?: string;
+  direction?: StorySummary["direction"];
+  region?: StorySummary["region"];
+};
 export type GlobeArc = GlobeResponse["arcs"][number];
 export type GlobeCountry = GlobeResponse["countries"][number];
 export type LngLat = [number, number];
@@ -486,8 +497,9 @@ export function countryName(countryId: string | null | undefined): string | null
 
 /**
  * A globe event as a story summary, so the UI kit's StoryCard can show it.
- * The globe call doesn't send the analysis fields: the so-what stays null
- * (never invented) and the event icon falls back to the generic one.
+ * The globe call doesn't send the so-what (it stays null, never invented).
+ * The event icon, ▲ ▼ and place come from the event when the API sends
+ * them, else the generic icon, no arrow and the country.
  */
 export function eventAsStory(event: GlobeEvent, options: { isSample: boolean }): StorySummary {
   const name = countryName(event.country_id);
@@ -496,9 +508,9 @@ export function eventAsStory(event: GlobeEvent, options: { isSample: boolean }):
     kind: "event",
     headline: event.headline,
     so_what: null,
-    event_type: "",
+    event_type: event.event_type ?? "",
     impact: event.impact,
-    direction: null,
+    direction: event.direction ?? null,
     magnitude: event.magnitude,
     horizon: null,
     confidence: null,
@@ -506,15 +518,36 @@ export function eventAsStory(event: GlobeEvent, options: { isSample: boolean }):
     sectors: event.sectors,
     first_seen: event.first_seen,
     region:
-      event.country_id && name
+      event.region ??
+      (event.country_id && name
         ? { id: event.country_id, name, subtype: "country", country_id: event.country_id }
-        : null,
+        : null),
     lon: event.lon,
     lat: event.lat,
     source_count: 0,
     analysed: event.analysed !== false,
     is_sample: options.isSample,
   };
+}
+
+/** Sample data on the globe: all of it (no live data yet), some (switched on beside live data), or none. */
+export type GlobeSample = "all" | "some" | null;
+
+/**
+ * The card for a globe event, with `is_sample` true when it is invented
+ * sample data. When another call already sent the full story (the Top 5),
+ * that summary is used, so the same story shows the same icon, ▲ ▼ and
+ * place everywhere.
+ */
+export function storyForEvent(
+  event: GlobeEvent,
+  sample: GlobeSample,
+  known?: ReadonlyMap<string, StorySummary>,
+): StorySummary {
+  const story = known?.get(event.id);
+  const isSample =
+    sample === "all" || (sample === "some" && (event.is_sample === true || story?.is_sample === true));
+  return story ? { ...story, is_sample: isSample } : eventAsStory(event, { isSample });
 }
 
 // ---------------------------------------------------------------------------

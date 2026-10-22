@@ -6,6 +6,7 @@ import { __testing, useAnalysisStatus } from "@/ai/analysis-runner";
 import { DataError } from "@/api/source";
 import { useConnectorApproval } from "@/api/sources/connector";
 import { freshnessText } from "@/lib/status-freshness";
+import { useSettings } from "@/state/settings";
 
 const mocks = vi.hoisted(() => ({ meta: null as unknown }));
 
@@ -103,6 +104,20 @@ describe("StatusBar", () => {
     render(<StatusBar />);
     expect(screen.getByText("Live data")).toBeTruthy();
     expect(screen.getByText("Updated 4 min ago")).toBeTruthy();
+  });
+
+  it("says when sample data is switched on beside live data, on phones too", () => {
+    useSettings.setState({ sample: "on" });
+    try {
+      const { unmount } = render(<StatusBar />);
+      expect(screen.getByText("Live data with sample data")).toBeTruthy();
+      unmount();
+      viewport(390);
+      render(<StatusBar placement="header" />);
+      expect(screen.getByText("Live + sample")).toBeTruthy();
+    } finally {
+      useSettings.setState({ sample: "auto" });
+    }
   });
 
   it("labels sample data and leaves out the freshness note", () => {

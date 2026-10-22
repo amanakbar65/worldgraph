@@ -7,6 +7,7 @@ import { approveWaitingCalls, useConnectorApproval } from "@/api/sources/connect
 import { useIsDesktop } from "@/lib/hooks";
 import { freshnessText } from "@/lib/status-freshness";
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/state/settings";
 
 /** Full text on wider screens, a shorter one on phones. */
 function Responsive({ long, short }: { long: string; short: string }) {
@@ -81,6 +82,7 @@ function StatusPill({ placement }: { placement: "float" | "header" }) {
   const analysis = useAnalysisStatus((s) => s.status);
   const stop = useAnalysisStatus((s) => s.stop);
   const now = useNow();
+  const sampleOn = useSettings((s) => s.sample) === "on";
 
   const showingSample = meta.data?.data.showing_sample ?? false;
   let data = meta.isPlaceholderData
@@ -88,7 +90,12 @@ function StatusPill({ placement }: { placement: "float" | "header" }) {
     : { long: "Connecting…", short: "Connecting…" };
   let tone: "ok" | "warn" | "muted" = "muted";
   if (state.status === "live") {
-    data = showingSample ? { long: "Sample data", short: "Sample" } : { long: "Live data", short: "Live" };
+    data = showingSample
+      ? { long: "Sample data", short: "Sample" }
+      : sampleOn
+        ? // Sample data switched on beside live news: say so, not just "Live".
+          { long: "Live data with sample data", short: "Live + sample" }
+        : { long: "Live data", short: "Live" };
     tone = showingSample ? "muted" : "ok";
   } else if (state.status === "snapshot") {
     data = { long: `Sample snapshot · ${state.reason.message}`, short: "Sample snapshot" };
