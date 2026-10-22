@@ -2,7 +2,7 @@
 
 The live state of the build: what's done, what's in flight, and exactly how to resume. Updated at every milestone and before any expected pause (usage limits, long agent runs). `PROGRESS.md` is the history; this file is the current state.
 
-**Last updated:** 22 Oct 2026, 14:30 UTC, saved before a session limit. The website is live (see below). The test link is still v2. **In flight:** `wf_8041ad46-903` (`orchestration/worldgraph-final.js`). The live-snapshot agent has **finished** (branch `wip/wf_8041ad46-903-1`, 2 commits; its report is in that run's journal). The e2e finalizer is **running** (`wip/wf_8041ad46-903-2`, 17 commits, saved; it also merges the snapshot branch). **Owner decision (22 Oct):** live news by default; set the Sample data default to `off`, keeping the switch; scrap sample data entirely at the commercial launch (see PLAN.md). **Next session:** loss report for wf_8041ad46-903; set the sample default to off (settings DEFAULTS, plus tests); merge -1 and -2 after the checks (or relaunch e2e with resume = `wip/wf_8041ad46-903-2`); `npm run snapshot:live -- https://worldgraph-kuq2.netlify.app` to build the real-news snapshot; build:artifact; republish with `capabilities` from ARTIFACT.md.
+**Last updated:** 22 Oct 2026, 18:05 UTC. **Test link v3** published (QA round 4 fixes, Sample data off by default, real-news snapshot as of 22 Oct 17:52, db rules: root view/admin plus data/users/{self} interact; checked with ArtifactData). Website live and auto-deploying. The live-snapshot work is merged (0 lost). The final run `wf_8041ad46-903` lost 21% (e2e 73% kept). **In flight:** one e2e agent (Agent tool, worktree) resuming from `wip/wf_8041ad46-903-2`; it pushes to its own `wip/<worktree>` branch. **Then:** merge e2e after the checks, fix any app_bugs it reports, republish (`capabilities` as in ARTIFACT.md). Refresh the snapshot any time with `cd frontend && npm run snapshot:live -- https://worldgraph-kuq2.netlify.app`.
 
 ## How to resume (any new session)
 
@@ -77,6 +77,7 @@ Then fix the remaining items with `worldgraph-qa-fix.js`: the shell agent did no
 | When | Run | Spent | Retained | Lost | Notes |
 | --- | --- | --- | --- | --- | --- |
 | 15 Oct 11:50 UTC limit | QA `wf_fe3c223c-34c` | 7.8 L | 45% | 55% | e2e 100% kept (1,167 lines of tests); correctness reviewer 0% kept (notes were in an ignored folder). Its 2 findings were rescued by hand from its transcript into `orchestration/qa-notes/`. The saver now keeps notes files. |
+| 22 Oct 14:40 UTC limit | final `wf_8041ad46-903` | 16.4 L | 79% | 21% | snapshot 100% (merged); e2e 73% on `wip/wf_8041ad46-903-2` |
 | 22 Oct 07:50 UTC limit | QA `wf_1734d928-feb` | 39.9 L | 81% | 19% | 3 reviews finished (43 findings saved); e2e 71% kept on `wip/wf_1734d928-feb-1` |
 | 21 Oct 17:30 UTC limit | fixes `wf_c203058a-8f7` (a11y) | 4.4 L | 96% | 4% | all 12 commits plus the WIP snapshot merged |
 | 15 Oct 21:50 UTC limit | QA `wf_5401d9b0-dd2` + fixes `wf_46134b48-10a` | 15.8 L | 54% | 46% | Fixers 99% kept and merged; e2e 50%; a11y reviewer 0% (notes unsaved). |
