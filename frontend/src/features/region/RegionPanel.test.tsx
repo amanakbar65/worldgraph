@@ -45,7 +45,7 @@ function renderPanel(id = "region:in") {
 describe("RegionPanel (a country)", () => {
   it("asks for the region in the current window", () => {
     renderPanel();
-    expect(mocks.calls).toContainEqual({ name: "region", args: { id: "region:in", window: "7d", sample: undefined } });
+    expect(mocks.calls).toContainEqual({ name: "region", args: { id: "region:in", window: "7d", sample: false } });
   });
 
   it("shows the name, level and the sample label, with no breadcrumb for a country", () => {

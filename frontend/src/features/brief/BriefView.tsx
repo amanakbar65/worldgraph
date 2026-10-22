@@ -102,7 +102,7 @@ export default function BriefView() {
         <header className="flex flex-wrap items-end gap-x-4 gap-y-3 border-b border-line pb-5">
           <div className="flex min-w-0 flex-1 basis-64 flex-col gap-1">
             <div className="min-h-4 text-label font-medium tracking-wide text-fg-subtle uppercase">
-              {brief ? briefDate(brief.generated_at) : <Skeleton className="h-4 w-36" />}
+              {brief ? briefDate(brief.generated_at) : !query.isError && <Skeleton className="h-4 w-36" />}
             </div>
             <h1 className="text-figure font-semibold tracking-tight text-fg">Daily brief</h1>
             <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-body text-fg-muted">

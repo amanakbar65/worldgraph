@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { RpcName } from "@/api/contract";
 import { DataError } from "@/api/source";
-import { snapshotKeyOf, snapshotManifest } from "@/lib/snapshot-plan";
+import { snapshotKeyOf, snapshotManifest, snapshotPlan } from "@/lib/snapshot-plan";
 import { useNav } from "@/state/nav";
 import { useSettings } from "@/state/settings";
 
@@ -242,7 +242,8 @@ describe("GlobeView on a desktop", () => {
 
   it("asks for the globe and the Top 5 with the first frame's argument shapes", () => {
     renderGlobe();
-    const keys = Object.keys(snapshotManifest());
+    // The default (Sample data off) first frame comes from a live snapshot.
+    const keys = Object.keys(snapshotManifest(snapshotPlan("live")));
     for (const name of ["globe", "top", "meta"]) {
       const call = mocks.calls.find((c) => c.name === name);
       expect(call, name).toBeTruthy();

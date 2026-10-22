@@ -5,7 +5,7 @@ import { viewerLooksIndian } from "@/platform/runtime";
 /** Per-viewer preferences, kept in this browser only. */
 export interface Settings {
   theme: "dark" | "light" | "system";
-  /** Sample data: "auto" shows it only while there is no live data yet. */
+  /** Sample data: off by default; "auto" shows it only while there is no live data yet. */
   sample: "auto" | "on" | "off";
   /** Map borders: India's official view, or the international default. */
   borders: "auto" | "india" | "international";
@@ -14,7 +14,8 @@ export interface Settings {
 }
 
 const KEY = "worldgraph.settings.v1";
-const DEFAULTS: Settings = { theme: "dark", sample: "auto", borders: "auto", calm: false };
+// Live news by default (owner, 22 Oct): sample data only when the viewer turns it on.
+const DEFAULTS: Settings = { theme: "dark", sample: "off", borders: "auto", calm: false };
 
 function load(): Settings {
   try {

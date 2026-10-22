@@ -42,7 +42,7 @@ function renderPanel(ids = IDS) {
 describe("ComparePanel with three places", () => {
   it("asks for all three in the current window", () => {
     renderPanel();
-    expect(mocks.calls).toContainEqual({ name: "compare", args: { ids: IDS, window: "7d", sample: undefined }, enabled: true });
+    expect(mocks.calls).toContainEqual({ name: "compare", args: { ids: IDS, window: "7d", sample: false }, enabled: true });
   });
 
   it("heads each column with the place; tapping one opens it", () => {

@@ -65,7 +65,7 @@ const COPY: Record<DataErrorKind | "not_found" | "unknown", Copy> = {
     icon: WifiOff,
     title: "This view needs live data",
     description:
-      "Live data comes through the Supabase connector in claude.ai. Meanwhile the globe, Forecasts and Brief show sample data.",
+      "Live data comes through the Supabase connector in claude.ai.",
     retry: null,
   },
   not_found: {

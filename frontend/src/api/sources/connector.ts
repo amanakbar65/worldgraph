@@ -78,7 +78,7 @@ function waitForApproval(
  * The viewer tapped "Allow": repeat the first waiting call once (the shell
  * asks while it waits). If that went through, repeat the others once each;
  * if it needed approval again, the viewer said no, so every waiting call
- * fails with "not allowed" (and the app shows the sample snapshot instead).
+ * fails with "not allowed" (the app then shows a live snapshot if it has one).
  */
 export async function approveWaitingCalls(): Promise<void> {
   const { waiting, asking } = useConnectorApproval.getState();
@@ -112,7 +112,7 @@ export async function approveWaitingCalls(): Promise<void> {
 }
 
 const notAllowed = () =>
-  new DataError("not_allowed", "Live data wasn't approved, so WorldGraph is showing sample data.");
+  new DataError("not_allowed", "Live data wasn't approved.");
 
 /**
  * Drop the platform's cached connector reads (after a write), so the next
