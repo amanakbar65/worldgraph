@@ -18,6 +18,11 @@ See `CHECKPOINT.md` for the live state and resume steps.
 
 ## Log
 
+### 21-22 Oct 2026: owner requests and the a11y fixes, test link v2
+- Ask is a chat thread with follow-ups (history sent to both AI engines and the website function). The globe turns slowly after Home or 30 s idle and stops on any input. The logo is Home on every screen size.
+- A11y and design: focus moves into panels and search and back to the opener; the phone status pill sits in the header; graph key and keyboard order; cascade text at least 12 px; 40 px taps; favicon; forecast empty state and ForecastRow wrap; the minute clock catches up.
+- Test link republished as version 2: https://claude.ai/artifact/XfUP7NoqKsf471epDNFRJN. 935 frontend tests pass.
+
 ### 19 Oct 2026: test link published
 - Merged QA fix run 1 (backend + shell): 14 correctness findings fixed, plus `analysed`/`truncated` on api.globe. 850 frontend tests, 451 backend tests pass. Migrations 0010-0013 apply on the next pipeline run.
 - Published the test link: https://claude.ai/artifact/XfUP7NoqKsf471epDNFRJN (mcp Supabase execute_sql, sample, db, user).
