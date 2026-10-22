@@ -4,6 +4,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { analysisStatusText, useAnalysisStatus } from "@/ai/analysis-runner";
 import { useConnection, useRpc } from "@/api/client";
 import { approveWaitingCalls, useConnectorApproval } from "@/api/sources/connector";
+import { useSnapshot } from "@/api/sources/static";
+import { reasonText, snapshotText } from "@/app/snapshot-text";
 import { useIsDesktop } from "@/lib/hooks";
 import { freshnessText } from "@/lib/status-freshness";
 import { cn } from "@/lib/utils";
@@ -88,11 +90,19 @@ function StatusPill({ placement, wide }: { placement: "float" | "header"; wide: 
   const stop = useAnalysisStatus((s) => s.stop);
   const now = useNow();
   const sampleOn = useSettings((s) => s.sample) === "on";
+  const snapshotKind = useSnapshot((s) => s.kind);
+  const snapshotAsOf = useSnapshot((s) => s.asOf);
 
   const showingSample = meta.data?.data.showing_sample ?? false;
-  let data = meta.isPlaceholderData
-    ? { long: "Saved sample · connecting to live data…", short: "Connecting…" }
-    : { long: "Connecting…", short: "Connecting…" };
+  const snapshot = snapshotText(snapshotKind, snapshotAsOf, now);
+  let data = { long: "Connecting…", short: "Connecting…" };
+  if (meta.isPlaceholderData) {
+    // The first frame is the bundled snapshot (a sample one only with Sample data on).
+    data =
+      snapshotKind === "live"
+        ? { long: `${snapshot.long} · connecting…`, short: snapshot.short }
+        : { long: "Saved sample · connecting to live data…", short: "Connecting…" };
+  }
   let tone: "ok" | "warn" | "muted" = "muted";
   if (state.status === "live") {
     data = showingSample
@@ -103,7 +113,11 @@ function StatusPill({ placement, wide }: { placement: "float" | "header"; wide: 
         : { long: "Live data", short: "Live" };
     tone = showingSample ? "muted" : "ok";
   } else if (state.status === "snapshot") {
-    data = { long: `Sample snapshot · ${state.reason.message}`, short: "Sample snapshot" };
+    data = { long: `${snapshot.long} · ${reasonText(state.reason)}`, short: snapshot.short };
+    tone = "warn";
+  } else if (state.status === "disconnected") {
+    // Nothing stands in for live data here: say so plainly (each screen offers its retry).
+    data = { long: `Live data isn't connected · ${reasonText(state.reason)}`, short: "Not connected" };
     tone = "warn";
   } else if (state.status === "error") {
     data = { long: state.reason.message, short: "Data unavailable" };

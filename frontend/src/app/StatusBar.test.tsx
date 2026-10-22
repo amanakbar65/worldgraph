@@ -5,11 +5,12 @@ import { StatusBar } from "./StatusBar";
 import { __testing, useAnalysisStatus } from "@/ai/analysis-runner";
 import { DataError } from "@/api/source";
 import { useConnectorApproval } from "@/api/sources/connector";
+import { useSnapshot } from "@/api/sources/static";
 import { freshnessText } from "@/lib/status-freshness";
 import { useNav } from "@/state/nav";
 import { useSettings } from "@/state/settings";
 
-const mocks = vi.hoisted(() => ({ meta: null as unknown }));
+const mocks = vi.hoisted(() => ({ meta: null as unknown, placeholder: false }));
 
 vi.mock("@/api/client", async () => {
   const { create } = await import("zustand");
@@ -17,7 +18,7 @@ vi.mock("@/api/client", async () => {
     useConnection: create(() => ({
       state: { status: "live", source: "connector" } as Record<string, unknown>,
     })),
-    useRpc: () => ({ data: mocks.meta, isLoading: false, error: null }),
+    useRpc: () => ({ data: mocks.meta, isLoading: false, error: null, isPlaceholderData: mocks.placeholder }),
   };
 });
 
@@ -55,6 +56,8 @@ beforeEach(() => {
   useConnection.setState({ state: { status: "live", source: "connector" } });
   useConnectorApproval.setState({ waiting: [], asking: false });
   mocks.meta = meta(new Date(Date.now() - 4 * 60_000).toISOString());
+  mocks.placeholder = false;
+  useSnapshot.setState({ kind: null, asOf: null, data: new Map() });
 });
 afterEach(() => {
   cleanup();
@@ -117,7 +120,10 @@ describe("StatusBar", () => {
     unmount();
 
     useConnectorApproval.setState({ waiting: [], asking: false });
-    useAnalysisStatus.setState({ status: { phase: "running", count: 6, batch: 1, analysed: 0 }, stop: vi.fn() });
+    useAnalysisStatus.setState({
+      status: { phase: "running", count: 6, batch: 1, analysed: 0 },
+      stop: vi.fn(),
+    });
     render(<StatusBar placement="header" />);
     expect(screen.getByText("Analysing…")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Stop analysing stories" })).toBeTruthy();
@@ -162,6 +168,90 @@ describe("StatusBar", () => {
     });
     render(<StatusBar />);
     expect(screen.getByText(/Sample snapshot · Add the Supabase connector/)).toBeTruthy();
+  });
+
+  describe("with a live snapshot", () => {
+    const asOf = new Date(Date.now() - 3 * 3_600_000).toISOString();
+    beforeEach(() => useSnapshot.setState({ kind: "live", asOf, data: new Map([["meta:{}", {}]]) }));
+
+    it("says the first frame is a snapshot and when it was taken, never live data", () => {
+      useConnection.setState({ state: { status: "connecting" } });
+      mocks.placeholder = true;
+      mocks.meta = meta(asOf);
+      const { unmount } = render(<StatusBar />);
+      expect(screen.getByText(/^Snapshot as of .+ · connecting…$/)).toBeTruthy();
+      expect(screen.queryByText(/Live data/)).toBeNull();
+      expect(screen.queryByText(/Updated/)).toBeNull();
+      unmount();
+      viewport(390);
+      render(<StatusBar placement="header" />);
+      expect(screen.getByText("Snapshot · 3 h ago")).toBeTruthy();
+    });
+
+    it("says it is showing the snapshot when the connector isn't there", () => {
+      useConnection.setState({
+        state: {
+          status: "snapshot",
+          reason: new DataError(
+            "not_allowed",
+            "Live data wasn't approved, so WorldGraph is showing sample data.",
+          ),
+        },
+      });
+      render(<StatusBar />);
+      expect(screen.getByText(/^Snapshot as of .+ · Live data wasn't approved\.$/)).toBeTruthy();
+      expect(screen.queryByText(/sample/i)).toBeNull();
+    });
+  });
+
+  it("calls a sample first frame a saved sample", () => {
+    useSnapshot.setState({
+      kind: "sample",
+      asOf: new Date().toISOString(),
+      data: new Map([["meta:{}", {}]]),
+    });
+    useConnection.setState({ state: { status: "connecting" } });
+    mocks.placeholder = true;
+    mocks.meta = meta(null, true);
+    render(<StatusBar />);
+    expect(screen.getByText("Saved sample · connecting to live data…")).toBeTruthy();
+  });
+
+  it("says plainly when live data isn't connected and nothing stands in for it", () => {
+    useConnection.setState({
+      state: {
+        status: "disconnected",
+        reason: new DataError(
+          "connector_missing",
+          "Add the Supabase connector in claude.ai Settings → Connectors.",
+        ),
+      },
+    });
+    mocks.meta = undefined;
+    const { unmount } = render(<StatusBar />);
+    expect(
+      screen.getByText(
+        "Live data isn't connected · Add the Supabase connector in claude.ai Settings → Connectors.",
+      ),
+    ).toBeTruthy();
+    unmount();
+    viewport(390);
+    render(<StatusBar placement="header" />);
+    expect(screen.getByText("Not connected")).toBeTruthy();
+  });
+
+  it("keeps the Allow button while live data isn't connected", () => {
+    useConnection.setState({
+      state: { status: "disconnected", reason: new DataError("not_allowed", "Live data wasn't approved.") },
+    });
+    useConnectorApproval.setState({
+      waiting: [{ id: 1, run: vi.fn(), resolve: vi.fn(), reject: vi.fn() }],
+      asking: false,
+    });
+    mocks.meta = undefined;
+    render(<StatusBar />);
+    expect(screen.getByText("Live data isn't connected · Live data wasn't approved.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Allow live data from Supabase" })).toBeTruthy();
   });
 
   it("shows on-use analysis with a Stop button", () => {
