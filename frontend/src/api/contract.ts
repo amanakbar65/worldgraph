@@ -254,6 +254,7 @@ export const MetaResponse = z.object({
       homepage: z.string().nullable(),
     }),
   ),
+  viewer_country: z.string().nullable().optional(), // website only: set by the RPC endpoint from the host's geo data
 });
 export type MetaResponse = z.infer<typeof MetaResponse>;
 

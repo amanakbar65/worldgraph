@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import { browserLooksIndian } from "@/platform/runtime";
+import { viewerLooksIndian } from "@/platform/runtime";
 
 /** Per-viewer preferences, kept in this browser only. */
 export interface Settings {
@@ -44,9 +44,16 @@ export function sampleArg(setting: Settings["sample"]): boolean | undefined {
   return setting === "auto" ? undefined : setting === "on";
 }
 
+/**
+ * The viewer's country as the website's server saw it (Netlify geo, sent with
+ * meta). Null on the test link and until meta arrives; never set by the browser.
+ */
+export const useServerViewer = create<{ country: string | null }>(() => ({ country: null }));
+
 export function useIndiaBorders(): boolean {
   const borders = useSettings((s) => s.borders);
-  return borders === "india" || (borders === "auto" && browserLooksIndian());
+  const serverCountry = useServerViewer((s) => s.country);
+  return borders === "india" || (borders === "auto" && viewerLooksIndian(serverCountry));
 }
 
 export function prefersReducedMotion(): boolean {

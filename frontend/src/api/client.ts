@@ -7,7 +7,7 @@ import { ConnectorSource } from "./sources/connector";
 import { HttpSource } from "./sources/http";
 import { loadSnapshot, snapshotKey, StaticSource, useSnapshot } from "./sources/static";
 import { TARGET } from "@/platform/runtime";
-import { sampleArg, useIndiaBorders, useSettings } from "@/state/settings";
+import { sampleArg, useIndiaBorders, useServerViewer, useSettings } from "@/state/settings";
 
 /** What the app is currently showing: live data, the bundled snapshot, or nothing. */
 export type ConnectionState =
@@ -171,7 +171,15 @@ export function useRpc<N extends RpcName>(
   );
   return useQuery<RpcResponse<N>, Error>({
     queryKey: rpcKey(name, args),
-    queryFn: ({ signal }) => dataSource.call(name, args, { signal }),
+    queryFn: ({ signal }) =>
+      dataSource.call(name, args, { signal }).then((data) => {
+        // The website's meta carries the viewer's country (for India's borders).
+        if (name === "meta") {
+          const country = (data as RpcResponse<"meta">).viewer_country ?? null;
+          if (useServerViewer.getState().country !== country) useServerViewer.setState({ country });
+        }
+        return data;
+      }),
     placeholderData: (() => placeholder) as UseQueryOptions<RpcResponse<N>, Error>["placeholderData"],
     ...options,
   });
