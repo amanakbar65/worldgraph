@@ -571,6 +571,15 @@ describe("GlobeView on a phone", () => {
     );
   });
 
+  it("never squeezes the time window below its labels (the browser check is toolbar.mjs in fix-ui)", () => {
+    renderGlobe();
+    const group = screen.getByRole("radiogroup", { name: "Time window" });
+    // Not narrower than its content, with tight segments so the bar fits at 360 px.
+    expect(group.className).toContain("min-w-fit");
+    expect(group.className).not.toContain("min-w-0");
+    expect(group.className).toContain("[&>*]:px-1.5");
+  });
+
   it("opens the list from the bar and closes it again", () => {
     renderGlobe();
     fireEvent.click(screen.getByRole("button", { name: "List of events" }));

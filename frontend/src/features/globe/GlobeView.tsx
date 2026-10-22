@@ -695,11 +695,12 @@ export default function GlobeView() {
           </>
         ) : (
           <>
-            <div className="pointer-events-auto absolute top-3 right-3 left-3 flex items-center gap-2">
+            <div className="pointer-events-auto absolute top-3 right-3 left-3 flex items-center gap-1.5">
+              {/* Never narrower than its labels ("24 h / 7 d / 30 d" in tight segments), so they don't truncate at 360 px. */}
               <WindowControl
                 value={timeWindow}
                 onChange={setWindow}
-                className="min-w-0 flex-1 [&>*]:flex-1"
+                className="min-w-fit flex-1 [&>*]:flex-1 [&>*]:px-1.5"
               />
               {!mapError && replayButton}
               <SectorLensButton selected={sectors} onToggle={toggleSector} onClear={clearSectors} />

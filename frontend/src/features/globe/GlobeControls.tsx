@@ -212,7 +212,8 @@ export function SectorLensButton({
             GLASS,
             "relative text-fg",
             labelled && "px-3",
-            !labelled && count > 0 && "w-auto gap-1.5 px-3",
+            // Lens on: icon and count, kept tight so the phone toolbar still fits at 360 px.
+            !labelled && count > 0 && "w-auto gap-1 px-2.5",
             count > 0 && "border-fg/40",
           )}
           aria-label={labelled ? undefined : `Sector lens: ${summary}`}
