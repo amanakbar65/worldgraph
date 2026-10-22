@@ -12,13 +12,19 @@ export function Header() {
   const setView = useNav((s) => s.setView);
   const open = useNav((s) => s.open);
   const setSearchOpen = useUi((s) => s.setSearchOpen);
+  const requestHome = useUi((s) => s.requestHome);
   const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
   return (
     <header className="relative z-30 flex h-14 shrink-0 items-center gap-2 border-b border-line bg-bg/90 px-3 backdrop-blur sm:px-4">
       <button
         type="button"
-        onClick={() => setView("globe")}
+        // Phones have no globe Home control, so the logo is Home everywhere:
+        // back to the globe, fly to the home view and start the slow turn.
+        onClick={() => {
+          setView("globe");
+          requestHome();
+        }}
         // The ::before layers on the header's buttons make each tap area 40 px.
         className="relative flex items-center gap-2 rounded-md px-1 py-1 text-body font-semibold tracking-tight before:absolute before:-inset-1 before:content-['']"
         aria-label="WorldGraph home"

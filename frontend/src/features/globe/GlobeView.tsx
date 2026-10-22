@@ -64,6 +64,7 @@ import {
 import { HoverCard, SelectionCard, type PickContext } from "./PickCard";
 import { hoveredItem, useGlobeHover, useGlobeUi } from "./store";
 import { TopNowBody, TopNowStrip } from "./TopNow";
+import { useUi } from "@/state/ui";
 
 const HOME_CENTER: LngLat = [25, 20];
 const COLUMN = 352; // the desktop left column (22rem)
@@ -180,6 +181,24 @@ export default function GlobeView() {
   const fly = useCallback((move: CameraMove) => {
     setCamera({ ...move, nonce: Date.now() + Math.random() });
   }, []);
+
+  // The header logo is Home too (phones have no Home control): same flight as the Home button.
+  useEffect(() => {
+    const goHome = () => {
+      if (!useUi.getState().homePending) return;
+      useUi.getState().clearHome();
+      fly({ kind: "reset" });
+    };
+    // A logo press from another screen mounts the globe with the request already waiting.
+    const frame = requestAnimationFrame(goHome);
+    const unsubscribe = useUi.subscribe((s) => {
+      if (s.homePending) goHome();
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      unsubscribe();
+    };
+  }, [fly]);
 
   // --- States/provinces and cities, loaded when they matter -----------------
   const panelRegion = panel?.kind === "region" ? panel.id : null;

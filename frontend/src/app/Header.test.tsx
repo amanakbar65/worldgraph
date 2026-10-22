@@ -44,3 +44,17 @@ describe("Header", () => {
     expect(screen.getByRole("button", { name: /^Search places/ }).parentElement).toBe(settings.parentElement);
   });
 });
+
+describe("Header logo", () => {
+  afterEach(cleanup);
+
+  it("is Home everywhere: back to the globe and asks the globe to fly home", async () => {
+    const { useNav } = await import("@/state/nav");
+    const { useUi } = await import("@/state/ui");
+    useUi.setState({ homePending: false });
+    render(<Header />);
+    screen.getByRole("button", { name: "WorldGraph home" }).click();
+    expect(useNav.getState().view).toBe("globe");
+    expect(useUi.getState().homePending).toBe(true);
+  });
+});
