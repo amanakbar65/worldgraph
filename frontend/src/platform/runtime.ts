@@ -39,14 +39,26 @@ export function capability<K extends CapabilityName>(name: K): Promise<ClaudeCap
 }
 
 /**
- * Guess whether the viewer is in India, for India's official map borders.
- * The website gets the country from Netlify's geo header via api.meta;
- * inside claude.ai we only have the browser's timezone.
+ * Whether the viewer is likely in India, for India's official map borders
+ * (borders "auto"). On the website the server decides the country from
+ * Netlify's geo data and returns it as api.meta's `viewer_country`; inside
+ * claude.ai there is none, so the browser's timezone and language decide.
  */
+export function viewerLooksIndian(serverCountry?: string | null): boolean {
+  return serverCountry === "IN" || browserLooksIndian();
+}
+
+/** The browser's own hint: India's timezone, or a language set for India (en-IN, hi-IN, …). */
 export function browserLooksIndian(): boolean {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return tz === "Asia/Kolkata" || tz === "Asia/Calcutta";
+    if (tz === "Asia/Kolkata" || tz === "Asia/Calcutta") return true;
+  } catch {
+    // No timezone: fall through to the language.
+  }
+  try {
+    const languages = navigator.languages?.length ? navigator.languages : [navigator.language];
+    return languages.some((tag) => /^[a-z]{2,3}(-[a-z]{4})?-in$/i.test(tag ?? ""));
   } catch {
     return false;
   }
