@@ -2,7 +2,16 @@ import { create } from "zustand";
 
 import type { EntityType } from "@/api/contract";
 
-import { DEFAULT_FILTERS, type GraphFilters, type NodeLimit, type RegionPick } from "./graph-data";
+import { defaultFilters, type GraphFilters, type NodeLimit, type RegionPick } from "./graph-data";
+
+/** Phones (below the 768 px desktop layout) start with fewer items. */
+function onPhone(): boolean {
+  try {
+    return !window.matchMedia("(min-width: 768px)").matches;
+  } catch {
+    return false;
+  }
+}
 
 /** Whole graph, or the neighbourhood of one node. */
 export type GraphScope = { kind: "global" } | { kind: "local"; id: string; name: string; depth: 1 | 2 | 3 };
@@ -36,7 +45,7 @@ interface GraphState {
  */
 export const useGraphState = create<GraphState>((set) => ({
   scope: { kind: "global" },
-  filters: DEFAULT_FILTERS,
+  filters: defaultFilters(onPhone()),
   pinned: null,
   listView: false,
   setScope: (scope) => set({ scope }),
@@ -61,7 +70,7 @@ export const useGraphState = create<GraphState>((set) => ({
   setAllTime: (allTime) => set((s) => ({ filters: { ...s.filters, allTime } })),
   setMinConfidence: (minConfidence) => set((s) => ({ filters: { ...s.filters, minConfidence } })),
   setLimit: (limit) => set((s) => ({ filters: { ...s.filters, limit } })),
-  resetFilters: () => set((s) => ({ filters: { ...DEFAULT_FILTERS, allTime: s.filters.allTime } })),
+  resetFilters: () => set((s) => ({ filters: { ...defaultFilters(onPhone()), allTime: s.filters.allTime } })),
   pin: (id) => set({ pinned: id ? { id, nonce: Date.now() } : null }),
   setListView: (listView) => set({ listView }),
 }));
