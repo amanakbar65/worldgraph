@@ -285,10 +285,10 @@ export async function visibleText(page: Page): Promise<string> {
   return page.locator("body").innerText();
 }
 
-/** Save a full-window screenshot under test-results/e2e/ for a person to look at. */
+/** Save a full-window screenshot under test-results/final-e2e/ for a person to look at. */
 export async function snap(page: Page, testInfo: TestInfo, name: string): Promise<void> {
   await page.screenshot({
-    path: `test-results/e2e/${testInfo.project.name}/${name}.png`,
+    path: `test-results/final-e2e/${testInfo.project.name}/${name}.png`,
     animations: "disabled",
   });
 }
