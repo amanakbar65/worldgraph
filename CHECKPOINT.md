@@ -77,6 +77,7 @@ Then fix the remaining items with `worldgraph-qa-fix.js`: the shell agent did no
 | When | Run | Spent | Retained | Lost | Notes |
 | --- | --- | --- | --- | --- | --- |
 | 15 Oct 11:50 UTC limit | QA `wf_fe3c223c-34c` | 7.8 L | 45% | 55% | e2e 100% kept (1,167 lines of tests); correctness reviewer 0% kept (notes were in an ignored folder). Its 2 findings were rescued by hand from its transcript into `orchestration/qa-notes/`. The saver now keeps notes files. |
+| 22 Oct 22:40 UTC limit | e2e agent + 2 research agents (Agent tool) | 17.5 L | 87% | 13% | e2e 99% (wip/agent-a77a20ba8b48c074c); research 0% on GitHub but transcripts intact, so resumed |
 | 22 Oct 14:40 UTC limit | final `wf_8041ad46-903` | 16.4 L | 79% | 21% | snapshot 100% (merged); e2e 73% on `wip/wf_8041ad46-903-2` |
 | 22 Oct 07:50 UTC limit | QA `wf_1734d928-feb` | 39.9 L | 81% | 19% | 3 reviews finished (43 findings saved); e2e 71% kept on `wip/wf_1734d928-feb-1` |
 | 21 Oct 17:30 UTC limit | fixes `wf_c203058a-8f7` (a11y) | 4.4 L | 96% | 4% | all 12 commits plus the WIP snapshot merged |
