@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Progress saver. Every INTERVAL seconds, for MAX_HOURS, pushes each agent worktree
 # (commits and uncommitted work) to origin wip/NAME. Silent; log and lock in .git.
-#   setsid nohup checkpoint.sh 600 12 >/dev/null 2>&1 </dev/null &   # background
+#   setsid nohup checkpoint.sh 120 12 >/dev/null 2>&1 </dev/null &   # background
 #   checkpoint.sh --now   # save every worktree once and push main if it is ahead
 set -u
 ONCE=0; [ "${1:-}" = "--now" ] && { ONCE=1; shift; }
-INTERVAL="${1:-600}"; MAX_HOURS="${2:-12}"
+INTERVAL="${1:-120}"; MAX_HOURS="${2:-12}"
 ROOT="$(git rev-parse --show-toplevel)" || exit 1
 GITDIR="$(git -C "$ROOT" rev-parse --git-common-dir)"
 case "$GITDIR" in /*) ;; *) GITDIR="$ROOT/$GITDIR" ;; esac

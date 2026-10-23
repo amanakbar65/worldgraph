@@ -10,7 +10,7 @@ The live state of the build: what's done, what's in flight, and exactly how to r
 
 1. `cd /home/user/worldgraph && git pull` (or clone `amanakbar65/worldgraph`), then `pg_ctlcluster 16 main start`.
 2. Read this file, then `CLAUDE.md`, `PLAN.md`, and the latest `PROGRESS.md` entry.
-3. Run `orchestration/status.sh`; if the saver is STOPPED, start it: `setsid nohup .claude/skills/progress-saver/checkpoint.sh 600 12 >/dev/null 2>&1 </dev/null &`. The saver, status and loss report now live in the reusable skill `.claude/skills/progress-saver/`.
+3. Run `orchestration/status.sh`; if the saver is STOPPED, start it: `setsid nohup .claude/skills/progress-saver/checkpoint.sh 120 12 >/dev/null 2>&1 </dev/null &`. The saver, status and loss report now live in the reusable skill `.claude/skills/progress-saver/`.
    **After any usage limit or restart, first tell the owner how much was retained vs lost:** `python3 .claude/skills/progress-saver/loss-report.py <run dir>` for each interrupted workflow run (per agent and total, in %), then record it in the "Loss log" below.
 4. Look at "In flight" below. For each item: if its agent finished, merge its branch; if not, relaunch the script named there with the `args` shown. The script tells each agent to start from its `wip/` branch.
 5. Agent worktrees branch from `origin/main`: **push `main` before launching agents.**
