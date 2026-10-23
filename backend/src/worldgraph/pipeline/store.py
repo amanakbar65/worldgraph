@@ -222,8 +222,11 @@ def insert_edges(cur: psycopg.Cursor, sid: str, items: list[Item], place: Place 
     targets = [t for t in dict.fromkeys(targets) if t != sid]
     if not targets:
         return
+    # Only node types a story may mention (relation_type, migration 0022);
+    # anything else would be refused by the edge check and stop the run.
     cur.execute(
-        "insert into edge (src, dst, type) select %s, n.id, 'mentions' from node n where n.id = any(%s) "
+        "insert into edge (src, dst, type) select %s, n.id, 'mentions' from node n "
+        "where n.id = any(%s) and api._relation_allows('mentions', 'story', n.type) "
         "on conflict do nothing",
         (sid, targets),
     )

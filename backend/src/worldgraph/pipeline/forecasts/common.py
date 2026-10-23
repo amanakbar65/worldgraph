@@ -196,7 +196,8 @@ def upsert(
         targets = list(dict.fromkeys((regions[:2] if regions else []) + matcher.match(m.question)))
         if targets:
             cur.execute(
-                "insert into edge (src, dst, type) select %s, n.id, 'about' from node n where n.id = any(%s) "
+                "insert into edge (src, dst, type) select %s, n.id, 'about' from node n "
+                "where n.id = any(%s) and api._relation_allows('about', 'forecast', n.type) "
                 "on conflict do nothing",
                 (node_id, targets),
             )

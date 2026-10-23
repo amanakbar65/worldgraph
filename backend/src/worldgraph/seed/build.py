@@ -19,6 +19,7 @@ import h3
 import yaml
 from pydantic import ValidationError
 
+from worldgraph.schema import load_schema, property_problems
 from worldgraph.scoring import importance
 from worldgraph.seed.models import Entity, Forecast, Indicator, Link, Story, Storyline
 
@@ -286,12 +287,17 @@ def build_bundle(now: datetime | None = None, seed_dir: Path = SEED_DIR) -> Bund
             coords[ent.id] = (ent.lon, ent.lat)
         elif ent.located_in and ent.located_in in coords:
             coords[ent.id] = coords[ent.located_in]
+    operator_of: dict[str, str] = {}  # infrastructure id → the first organisation that runs it
+    for ent, _where in all_entities:
+        for target in ent.operates:
+            operator_of.setdefault(target, ent.id)
     for ent, where in all_entities:
         for ref in [
             ent.located_in,
             *ent.produced_by,
             *ent.members,
             *ent.owns,
+            *ent.operates,
             *ent.competes_with,
             *ent.depends_on,
             *ent.regions,
@@ -317,6 +323,7 @@ def build_bundle(now: datetime | None = None, seed_dir: Path = SEED_DIR) -> Bund
                 aliases=ent.aliases,
                 qid=ent.qid,
                 props=props,
+                properties={**_auto_properties(ent, known, operator_of), **ent.properties},
                 lon=lon,
                 lat=lat,
                 is_sample=ent.sample,
@@ -345,6 +352,8 @@ def build_bundle(now: datetime | None = None, seed_dir: Path = SEED_DIR) -> Bund
             bundle.edges.append(_edge(region, ent.id, "produces", sample=ent.sample))
         for target in ent.owns:
             bundle.edges.append(_edge(ent.id, target, "owns", sample=ent.sample))
+        for target in ent.operates:
+            bundle.edges.append(_edge(ent.id, target, "operates", sample=ent.sample))
         for other in ent.competes_with:
             bundle.edges.append(_edge(ent.id, other, "competes_with", sample=ent.sample))
         for target in ent.depends_on:
@@ -369,6 +378,7 @@ def build_bundle(now: datetime | None = None, seed_dir: Path = SEED_DIR) -> Bund
                 ind.name,
                 summary=None,
                 props={"unit": ind.unit},
+                properties={"unit": ind.unit, "frequency": ind.frequency, "source": "Sample series"},
                 is_sample=True,
             )
         )
@@ -573,6 +583,8 @@ def build_bundle(now: datetime | None = None, seed_dir: Path = SEED_DIR) -> Bund
                 bundle.edges.append(_edge(link.forecast, link.from_, "relates_to", sample=True))
 
     _dedupe_edges(bundle)
+    _check_schema(bundle, known)
+    bundle.nodes = _order_by_references(bundle.nodes)
     qids: dict[str, str] = {}
     for n in bundle.nodes:
         if n["qid"]:
@@ -597,6 +609,98 @@ def _check_link(link: Link, stories: dict[str, Any], forecasts: dict[str, Any], 
         raise SeedError(f"{where}: {link.type} links must point to an event (it has happened)")
 
 
+# Infrastructure kinds that are also the node's subtype.
+_INFRA_KINDS = {
+    c.key
+    for c in (load_schema().node_type("infrastructure").prop("kind").choices or [])  # type: ignore[union-attr]
+}
+
+
+def _auto_properties(ent: Entity, known: dict[str, str], operator_of: dict[str, str]) -> dict[str, Any]:
+    """Properties the entity's structured fields already state (migration 0021 backfills the same)."""
+    out: dict[str, Any] = {}
+    region = ent.located_in if ent.located_in and known.get(ent.located_in) == "region" else None
+    if ent.type == "organization":
+        if ent.sectors:
+            out["sector"] = [f"sector:{s}" for s in ent.sectors]
+        if region:
+            out["headquarters"] = region
+    elif ent.type == "commodity":
+        if ent.hs:
+            out["hs_code"] = ent.hs
+    elif ent.type == "infrastructure":
+        if ent.subtype in _INFRA_KINDS:
+            out["kind"] = ent.subtype
+        if region:
+            out["place"] = region
+        if ent.id in operator_of:
+            out["operator"] = operator_of[ent.id]
+    elif ent.type == "policy" and ent.regions:
+        out["scope"] = list(ent.regions)
+    return out
+
+
+def _check_schema(bundle: Bundle, known: dict[str, str]) -> None:
+    """Every node's properties fit its type, and every edge its relation's rules (schema/types.yaml)."""
+    schema = load_schema()
+    sample_ids = {n["id"] for n in bundle.nodes if n["is_sample"]}
+    for n in bundle.nodes:
+        problems = property_problems(schema, n["type"], n["properties"], known.get)
+        if problems:
+            raise SeedError(f"{n['id']}: properties don't fit type {n['type']}: " + "; ".join(problems))
+        if not n["is_sample"]:
+            for ref in _references(n):
+                if ref in sample_ids:
+                    raise SeedError(f"{n['id']}: a reference entity's properties can't name sample {ref}")
+    for e in bundle.edges:
+        relation = schema.relation(e["type"])
+        if relation is None:
+            raise SeedError(f"edge {e['src']} → {e['dst']}: unknown relation {e['type']}")
+        src, dst = known.get(e["src"], "?"), known.get(e["dst"], "?")
+        if not relation.allows(src, dst):
+            raise SeedError(
+                f"edge {e['src']} → {e['dst']}: {e['type']} doesn't connect {src} to {dst} "
+                "(see relation_types in schema/types.yaml)"
+            )
+
+
+def _references(node: dict[str, Any]) -> list[str]:
+    """Node ids named by a node's place and entity properties."""
+    t = load_schema().node_type(node["type"])
+    refs: list[str] = []
+    for key, value in node["properties"].items():
+        p = t.prop(key) if t else None
+        if p and p.kind in ("place", "entity"):
+            refs += value if isinstance(value, list) else [value]
+    return refs
+
+
+def _order_by_references(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Nodes in their order, except that a node comes after the nodes its properties name.
+
+    The database checks references as each row is written, so a port's
+    operator must exist before the port.
+    """
+    by_id = {n["id"]: n for n in nodes}
+    placed: set[str] = set()
+    out: list[dict[str, Any]] = []
+
+    def place(n: dict[str, Any], path: tuple[str, ...]) -> None:
+        if n["id"] in placed:
+            return
+        if n["id"] in path:
+            raise SeedError("properties refer to each other in a loop: " + " → ".join((*path, n["id"])))
+        for ref in _references(n):
+            if ref in by_id:
+                place(by_id[ref], (*path, n["id"]))
+        placed.add(n["id"])
+        out.append(n)
+
+    for n in nodes:
+        place(n, ())
+    return out
+
+
 def _node(
     node_id: str,
     node_type: str,
@@ -607,6 +711,7 @@ def _node(
     aliases: list[str] | None = None,
     qid: str | None = None,
     props: dict[str, Any] | None = None,
+    properties: dict[str, Any] | None = None,
     lon: float | None = None,
     lat: float | None = None,
     is_sample: bool,
@@ -620,6 +725,7 @@ def _node(
         "summary": summary,
         "qid": qid,
         "props": props or {},
+        "properties": properties or {},
         "lon": lon,
         "lat": lat,
         "is_sample": is_sample,
