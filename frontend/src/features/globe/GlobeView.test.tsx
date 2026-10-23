@@ -20,9 +20,15 @@ import { useGlobeHover, useGlobeUi } from "./store";
 // ---------------------------------------------------------------------------
 
 interface FakeMap {
-  options: { center: [number, number]; zoom: number; style: { layers: { id: string }[] } };
+  options: {
+    center: [number, number];
+    zoom: number;
+    style: { layers: { id: string; layout?: { visibility?: string }; paint?: Record<string, unknown> }[] };
+  };
   fire: (type: string, event?: unknown) => void;
   flyTo: ReturnType<typeof vi.fn>;
+  setFeatureState: ReturnType<typeof vi.fn>;
+  setLayoutProperty: ReturnType<typeof vi.fn>;
   setCenter: ReturnType<typeof vi.fn>;
   remove: ReturnType<typeof vi.fn>;
   addControl: ReturnType<typeof vi.fn>;
@@ -71,6 +77,7 @@ vi.mock("maplibre-gl", () => {
     setPadding = vi.fn();
     setCenter = vi.fn();
     setPaintProperty = vi.fn();
+    setLayoutProperty = vi.fn();
     setSky = vi.fn();
     setFeatureState = vi.fn();
     setFilter = vi.fn();
@@ -190,7 +197,7 @@ beforeEach(() => {
   mocks.maps = [];
   mocks.overlays = [];
   mocks.desktop = true;
-  useNav.setState({ view: "globe", panels: [], window: "7d", sectors: [], focus: null });
+  useNav.setState({ view: "globe", panels: [], window: "7d", sectors: [], minConfidence: 0.5, focus: null });
   useGlobeUi.setState({
     toggles: DEFAULT_TOGGLES,
     listOpen: false,
@@ -311,11 +318,62 @@ describe("GlobeView on a desktop", () => {
     expect(topPanel()).toEqual({ kind: "story", id: "story:india-solar-auction" });
   });
 
-  it("draws heat, arcs, forecast rings, events and pulses once the map has loaded", () => {
+  it("draws the activity glow, arcs, forecast rings, events and pulses once the map has loaded", () => {
     renderGlobe();
     act(() => map().fire("load"));
     expect(map().addControl).toHaveBeenCalledWith(mocks.overlays[0]);
-    expect(layerIds()).toEqual(expect.arrayContaining(["hex", "arcs", "forecasts", "events", "fresh"]));
+    expect(layerIds()).toEqual(expect.arrayContaining(["glow", "arcs", "forecasts", "events", "fresh"]));
+    expect(layerIds().some((id) => id.includes("hex"))).toBe(false);
+  });
+
+  it("shades countries by activity under the borders, fading out as you zoom in", async () => {
+    renderGlobe();
+    act(() => map().fire("load"));
+    const layers = map().options.style.layers;
+    const ids = layers.map((l) => l.id);
+    const shade = layers.find((l) => l.id === "countries-activity")!;
+    expect(ids.indexOf("countries-activity")).toBeGreaterThan(ids.indexOf("countries-fill"));
+    expect(ids.indexOf("countries-activity")).toBeLessThan(ids.indexOf("countries-line"));
+    expect(ids.indexOf("countries-activity")).toBeLessThan(ids.indexOf("states-line"));
+    expect(shade.paint?.["fill-opacity"]).toEqual(["interpolate", ["linear"], ["zoom"], 2.9, 1, 4.2, 0]);
+    // No animated transitions (calm-safe).
+    expect(shade.paint?.["fill-color-transition"]).toEqual({ duration: 0, delay: 0 });
+    // Once the shapes arrive, each country with events gets its shade by id.
+    await act(async () => {});
+    const states = map().setFeatureState.mock.calls.map(([target, state]) => [target.id, state]);
+    expect(states).toEqual(
+      expect.arrayContaining([["region:ye", { activity: expect.stringMatching(/^rgba\(/) }]]),
+    );
+  });
+
+  it("calls the heat layer Activity, and switching it off hides both the shading and the glow", () => {
+    renderGlobe();
+    act(() => map().fire("load"));
+    fireEvent.click(screen.getByRole("button", { name: /Layers/ }));
+    expect(screen.getByText("Where news clusters")).toBeTruthy();
+    expect(screen.queryByText("Heat")).toBeNull();
+    fireEvent.click(screen.getByRole("switch", { name: "Activity" }));
+    expect(useGlobeUi.getState().toggles.activity).toBe(false);
+    expect(layerIds()).not.toContain("glow");
+    expect(map().setLayoutProperty).toHaveBeenLastCalledWith("countries-activity", "visibility", "none");
+  });
+
+  it("hides cascade links under the shared minimum confidence", () => {
+    renderGlobe();
+    act(() => map().fire("load"));
+    const arcCount = () =>
+      ((mocks.overlays[0]?.props.layers ?? []).find((l) => l.id === "arcs") as { props?: { data?: unknown[] } })
+        ?.props?.data?.length ?? 0;
+    act(() => useNav.getState().setMinConfidence(0));
+    const all = arcCount();
+    expect(all).toBeGreaterThan(0);
+    act(() => useNav.getState().setMinConfidence(0.9));
+    expect(arcCount()).toBeLessThan(all);
+    // The control in the Layers popover sets the same value.
+    fireEvent.click(screen.getByRole("button", { name: /Layers/ }));
+    const slider = screen.getByRole("slider", { name: "Minimum confidence" });
+    fireEvent.change(slider, { target: { value: "0.3" } });
+    expect(useNav.getState().minConfidence).toBe(0.3);
   });
 
   it("hides a layer when it is switched off", () => {

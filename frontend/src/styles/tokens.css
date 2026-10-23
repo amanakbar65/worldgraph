@@ -55,6 +55,8 @@
   --globe-border: oklch(0.42 0.02 255);
   --globe-label: oklch(0.82 0.01 262);
   --globe-atmosphere: oklch(0.6 0.1 245);
+  /* The activity glow (zoomed in): density only, so a quiet cool tone, never risk or opportunity */
+  --globe-glow: oklch(0.86 0.045 250);
 
   --shadow: 0 10px 30px -12px oklch(0 0 0 / 0.6), 0 2px 6px -2px oklch(0 0 0 / 0.4);
 }
@@ -97,6 +99,7 @@
   --globe-border: oklch(0.72 0.02 255);
   --globe-label: oklch(0.35 0.02 262);
   --globe-atmosphere: oklch(0.8 0.06 240);
+  --globe-glow: oklch(0.46 0.07 258);
 
   --shadow: 0 10px 30px -12px oklch(0.2 0.02 262 / 0.25), 0 2px 6px -2px oklch(0.2 0.02 262 / 0.12);
 }

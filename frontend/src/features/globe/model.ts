@@ -1,13 +1,12 @@
 /**
  * The globe's data shaping, kept free of React and WebGL so it can be tested:
- * hex binning, size and colour scales, arc filtering, the list order, and the
- * small geometry helpers the camera needs.
+ * the activity shading and glow, size and colour scales, arc filtering, the
+ * list order, and the small geometry helpers the camera needs.
  */
-import { cellToBoundary, cellToLatLng, latLngToCell } from "h3-js";
-
 import type { ForecastSummary, GlobeResponse, Impact, SectorId, StorySummary } from "@/api/contract";
 import { SECTORS } from "@/lib/icons";
 import { mix, withAlpha, type GlobePalette, type Rgba } from "@/lib/globe-color";
+import { balanceLean, trustVisual } from "@/lib/meaning";
 
 /**
  * An event as api.globe sends it. The optional fields are read when the API
@@ -26,7 +25,11 @@ export type GlobeEvent = GlobeResponse["events"][number] & {
   direction?: StorySummary["direction"];
   region?: StorySummary["region"];
 };
-export type GlobeArc = GlobeResponse["arcs"][number];
+/**
+ * A cascade link as api.globe sends it. `strength` (0–1) is read when the API
+ * sends it (Phase A2); without it, the line's weight follows confidence.
+ */
+export type GlobeArc = GlobeResponse["arcs"][number] & { strength?: number | null };
 export type GlobeCountry = GlobeResponse["countries"][number];
 export type LngLat = [number, number];
 
@@ -37,11 +40,7 @@ export type LngLat = [number, number];
 /** The impact a group of events leans to: more than 15 points of balance either way. */
 export function leaningImpact(risk: number, opportunity: number, neutral: number): Impact {
   const n = risk + opportunity + neutral;
-  if (n === 0) return "neutral";
-  const score = (opportunity - risk) / n;
-  if (score > 0.15) return "opportunity";
-  if (score < -0.15) return "risk";
-  return "neutral";
+  return n === 0 ? "neutral" : balanceLean((opportunity - risk) / n).impact;
 }
 
 export function impactColor(impact: Impact, palette: GlobePalette): Rgba {
@@ -49,117 +48,91 @@ export function impactColor(impact: Impact, palette: GlobePalette): Rgba {
 }
 
 // ---------------------------------------------------------------------------
-// Hex heat (H3, computed here from the events)
+// Activity: countries shaded when zoomed out, a soft density glow zoomed in
 // ---------------------------------------------------------------------------
 
-/** Coarser hexes when zoomed out, finer ones closer in. */
-export function hexResolutionForZoom(zoom: number): number {
-  if (zoom < 1.6) return 1;
-  if (zoom < 3) return 2;
-  if (zoom < 4.4) return 3;
-  if (zoom < 5.8) return 4;
-  return 5;
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+const ramp = (zoom: number, [from, to]: readonly [number, number]) => clamp01((zoom - from) / (to - from));
+
+/**
+ * Where each activity layer shows, in MapLibre zoom levels. The country
+ * shading carries the overview and fades out as you zoom in; the glow fades
+ * in as it goes, then fades out again where the event points spread apart
+ * and tell the story themselves. MapLibre (the shading) and the glow's
+ * shader (GlowExtension) both work these ramps out on the GPU every frame.
+ */
+export const ACTIVITY_ZOOM = {
+  /** Country shading: full up to the first zoom, gone by the second. */
+  countriesOut: [2.9, 4.2],
+  /** The glow fades in over this range… */
+  glowIn: [2.9, 3.9],
+  /** …and out over this one. */
+  glowOut: [5.6, 7],
+} as const satisfies Record<string, readonly [number, number]>;
+
+/** How strongly each activity layer shows at a zoom (0–1): the same ramps the GPU uses. */
+export function activityAt(zoom: number): { countries: number; glow: number } {
+  return {
+    countries: 1 - ramp(zoom, ACTIVITY_ZOOM.countriesOut),
+    glow: ramp(zoom, ACTIVITY_ZOOM.glowIn) * (1 - ramp(zoom, ACTIVITY_ZOOM.glowOut)),
+  };
 }
 
-export interface HexBin {
-  h3: string;
-  /** Outline as [lng, lat] pairs, unwrapped so it never jumps across the antimeridian. */
-  polygon: LngLat[];
-  lon: number;
-  lat: number;
-  count: number;
-  risk: number;
-  opportunity: number;
-  neutral: number;
-  impact: Impact;
-  /** Sum of the events' importance (0–100 each). */
-  weight: number;
-  ids: string[];
+/** The country shading's opacity as a MapLibre expression: the `countries` ramp of activityAt. */
+export function countryShadeOpacity(): ["interpolate", ["linear"], ["zoom"], number, number, number, number] {
+  const [from, to] = ACTIVITY_ZOOM.countriesOut;
+  return ["interpolate", ["linear"], ["zoom"], from, 1, to, 0];
 }
 
-/** Shift western longitudes east when a ring straddles ±180°, so it tessellates as one shape. */
-export function unwrapRing(ring: LngLat[]): LngLat[] {
-  const lons = ring.map((p) => p[0]);
-  if (Math.max(...lons) - Math.min(...lons) <= 180) return ring;
-  return ring.map(([lon, lat]) => [lon < 0 ? lon + 360 : lon, lat]);
+/** How busy a country is, 0–1: its event count on a log scale against the busiest one. */
+export function activityLevel(count: number, maxCount: number): number {
+  if (count <= 0 || maxCount <= 0) return 0;
+  return clamp01(Math.log1p(count) / Math.log1p(Math.max(count, maxCount)));
 }
 
 /**
- * A cell's outline and centre never change, so they are worked out once:
- * a replay re-bins the events many times a second.
+ * The hue for a net score ((opportunity − risk) / events, −1…1): neutral
+ * slate when balanced, shading to amber as risk dominates and to teal as
+ * opportunity does (fully at ±0.6).
  */
-const cellShapes = new Map<string, { polygon: LngLat[]; lon: number; lat: number }>();
-
-function cellShape(h3: string) {
-  let shape = cellShapes.get(h3);
-  if (!shape) {
-    if (cellShapes.size >= 20_000) cellShapes.clear();
-    const [lat, lon] = cellToLatLng(h3);
-    shape = { polygon: unwrapRing(cellToBoundary(h3, true) as LngLat[]), lon, lat };
-    cellShapes.set(h3, shape);
-  }
-  return shape;
+export function balanceColor(score: number, palette: GlobePalette): Rgba {
+  const s = Math.max(-1, Math.min(1, Number.isFinite(score) ? score : 0));
+  return mix(palette.neutral, s < 0 ? palette.risk : palette.opportunity, Math.min(1, Math.abs(s) / 0.6));
 }
 
-/** Each event's cell per resolution, kept for as long as the event object lives. */
-const eventCells = new WeakMap<GlobeEvent, Map<number, string | null>>();
+/** The shading's alpha for the quietest and the busiest country, per theme. */
+const SHADE_ALPHA = { dark: [0.14, 0.46], light: [0.12, 0.4] } as const;
 
-function cellOf(e: GlobeEvent, resolution: number): string | null {
-  let cells = eventCells.get(e);
-  if (!cells) {
-    cells = new Map();
-    eventCells.set(e, cells);
-  }
-  let h3 = cells.get(resolution);
-  if (h3 === undefined) {
-    try {
-      h3 = latLngToCell(e.lat, e.lon, resolution);
-    } catch {
-      h3 = null;
-    }
-    cells.set(resolution, h3);
-  }
-  return h3;
+/**
+ * A country's activity shading, drawn over plain land and under the borders:
+ * its hue from the net score, its strength from how many events it has.
+ * Null for a country with nothing in the window (plain land shows).
+ */
+export function activityFill(
+  country: GlobeCountry | undefined,
+  maxCount: number,
+  palette: GlobePalette,
+): Rgba | null {
+  if (!country || country.count <= 0) return null;
+  const [lo, hi] = SHADE_ALPHA[palette.theme];
+  const level = activityLevel(country.count, maxCount);
+  return withAlpha(balanceColor(country.score, palette), lo + (hi - lo) * level);
 }
 
-/** Group events into H3 cells at one resolution. Stable order: heaviest first. */
-export function binEvents(events: readonly GlobeEvent[], resolution: number): HexBin[] {
-  const bins = new Map<string, HexBin>();
-  for (const e of events) {
-    const h3 = cellOf(e, resolution);
-    if (h3 === null) continue;
-    let bin = bins.get(h3);
-    if (!bin) {
-      const { polygon, lon, lat } = cellShape(h3);
-      bin = {
-        h3,
-        polygon,
-        lon,
-        lat,
-        count: 0,
-        risk: 0,
-        opportunity: 0,
-        neutral: 0,
-        impact: "neutral",
-        weight: 0,
-        ids: [],
-      };
-      bins.set(h3, bin);
-    }
-    bin.count += 1;
-    bin[e.impact] += 1;
-    bin.weight += e.importance;
-    bin.ids.push(e.id);
-  }
-  const out = [...bins.values()];
-  for (const bin of out) bin.impact = leaningImpact(bin.risk, bin.opportunity, bin.neutral);
-  return out.sort((a, b) => b.weight - a.weight || a.h3.localeCompare(b.h3));
+/** The glow around an event, in pixels: 20 px for minor items up to 46 px for the most important. */
+export function glowRadius(importance: number): number {
+  return 20 + 26 * clamp01(importance / 100);
 }
 
-/** Fill for a hex: its leaning impact, stronger where more is happening (square-root scale). */
-export function hexFill(bin: HexBin, maxWeight: number, palette: GlobePalette): Rgba {
-  const t = maxWeight > 0 ? Math.sqrt(bin.weight / maxWeight) : 0;
-  return withAlpha(impactColor(bin.impact, palette), 0.08 + 0.3 * t);
+/**
+ * Each event's contribution to the glow (alpha before the zoom fade):
+ * important events weigh more, and overlapping glows build up where news
+ * clusters. A little stronger on the light theme, where a pale haze on pale
+ * land would vanish.
+ */
+export function glowAlpha(importance: number, theme: GlobePalette["theme"]): number {
+  const t = clamp01(importance / 100);
+  return (theme === "light" ? 0.2 : 0.16) + (theme === "light" ? 0.26 : 0.22) * t;
 }
 
 // ---------------------------------------------------------------------------
@@ -179,7 +152,7 @@ export function zoomScale(zoom: number): number {
 
 /**
  * With many events in the window, points shrink (to 60 % at about 1,500) so
- * busy places stay readable and the heat shows through. Zoomed in, the
+ * busy places stay readable and the glow shows through. Zoomed in, the
  * points spread out and grow back to full size.
  */
 export function densityScale(count: number, zoom: number): number {
@@ -307,12 +280,20 @@ export function arcPath(src: LngLat, dst: LngLat, segments = 40): [number, numbe
   return out;
 }
 
-/** Arc colour: the effect's impact; inferred links are lighter, focused ones full strength. */
+/** The shared trust look (lib/meaning.ts trustVisual) of a globe arc. */
+export function arcTrust(arc: GlobeArc) {
+  return trustVisual({ confidence: arc.confidence, strength: arc.strength, linkType: arc.link_type });
+}
+
+/**
+ * Arc colour: the effect's impact, as transparent as the link is uncertain
+ * (trustVisual's opacity). Links in focus stand out at nearly full strength
+ * of that opacity; the rest sit back, and dimmed ones further still.
+ */
 export function arcColor(arc: GlobeArc & { focus?: boolean }, palette: GlobePalette, dimmed: boolean): Rgba {
-  const base = impactColor(arc.impact, palette);
-  if (arc.focus) return withAlpha(base, 0.95);
-  const a = (arc.link_type === "reported" ? 0.5 : 0.36) * (0.6 + 0.4 * arc.confidence);
-  return withAlpha(base, dimmed ? a * 0.3 : a);
+  const { opacity } = arcTrust(arc);
+  const emphasis = arc.focus ? 0.95 : dimmed ? 0.2 : 0.62;
+  return withAlpha(impactColor(arc.impact, palette), opacity * emphasis);
 }
 
 /**
@@ -330,9 +311,12 @@ export function arcDash(linkType: GlobeArc["link_type"]): [number, number] {
   }
 }
 
-/** Line width in pixels: confidence 0.3 → 1 px, 1.0 → 2.2 px; focus adds a little. */
+/**
+ * Line width in pixels from the link's strength (its confidence while the
+ * API sends no strength), as trustVisual sets it everywhere; focus adds a little.
+ */
 export function arcWidth(arc: GlobeArc & { focus?: boolean }): number {
-  return 1 + 1.2 * Math.max(0, Math.min(1, (arc.confidence - 0.3) / 0.7)) + (arc.focus ? 0.8 : 0);
+  return arcTrust(arc).width + (arc.focus ? 0.8 : 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -352,25 +336,6 @@ export function ringStep(probability: number): number {
 // ---------------------------------------------------------------------------
 // Countries
 // ---------------------------------------------------------------------------
-
-/**
- * A country's fill: plain land without events; otherwise "active" land,
- * tinted towards risk (amber) or opportunity (teal) by its balance, more so
- * where more is happening. Subtle on purpose: the points carry the detail.
- */
-export function countryFill(
-  country: GlobeCountry | undefined,
-  maxCount: number,
-  palette: GlobePalette,
-): Rgba {
-  if (!country || country.count === 0) return palette.land;
-  const activity = maxCount > 0 ? Math.log1p(country.count) / Math.log1p(maxCount) : 0;
-  const base = mix(palette.land, palette.landActive, 0.35 + 0.65 * activity);
-  const lean = leaningImpact(country.risk, country.opportunity, country.neutral);
-  if (lean === "neutral") return base;
-  const strength = (0.06 + 0.18 * activity) * Math.min(1, Math.abs(country.score) * 1.6);
-  return mix(base, impactColor(lean, palette), strength);
-}
 
 /** Per-country counts and balance from a set of events (as api.globe sends them), busiest first. */
 export function countryStats(events: readonly GlobeEvent[]): GlobeCountry[] {
@@ -556,6 +521,13 @@ export function storyForEvent(
 
 type Ring = number[][];
 type PolygonCoords = Ring[];
+
+/** Shift western longitudes east when a ring straddles ±180°, so it reads as one shape. */
+export function unwrapRing(ring: LngLat[]): LngLat[] {
+  const lons = ring.map((p) => p[0]);
+  if (Math.max(...lons) - Math.min(...lons) <= 180) return ring;
+  return ring.map(([lon, lat]) => [lon < 0 ? lon + 360 : lon, lat]);
+}
 
 function ringArea(ring: Ring): number {
   let a = 0;

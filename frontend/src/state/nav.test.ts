@@ -1,8 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { applyLink, formatHash, linkStateOf, parseHash, startHashSync, useNav, type LinkState } from "./nav";
+import {
+  MIN_CONFIDENCE,
+  applyLink,
+  clampMinConfidence,
+  formatHash,
+  linkStateOf,
+  parseHash,
+  startHashSync,
+  useNav,
+  type LinkState,
+} from "./nav";
 
-const base: LinkState = { view: "globe", panel: null, window: "7d", sectors: [] };
+const base: LinkState = { view: "globe", panel: null, window: "7d", sectors: [], minConfidence: 0.5 };
 
 describe("parseHash / formatHash", () => {
   it.each<[string, LinkState]>([
@@ -31,6 +41,9 @@ describe("parseHash / formatHash", () => {
     ],
     ["#graph&s=energy,finance", { ...base, view: "graph", sectors: ["energy", "finance"] }],
     ["#brief&w=24h&s=tech", { ...base, view: "brief", window: "24h", sectors: ["tech"] }],
+    ["#graph&c=0.7", { ...base, view: "graph", minConfidence: 0.7 }],
+    ["#globe&c=0", { ...base, minConfidence: 0 }],
+    ["#story=story:abc&w=24h&c=0.35", { ...base, panel: { kind: "story", id: "story:abc" }, window: "24h", minConfidence: 0.35 }],
   ])("round-trips %s", (hash, state) => {
     expect(parseHash(hash)).toEqual(state);
     expect(formatHash(state)).toBe(hash);
@@ -61,6 +74,46 @@ describe("parseHash / formatHash", () => {
   });
 });
 
+describe("the shared minimum confidence", () => {
+  beforeEach(() => useNav.setState({ minConfidence: MIN_CONFIDENCE.default }));
+
+  it("starts at 0.5, the globe's long-standing floor", () => {
+    expect(MIN_CONFIDENCE.default).toBe(0.5);
+    expect(useNav.getState().minConfidence).toBe(0.5);
+    expect(parseHash("#graph")?.minConfidence).toBe(0.5);
+  });
+
+  it("stays within 0–0.9 in 0.05 steps", () => {
+    expect(clampMinConfidence(-1)).toBe(0);
+    expect(clampMinConfidence(0.95)).toBe(0.9);
+    expect(clampMinConfidence(0.333)).toBe(0.35);
+    expect(clampMinConfidence(0.3)).toBe(0.3);
+    expect(clampMinConfidence(Number.NaN)).toBe(0.5);
+    useNav.getState().setMinConfidence(0.72);
+    expect(useNav.getState().minConfidence).toBe(0.7);
+    useNav.getState().setMinConfidence(2);
+    expect(useNav.getState().minConfidence).toBe(0.9);
+  });
+
+  it("is left out of links at its default and clamped when read", () => {
+    expect(formatHash({ ...base, minConfidence: 0.5 })).toBe("#globe");
+    expect(formatHash({ view: "graph", panel: null, window: "7d", sectors: [] })).toBe("#graph");
+    expect(parseHash("#graph&c=7")?.minConfidence).toBe(0.9);
+    expect(parseHash("#graph&c=.25")?.minConfidence).toBe(0.25);
+    // Garbage is ignored, so the link falls back to the default.
+    expect(parseHash("#graph&c=lots")?.minConfidence).toBe(0.5);
+    expect(parseHash("#c=-1")).toBeNull();
+  });
+
+  it("is applied from a link, and a link without it resets it", () => {
+    applyLink({ ...base, minConfidence: 0.8 });
+    expect(useNav.getState().minConfidence).toBe(0.8);
+    applyLink({ view: "globe", panel: null, window: "7d", sectors: [] });
+    expect(useNav.getState().minConfidence).toBe(0.5);
+    expect(linkStateOf(useNav.getState()).minConfidence).toBe(0.5);
+  });
+});
+
 describe("applyLink", () => {
   beforeEach(() => useNav.setState({ view: "globe", panels: [], window: "7d", sectors: [] }));
 
@@ -83,7 +136,7 @@ describe("startHashSync", () => {
 
   beforeEach(() => {
     window.history.replaceState(null, "", "/");
-    useNav.setState({ view: "globe", panels: [], window: "7d", sectors: [] });
+    useNav.setState({ view: "globe", panels: [], window: "7d", sectors: [], minConfidence: 0.5 });
     stop = startHashSync(window);
   });
   afterEach(() => stop());
@@ -103,7 +156,9 @@ describe("startHashSync", () => {
     useNav.getState().open({ kind: "region", id: "region:in" });
     useNav.getState().setWindow("30d");
     useNav.getState().toggleSector("energy");
+    useNav.getState().setMinConfidence(0.7);
     expect(window.history.length).toBe(before + 1);
+    expect(window.location.hash).toBe("#region=region:in&w=30d&s=energy&c=0.7");
   });
 
   it("follows the browser's Back button", async () => {

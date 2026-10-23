@@ -1,20 +1,26 @@
-import { ArrowRight, MousePointerClick, Users, X, ZoomIn } from "lucide-react";
+import { ArrowRight, MousePointerClick, Users, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 import type { StorySummary } from "@/api/contract";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
 import { ForecastRow } from "@/components/ForecastRow";
 import { ImpactBadge } from "@/components/ImpactBadge";
-import { SampleBadge } from "@/components/SampleBadge";
 import { StoryCard } from "@/components/StoryCard";
 import { Button } from "@/components/ui/button";
 import { IMPACT_ICONS } from "@/lib/icons";
-import { IMPACT_TONES } from "@/lib/meaning";
+import { IMPACT_TONES, WEAK_CONFIDENCE, balanceLean } from "@/lib/meaning";
 import { cn } from "@/lib/utils";
 
 import type { PickInfo } from "./GlobeMap";
-import { GLASS } from "./GlobeControls";
-import { countryName, storyForEvent, type GlobeCountry, type GlobeEvent, type GlobeSample } from "./model";
+import { GLASS, WeakMark } from "./GlobeControls";
+import {
+  arcTrust,
+  countryName,
+  storyForEvent,
+  type GlobeCountry,
+  type GlobeEvent,
+  type GlobeSample,
+} from "./model";
 import { useGlobeHover } from "./store";
 import { DraftNote } from "./TopNow";
 
@@ -57,6 +63,22 @@ export function ImpactCounts({
         );
       })}
     </span>
+  );
+}
+
+/**
+ * Which way a country's news leans, as the shading shows it: ▲ towards
+ * opportunity (teal), ▼ towards risk (amber), with words, so colour is
+ * never alone.
+ */
+export function BalanceLine({ score }: { score: number }) {
+  const lean = balanceLean(score);
+  const tone = IMPACT_TONES[lean.impact];
+  return (
+    <p className={cn("flex items-center gap-1.5 text-label font-medium", tone.text)}>
+      {lean.glyph && <span aria-hidden>{lean.glyph}</span>}
+      {lean.label}
+    </p>
   );
 }
 
@@ -106,12 +128,16 @@ export function PickContent({
       const { arc } = info;
       const src = context.eventsById.get(arc.src_story);
       const dst = context.eventsById.get(arc.dst_story);
+      const weak = arcTrust(arc).weak;
       return (
         <>
           <div className="flex flex-col gap-2 p-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-label font-medium text-fg-muted">Cascade link</span>
               <ConfidenceMeter confidence={arc.confidence} linkType={arc.link_type} />
+              {weak && (
+                <WeakMark label={`Weak link: under ${Math.round(WEAK_CONFIDENCE * 100)}% sure`} />
+              )}
             </div>
             <ol className="flex flex-col gap-1 text-body">
               <li className="flex min-w-0 flex-col">
@@ -136,32 +162,6 @@ export function PickContent({
         </>
       );
     }
-    case "hex": {
-      const { hex } = info;
-      const members = hex.ids.map((id) => context.eventsById.get(id)).filter((e) => e !== undefined);
-      const lead = members[0];
-      const sampleCount = members.filter(
-        (e) => storyForEvent(e, context.sample, context.knownStories).is_sample,
-      ).length;
-      return (
-        <>
-          <div className="flex flex-col gap-1.5 p-3">
-            <p className="text-body font-medium text-fg tabular-nums">
-              {hex.count} {hex.count === 1 ? "event" : "events"} in this area
-            </p>
-            <ImpactCounts risk={hex.risk} opportunity={hex.opportunity} neutral={hex.neutral} />
-            {lead && <p className="line-clamp-2 text-label text-fg-muted">Biggest: {lead.headline}</p>}
-            {sampleCount > 0 && sampleCount === members.length && <SampleBadge className="self-start" />}
-            {sampleCount > 0 && sampleCount < members.length && (
-              <span className="flex items-center gap-1 text-label text-fg-muted">
-                Includes <SampleBadge />
-              </span>
-            )}
-          </div>
-          {hint && <Hint icon={ZoomIn}>Click to zoom in</Hint>}
-        </>
-      );
-    }
     case "country":
     case "state": {
       const stats = info.kind === "country" ? context.countriesById.get(info.id) : undefined;
@@ -175,6 +175,7 @@ export function PickContent({
                   {stats.count} {stats.count === 1 ? "event" : "events"} in this window
                 </p>
                 <ImpactCounts risk={stats.risk} opportunity={stats.opportunity} neutral={stats.neutral} />
+                <BalanceLine score={stats.score} />
               </>
             ) : (
               <p className="text-label text-fg-muted">
@@ -254,14 +255,7 @@ export function SelectionCard({
   onClose: () => void;
   className?: string;
 }) {
-  const openLabel =
-    info.kind === "hex"
-      ? "Zoom in"
-      : info.kind === "arc"
-        ? "See the cascade"
-        : info.kind === "forecast"
-          ? "Details"
-          : "Open";
+  const openLabel = info.kind === "arc" ? "See the cascade" : info.kind === "forecast" ? "Details" : "Open";
   return (
     <section
       aria-label="Selected on the globe"

@@ -42,12 +42,10 @@ import {
 import { useElementSize, useGlobePalette, useMinuteClock, usePageFont, useReplay } from "./hooks";
 import { makeRingAtlas, type LayerInput } from "./layers";
 import {
+  activityFill,
   arcPath,
-  binEvents,
-  countryFill,
   countryStats,
   filterArcs,
-  hexResolutionForZoom,
   homeZoom,
   labelPoint,
   mainBounds,
@@ -109,6 +107,8 @@ export default function GlobeView() {
   const setWindow = useNav((s) => s.setWindow);
   const toggleSector = useNav((s) => s.toggleSector);
   const clearSectors = useNav((s) => s.clearSectors);
+  const minConfidence = useNav((s) => s.minConfidence);
+  const setMinConfidence = useNav((s) => s.setMinConfidence);
   const openPanel = useNav((s) => s.open);
   const focus = useNav((s) => s.focus);
   const panel = useNav(currentPanel);
@@ -174,7 +174,7 @@ export default function GlobeView() {
   const [camera, setCamera] = useState<CameraRequest | null>(null);
   const [mapError, setMapError] = useState<Error | null>(null);
   const [ringAtlas] = useState(() => makeRingAtlas());
-  const { palette, key: paletteKey } = useGlobePalette();
+  const { palette, glow, key: paletteKey } = useGlobePalette();
   const font = usePageFont();
   const now = useMinuteClock();
   const { replay, start: startReplay, stop: stopReplay } = useReplay(calm);
@@ -244,14 +244,6 @@ export default function GlobeView() {
   const freshNow = useMemo(() => events.filter((e) => isFresh(e.first_seen, now)), [events, now]);
   const fresh = frame ? frame.appearing : freshNow;
 
-  const resolution = hexResolutionForZoom(view.zoom);
-  const allHexes = useMemo(() => binEvents(events, resolution), [events, resolution]);
-  const hexes = useMemo(
-    () => (frame ? binEvents(frame.shown, resolution) : allHexes),
-    [frame, resolution, allHexes],
-  );
-  // Scaled to the whole window, so a replay's heat builds up instead of starting at full strength.
-  const maxHexWeight = useMemo(() => allHexes.reduce((m, h) => Math.max(m, h.weight), 0), [allHexes]);
   const paths = useMemo(() => new Map((data?.arcs ?? []).map((a) => [a.id, arcPath(a.src, a.dst)])), [data]);
   const countryList = useMemo(
     () => (frame ? countryStats(frame.shown) : (data?.countries ?? [])),
@@ -277,13 +269,20 @@ export default function GlobeView() {
         (a) => shown.has(a.dst_story) && (!eventsById.has(a.src_story) || shown.has(a.src_story)),
       );
     }
-    const shown = filterArcs(list, { focusId: focusStory, max: 28, minConfidence: 0.5 });
+    // The shared minimum confidence hides weaker links, except those of the story in focus.
+    const shown = filterArcs(list, { focusId: focusStory, max: 28, minConfidence });
     return markDimmed(shown, regionCountry).map((a) => ({ ...a, path: paths.get(a.id) ?? [] }));
-  }, [data, frame, eventsById, paths, focusStory, regionCountry]);
+  }, [data, frame, eventsById, paths, focusStory, regionCountry, minConfidence]);
 
-  const countryFills = useMemo(() => {
+  // Scaled to the whole window, so a replay's shading builds up instead of starting at full strength.
+  const activityFills = useMemo(() => {
     const max = (data?.countries ?? []).reduce((m, c) => Math.max(m, c.count), 0);
-    return new Map(countryList.map((c) => [c.id, toCss(countryFill(c, max, palette))]));
+    const fills = new Map<string, string>();
+    for (const c of countryList) {
+      const fill = activityFill(c, max, palette);
+      if (fill) fills.set(c.id, toCss(fill));
+    }
+    return fills;
   }, [data, countryList, palette]);
 
   const countryLabels = useMemo<LabelCandidate[]>(
@@ -326,10 +325,9 @@ export default function GlobeView() {
     () => ({
       palette,
       paletteKey,
+      glow,
       toggles,
       zoom: view.zoom,
-      hexes,
-      maxHexWeight,
       events: shownEvents,
       crowd: events.length,
       fresh,
@@ -343,10 +341,9 @@ export default function GlobeView() {
     [
       palette,
       paletteKey,
+      glow,
       toggles,
       view.zoom,
-      hexes,
-      maxHexWeight,
       shownEvents,
       events.length,
       fresh,
@@ -407,13 +404,6 @@ export default function GlobeView() {
         case "arc":
           openPanel({ kind: "cascade", id: info.arc.dst_story });
           break;
-        case "hex":
-          fly({
-            kind: "point",
-            center: [info.hex.lon, info.hex.lat],
-            zoom: Math.min(6, Math.max(view.zoom + 2, 3)),
-          });
-          break;
         case "country":
           openPanel({ kind: "region", id: info.id });
           flyToShape(countries.data?.features.find((f) => f.properties.id === info.id)?.geometry, 5);
@@ -424,7 +414,7 @@ export default function GlobeView() {
           break;
       }
     },
-    [fly, flyToShape, openPanel, view.zoom, setHover, countries.data, states.data],
+    [flyToShape, openPanel, setHover, countries.data, states.data],
   );
 
   const onPick = useCallback(
@@ -684,7 +674,12 @@ export default function GlobeView() {
                   {sample === "some" && <SampleBadge compact />}
                   <MapKey />
                 </div>
-                <LayersButton toggles={toggles} onToggle={setToggle} />
+                <LayersButton
+                  toggles={toggles}
+                  onToggle={setToggle}
+                  minConfidence={minConfidence}
+                  onMinConfidence={setMinConfidence}
+                />
                 <ZoomControls
                   onZoom={(delta) => fly({ kind: "zoom", delta })}
                   onReset={() => fly({ kind: "reset" })}
@@ -704,7 +699,15 @@ export default function GlobeView() {
               />
               {!mapError && replayButton}
               <SectorLensButton selected={sectors} onToggle={toggleSector} onClear={clearSectors} />
-              {!mapError && <LayersButton toggles={toggles} onToggle={setToggle} compact />}
+              {!mapError && (
+                <LayersButton
+                  toggles={toggles}
+                  onToggle={setToggle}
+                  minConfidence={minConfidence}
+                  onMinConfidence={setMinConfidence}
+                  compact
+                />
+              )}
               {!mapError && <ListToggle open={listOpen} onChange={setListOpen} />}
             </div>
 
@@ -752,7 +755,8 @@ export default function GlobeView() {
           }
           countries={countries.data ?? null}
           states={statesFor ? (states.data ?? null) : null}
-          countryFills={countryFills}
+          activityFills={activityFills}
+          showActivity={toggles.activity}
           selectedRegionId={
             panelRegion ?? (selected?.kind === "country" || selected?.kind === "state" ? selected.id : null)
           }

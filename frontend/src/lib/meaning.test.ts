@@ -13,7 +13,19 @@ import {
   iconByName,
 } from "./icons";
 import { safeHttpUrl } from "./links";
-import { ENTITY_TYPE_TONES, IMPACT_TONES, LINK_TYPES, describeForecast, kpiChangeImpact } from "./meaning";
+import {
+  ENTITY_TYPE_TONES,
+  IMPACT_TONES,
+  LINK_TYPES,
+  TRUST_OPACITY,
+  TRUST_WIDTH,
+  WEAK_CONFIDENCE,
+  balanceLean,
+  describeForecast,
+  isWeak,
+  kpiChangeImpact,
+  trustVisual,
+} from "./meaning";
 import { cn } from "./utils";
 
 describe("icons", () => {
@@ -82,6 +94,60 @@ describe("meaning", () => {
     expect(describeForecast(0.31, -0.01, true)).toBe("31% crowd forecast, down 1 point in 24 hours, thin market");
     expect(describeForecast(0.5, 0)).toBe("50% crowd forecast, unchanged in 24 hours");
     expect(describeForecast(0.5, null)).toBe("50% crowd forecast");
+  });
+});
+
+describe("trust at a glance (one mapping for every view)", () => {
+  it("makes links thicker the stronger they are, using confidence until a strength arrives", () => {
+    const weak = trustVisual({ confidence: 0.2 });
+    const strong = trustVisual({ confidence: 0.9 });
+    expect(strong.width).toBeGreaterThan(weak.width);
+    expect(trustVisual({ confidence: 0 }).width).toBe(TRUST_WIDTH.min);
+    expect(trustVisual({ confidence: 1 }).width).toBe(TRUST_WIDTH.max);
+    // Strength wins for width; confidence still sets the opacity.
+    const sureButSlight = trustVisual({ confidence: 0.9, strength: 0.1 });
+    expect(sureButSlight.width).toBeLessThan(weak.width);
+    expect(sureButSlight.weight).toBe(0.1);
+    expect(sureButSlight.opacity).toBe(strong.opacity);
+    expect(trustVisual({ confidence: 0.6, strength: null }).width).toBe(trustVisual({ confidence: 0.6 }).width);
+  });
+
+  it("makes links more transparent the less sure we are", () => {
+    expect(trustVisual({ confidence: 0.9 }).opacity).toBeGreaterThan(trustVisual({ confidence: 0.4 }).opacity);
+    expect(trustVisual({ confidence: 0 }).opacity).toBe(TRUST_OPACITY.min);
+    expect(trustVisual({ confidence: 1 }).opacity).toBe(TRUST_OPACITY.max);
+    expect(trustVisual({ confidence: 7 }).opacity).toBe(TRUST_OPACITY.max);
+  });
+
+  it("keeps the line pattern of each link type", () => {
+    expect(trustVisual({ confidence: 0.7, linkType: "reported" })).toMatchObject({ line: "solid", dash: undefined });
+    expect(trustVisual({ confidence: 0.7, linkType: "inferred" })).toMatchObject({
+      line: "dashed",
+      dash: LINK_TYPES.inferred.dasharray,
+    });
+    expect(trustVisual({ confidence: 0.7, linkType: "conditional" }).dash).toBe(LINK_TYPES.conditional.dasharray);
+    expect(trustVisual({ confidence: 0.7 }).line).toBe("solid");
+  });
+
+  it("marks weak or unknown confidence with a '?'", () => {
+    expect(WEAK_CONFIDENCE).toBe(0.5);
+    expect(trustVisual({ confidence: 0.49 }).weak).toBe(true);
+    expect(trustVisual({ confidence: 0.5 }).weak).toBe(false);
+    expect(isWeak(null)).toBe(true);
+    expect(isWeak(undefined)).toBe(true);
+    expect(isWeak(Number.NaN)).toBe(true);
+    // Unknown confidence draws as middling, never as certain.
+    const unknown = trustVisual({ confidence: null });
+    expect(unknown.weak).toBe(true);
+    expect(unknown.opacity).toBeLessThan(TRUST_OPACITY.max);
+    expect(unknown.width).toBe(trustVisual({ confidence: 0.5 }).width);
+  });
+
+  it("says which way a place leans, with ▲ ▼ and words", () => {
+    expect(balanceLean(0.6)).toEqual({ impact: "opportunity", glyph: "▲", label: "Leans opportunity" });
+    expect(balanceLean(-0.4)).toEqual({ impact: "risk", glyph: "▼", label: "Leans risk" });
+    expect(balanceLean(0.1)).toEqual({ impact: "neutral", glyph: null, label: "Balanced" });
+    expect(balanceLean(null).impact).toBe("neutral");
   });
 });
 
