@@ -16,6 +16,10 @@
   command = "npm run build"
   publish = "dist"
   functions = "netlify/functions"
+  # Every production deploy costs credits (the free plan pauses the site at its cap), so only
+  # changes to what the website serves trigger one. Exit 0 = skip; tests, docs and notes don't
+  # deploy. The command runs in the base directory (frontend/).
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- src public server netlify index.html package.json package-lock.json vite.config.ts ../netlify.toml ':(exclude)src/**/*.test.ts' ':(exclude)src/**/*.test.tsx'"
 
 [build.environment]
   NODE_VERSION = "22"
