@@ -249,6 +249,19 @@ export interface AxeProblem {
  * return the serious and critical ones, with their elements.
  */
 export async function seriousA11yProblems(page: Page, include?: string): Promise<AxeProblem[]> {
+  // Colours are measured as drawn: let opening fades (a dialog's fade-in) finish first.
+  // Endless ones, like a loading pulse, are left alone, and nothing waits more than 5 s.
+  await page.evaluate(() =>
+    Promise.race([
+      Promise.all(
+        document
+          .getAnimations()
+          .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+          .map((a) => a.finished.catch(() => undefined)),
+      ),
+      new Promise((resolve) => setTimeout(resolve, 5_000)),
+    ]),
+  );
   let builder = new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]);
   if (include) builder = builder.include(include);
   const results = await builder.analyze();
