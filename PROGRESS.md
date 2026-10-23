@@ -18,6 +18,12 @@ See `CHECKPOINT.md` for the live state and resume steps.
 
 ## Log
 
+### 22 Oct 2026: website live, QA round 4 fixed, test link v3
+- Website https://worldgraph-kuq2.netlify.app is live on real data (read-only wg_web login, verified TLS, noindex) and auto-deploys from main.
+- QA round 4: all 43 findings fixed (AI budget reserve-then-settle, allow-list gating, India-view names, sample labels everywhere, forecast facts, cascade framing, phone layout, read-only shared data on the test link). Migrations 0015-0020.
+- Owner decision: live news by default (Sample data off); sample data is removed at the commercial launch.
+- The test link ships a real-news snapshot (`npm run snapshot:live`) and was republished as v3. 1059 frontend and 488 backend tests pass.
+
 ### 21-22 Oct 2026: owner requests and the a11y fixes, test link v2
 - Ask is a chat thread with follow-ups (history sent to both AI engines and the website function). The globe turns slowly after Home or 30 s idle and stops on any input. The logo is Home on every screen size.
 - A11y and design: focus moves into panels and search and back to the opener; the phone status pill sits in the header; graph key and keyboard order; cascade text at least 12 px; 40 px taps; favicon; forecast empty state and ForecastRow wrap; the minute clock catches up.
