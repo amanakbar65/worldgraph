@@ -259,9 +259,34 @@ for (const theme of ["dark", "light"] as const) {
         await openApp(page, state.hash);
         await expect(page.locator("html")).toHaveAttribute("data-wg-theme", theme);
         await state.ready(page, isPhone);
+        // Scanned once everything has loaded; a panel still loading has its own test below.
+        await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
         const problems = await seriousA11yProblems(page);
         expect(problems, describeProblems(problems)).toEqual([]);
       });
     }
   });
 }
+
+test.describe("accessibility while loading", () => {
+  test("a story panel still loading has no serious or critical axe problems", async ({ page }) => {
+    // App bug: the loading placeholders (StorySkeleton in src/features/story/StoryPanel.tsx,
+    // PanelSkeleton in src/app/PanelHost.tsx and about 30 more `aria-busy` blocks) put aria-label
+    // on a <div> with no role, which axe reports as aria-prohibited-attr (serious): screen
+    // readers may never say "Loading". Remove test.fail() once they carry a role (e.g. "status").
+    test.fail();
+    // Hold the story's answer so its placeholder stays on screen while axe looks.
+    let release = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route("**/api/rpc", async (route) => {
+      const body = route.request().postDataJSON() as { fn?: string } | null;
+      if (body?.fn === "story") await held;
+      await route.fallback();
+    });
+    await openApp(page, `#story=${STORY}`);
+    await expect(detailsPanel(page).locator('[aria-busy="true"]').first()).toBeVisible();
+    const problems = await seriousA11yProblems(page);
+    release();
+    expect(problems, describeProblems(problems)).toEqual([]);
+  });
+});

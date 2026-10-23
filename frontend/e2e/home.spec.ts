@@ -104,6 +104,7 @@ test.describe("the logo is Home", () => {
     test.use({ settings: { theme: "dark", calm: false, sample: "on" } satisfies Settings });
 
     test("it flies the globe home and starts the slow turn; a key press stops it", async ({ page }) => {
+      test.slow(); // a flight and 20 clock steps, each drawing a globe frame on the CPU
       await page.clock.install();
       await openApp(page);
       const start = await camera(page);

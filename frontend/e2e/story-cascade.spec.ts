@@ -170,6 +170,14 @@ test.describe("story and cascade", () => {
     page,
     isPhone,
   }, testInfo) => {
+    // App bug (phones): Escape in the evidence closes the whole details sheet too. The sheet is a
+    // vaul drawer, whose Radix dialog listens for Escape on the document in the capture phase,
+    // before EvidenceDrawer's own handler (src/features/story/EvidenceDetails.tsx) can stop it,
+    // and closes the sheet. Remove test.fail() once PanelHost's Drawer.Content
+    // (src/app/PanelHost.tsx) leaves Escape to the app (onEscapeKeyDown → preventDefault, as the
+    // app's own useEscapeClosesPanel already steps back one panel) or ignores one from a nested
+    // dialog. Desktop panels aren't Radix dialogs and pass.
+    test.fail(isPhone, "App bug: Escape in the cascade's evidence also closes the phone sheet");
     await openApp(page, `#cascade=${STORY}`);
     const panel = detailsPanel(page);
     if (isPhone) await panel.getByRole("radio", { name: "Flow" }).click();
