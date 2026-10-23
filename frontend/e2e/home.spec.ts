@@ -30,6 +30,14 @@ async function camera(page: Page): Promise<Camera> {
       .__wgGlobe;
     return !!g?.spin && !!g.map?.loaded();
   });
+  return readCamera(page);
+}
+
+/**
+ * The same, without waiting for the globe: waitForFunction polls on
+ * animation frames, which don't come while the page's clock is paused.
+ */
+function readCamera(page: Page): Promise<Camera> {
   return page.evaluate(() => {
     const g = (
       window as unknown as {
@@ -67,8 +75,17 @@ const logo = (page: Page) => page.locator('header button[aria-label="WorldGraph 
  * turn gets frames as a real screen would give them, whatever the machine.
  */
 async function pauseClock(page: Page) {
-  const now = await page.evaluate(() => Date.now());
-  await page.clock.pauseAt(now + 1_000);
+  // A page busy drawing can answer late, and its clock runs on meanwhile: aim further ahead.
+  for (const ahead of [1_000, 3_000, 10_000]) {
+    const now = await page.evaluate(() => Date.now());
+    try {
+      await page.clock.pauseAt(now + ahead);
+      return;
+    } catch (error) {
+      if (!/to the past/.test(String(error))) throw error;
+    }
+  }
+  throw new Error("The page's clock ran past every pause time");
 }
 async function stepClock(page: Page, ms: number) {
   for (let t = 0; t < ms; t += 400) await page.clock.fastForward(400);
@@ -122,16 +139,17 @@ test.describe("the logo is Home", () => {
       // It turns east, slowly: about 2.4° a second at full speed, after a 3 s ease-in.
       await pauseClock(page);
       await stepClock(page, 6_000);
-      const turned = (await camera(page)).lng - landed.lng;
+      const turning = await readCamera(page);
+      const turned = turning.lng - landed.lng;
       expect(turned).toBeGreaterThan(0.5);
-      expect(turned).toBeLessThan(6 * 2.4);
-      expect((await camera(page)).lat).toBeCloseTo(landed.lat, 3);
+      expect(turned).toBeLessThan(16 * 2.4);
+      expect(turning.lat).toBeCloseTo(landed.lat, 3);
 
       await page.keyboard.press("Shift");
-      await expect.poll(async () => (await camera(page)).mode).toBe("still");
-      const stopped = (await camera(page)).lng;
+      await expect.poll(async () => (await readCamera(page)).mode).toBe("still");
+      const stopped = (await readCamera(page)).lng;
       await stepClock(page, 2_000);
-      expect((await camera(page)).lng).toBeCloseTo(stopped, 3);
+      expect((await readCamera(page)).lng).toBeCloseTo(stopped, 3);
     });
 
     test("from another screen it lands on the globe turning", async ({ page }) => {
