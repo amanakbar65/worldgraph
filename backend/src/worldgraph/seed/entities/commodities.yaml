@@ -1,6 +1,6 @@
 # Commodities and traded products. `hs` is the Harmonized System heading.
 # `produced_by` lists leading producers (true background facts).
-- {id: commodity:crude-oil, type: commodity, name: Crude oil, hs: "2709", sectors: [energy], aliases: [Brent, WTI, oil], produced_by: [region:us, region:sa, region:ru], summary: "Unrefined petroleum; priced mainly off the Brent and WTI benchmarks."}
+- {id: commodity:crude-oil, type: commodity, name: Crude oil, hs: "2709", sectors: [energy], aliases: [Brent, WTI, oil], produced_by: [region:us, region:sa, region:ru], properties: {benchmark: "Brent, WTI"}, summary: "Unrefined petroleum; priced mainly off the Brent and WTI benchmarks."}
 - {id: commodity:refined-fuels, type: commodity, name: Diesel and refined fuels, hs: "2710", sectors: [energy, logistics-trade], aliases: [diesel, gasoline, jet fuel], produced_by: [region:us, region:cn, region:in], summary: "Diesel, petrol and jet fuel made from crude oil; a key cost for transport."}
 - {id: commodity:natural-gas, type: commodity, name: Natural gas and LNG, hs: "2711", sectors: [energy], aliases: [LNG, gas], produced_by: [region:us, region:ru, region:qa], summary: "Gas moved by pipeline or shipped as liquefied natural gas (LNG)."}
 - {id: commodity:coal, type: commodity, name: Coal, hs: "2701", sectors: [energy], aliases: [thermal coal, coking coal], produced_by: [region:cn, region:in, region:id], summary: "Thermal coal for power and coking coal for steelmaking."}

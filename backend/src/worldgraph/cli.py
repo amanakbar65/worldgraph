@@ -95,7 +95,7 @@ def schema_sql(
 def kg_review(
     out: str = typer.Option("../docs/kg-review.md", help="Where to write the review list (Markdown)."),
 ) -> None:
-    """Write the owner's review list: unmatched facts, unknown keys, relation rule breaks, relates_to links."""
+    """Write the owner's review list: leftover facts, unknown keys, rule breaks, relates_to links."""
     from pathlib import Path
 
     from worldgraph.db import connect

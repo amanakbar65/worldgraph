@@ -282,13 +282,20 @@ _REL_COLS = (
 _SQL_TYPES = {"properties": "jsonb", "src_types": "text[]", "dst_types": "text[]"}
 
 
+_RESERVED = {"symmetric"}  # SQL keywords: quoted as column names
+
+
+def _col(name: str) -> str:
+    return f'"{name}"' if name in _RESERVED else name
+
+
 def _upsert(table: str, cols: tuple[str, ...], rows: list[dict[str, Any]]) -> str:
     values = ",\n".join(
         "    (" + ", ".join(_q(r[c], _SQL_TYPES.get(c, "text")) for c in cols) + ")" for r in rows
     )
-    updates = ", ".join(f"{c} = excluded.{c}" for c in cols[1:])
+    updates = ", ".join(f"{_col(c)} = excluded.{_col(c)}" for c in cols[1:])
     return (
-        f"insert into {table} ({', '.join(cols)}) values\n{values}\n"
+        f"insert into {table} ({', '.join(_col(c) for c in cols)}) values\n{values}\n"
         f"on conflict (key) do update set {updates};\n"
     )
 

@@ -7,7 +7,7 @@ cross-references are all checked by `uv run wg seed check`.
 from __future__ import annotations
 
 import re
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -100,10 +100,14 @@ class Entity(Strict):
     produced_by: list[str] = []  # region ids (commodities)
     members: list[str] = []  # region ids (blocs)
     owns: list[str] = []  # node ids (organizations → infrastructure)
+    operates: list[str] = []  # infrastructure ids an organisation runs
     competes_with: list[str] = []
     depends_on: list[str] = []  # node ids this entity relies on
     regions: list[str] = []  # regions a policy applies to
     facts: dict[str, str] = {}
+    # Typed values checked against schema/types.yaml. Some are filled in
+    # from the fields above (see build._auto_properties); these win.
+    properties: dict[str, Any] = {}
     sample: bool = False
 
     @field_validator("id")

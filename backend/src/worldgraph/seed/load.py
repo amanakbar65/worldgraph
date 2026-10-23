@@ -73,7 +73,7 @@ def _batched(rows: list[Any], size: int = BATCH) -> Iterable[list[Any]]:
         yield rows[i : i + size]
 
 
-NODE_COLS = "id, type, subtype, name, aliases, summary, qid, props, geom, is_sample"
+NODE_COLS = "id, type, subtype, name, aliases, summary, qid, props, properties, geom, is_sample"
 
 
 def _node_row(n: dict[str, Any]) -> tuple:
@@ -86,6 +86,7 @@ def _node_row(n: dict[str, Any]) -> tuple:
         n["summary"],
         n["qid"],
         n["props"],
+        n["properties"],
         point(n["lon"], n["lat"]),
         n["is_sample"],
     )
@@ -109,6 +110,8 @@ def bundle_statements(bundle: Bundle) -> list[str]:
             "on conflict (id) do update set type = excluded.type, subtype = excluded.subtype, "
             "name = excluded.name, aliases = excluded.aliases, summary = excluded.summary, "
             "qid = excluded.qid, props = excluded.props, geom = excluded.geom, "
+            # Merged, so values other writers add (enrichment) survive a reload.
+            "properties = node.properties || excluded.properties, "
             "is_sample = excluded.is_sample, updated_at = now()"
         )
     region_cols = (
