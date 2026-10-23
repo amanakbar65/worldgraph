@@ -3,6 +3,10 @@
 Migrations are plain SQL files in db/migrations/, named NNNN_short_name.sql.
 Each runs once, inside a transaction, and is recorded in schema_migrations.
 Never edit a migration after it has been applied anywhere; add a new file.
+
+From 0021 on, every migration has a down file, down/NNNN_name.down.sql, that
+undoes it (`wg db down NNNN`). The runner only reads *.sql directly inside
+migrations/, so down files are never applied by `migrate`.
 """
 
 from __future__ import annotations
@@ -16,6 +20,8 @@ import psycopg
 from worldgraph.db import SEARCH_PATH_SQL
 
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"
+DOWN_DIR = MIGRATIONS_DIR / "down"
+FIRST_REVERSIBLE = "0021"  # migrations from this one on must have a down file
 _NAME = re.compile(r"^(\d{4})_([a-z0-9_]+)\.sql$")
 
 _CREATE_TABLE = """
@@ -36,6 +42,15 @@ class Migration:
 
     def sql(self) -> str:
         return self.path.read_text(encoding="utf-8")
+
+    @property
+    def down_path(self) -> Path:
+        return self.path.parent / "down" / f"{self.version}_{self.name}.down.sql"
+
+    def down_sql(self) -> str:
+        if not self.down_path.exists():
+            raise FileNotFoundError(f"{self.version}_{self.name} has no down file ({self.down_path.name})")
+        return self.down_path.read_text(encoding="utf-8")
 
 
 def list_migrations(directory: Path = MIGRATIONS_DIR) -> list[Migration]:
@@ -76,3 +91,22 @@ def migrate(conn: psycopg.Connection, directory: Path = MIGRATIONS_DIR) -> list[
             )
         applied.append(migration)
     return applied
+
+
+def rollback(conn: psycopg.Connection, to_version: str, directory: Path = MIGRATIONS_DIR) -> list[Migration]:
+    """Undo every applied migration numbered `to_version` or later, newest first.
+
+    Each down file runs in its own transaction with the removal of its
+    schema_migrations row. Returns the migrations undone.
+    """
+    done = applied_versions(conn)
+    undone = []
+    for migration in sorted(list_migrations(directory), key=lambda m: m.version, reverse=True):
+        if migration.version < to_version or migration.version not in done:
+            continue
+        with conn.transaction():
+            conn.execute(SEARCH_PATH_SQL)
+            conn.execute(migration.down_sql())
+            conn.execute("delete from public.schema_migrations where version = %s", (migration.version,))
+        undone.append(migration)
+    return undone
