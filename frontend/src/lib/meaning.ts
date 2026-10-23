@@ -257,7 +257,7 @@ export const LINK_TYPES: Record<LinkType, LinkTypeInfo> = {
 export const WEAK_CONFIDENCE = 0.5;
 
 /** Line widths in pixels for the weakest and the strongest link. */
-export const TRUST_WIDTH = { min: 1, max: 3.2 } as const;
+export const TRUST_WIDTH = { min: 0.75, max: 2.75 } as const;
 
 /** Opacity for a link nobody is sure of (confidence 0) and a certain one (1). */
 export const TRUST_OPACITY = { min: 0.3, max: 1 } as const;

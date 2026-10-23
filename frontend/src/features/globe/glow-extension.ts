@@ -60,7 +60,8 @@ export class GlowExtension extends LayerExtension {
         }`,
         "fs:DECKGL_FILTER_COLOR": /* glsl */ `{
           float wgGlowR = length(geometry.uv);
-          color.a *= exp(-3.4 * wgGlowR * wgGlowR);
+          // A Gaussian that reaches exactly zero at the rim (no visible edge).
+          color.a *= max(0.0, exp(-2.8 * wgGlowR * wgGlowR) - 0.0608 * wgGlowR);
         }`,
       },
     };
