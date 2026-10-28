@@ -468,3 +468,52 @@ def test_seed_links_all_have_a_polarity(sdb):
            from causal_link cl join story s on s.node_id = cl.src_story where cl.is_sample"""
     ).fetchone()
     assert rows == {"unknown": 0, "wrong": 0}
+
+
+# ---------------------------------------------------------------------------
+# The owner's review list
+# ---------------------------------------------------------------------------
+
+
+@pytestmark_db
+def test_review_lists_what_the_schema_could_not_place(sdb):
+    from worldgraph.schema.review import collect, render
+
+    sdb.execute(
+        """insert into node (id, type, name, props, properties)
+           values ('org:kg-review', 'organization', 'Review Co', '{"facts": {"Motto": "Ship it"}}',
+                   '{"colour": "teal"}')"""
+    )
+    sdb.execute("insert into edge (src, dst, type) values ('org:kg-review', 'org:rbi', 'relates_to')")
+    data = collect(sdb)
+    assert data["facts"] == [
+        {
+            "id": "org:kg-review",
+            "type": "organization",
+            "name": "Review Co",
+            "label": "Motto",
+            "value": "Ship it",
+        }
+    ]
+    assert data["unknown_keys"] == [
+        {"type": "organization", "key": "colour", "nodes": 1, "example": "org:kg-review"}
+    ]
+    assert data["problems"] == [] and data["broken"] == [] and data["polarity"] == []
+    assert data["summary"]["relates_to links"] == 27  # the sample data's 26, plus this one
+    text = render(data, "the test database")
+    assert text.startswith("# Knowledge graph: review list")
+    assert "| org:kg-review | organization | Motto | Ship it |" in text
+    assert "## Links with the generic relation `relates_to`" in text
+
+
+@pytestmark_db
+def test_wg_kg_review_writes_the_file(seeded_db_url, tmp_path, monkeypatch):
+    from worldgraph.config import get_settings
+
+    monkeypatch.setenv("DATABASE_URL", seeded_db_url)
+    get_settings.cache_clear()
+    out = tmp_path / "kg-review.md"
+    result = CliRunner().invoke(app, ["kg", "review", "--out", str(out), "--source", "the test database"])
+    assert result.exit_code == 0, result.output
+    assert "relates_to links: 26" in result.output
+    assert "from the test database" in out.read_text(encoding="utf-8")
