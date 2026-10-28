@@ -219,7 +219,8 @@ def test_migrations_reversible(scratch_db_url):
         wrong = _one(
             conn,
             """select count(*) from causal_link cl join story s on s.node_id = cl.src_story
-               where cl.polarity is distinct from (case when s.direction = cl.direction then 1 else -1 end)""",
+               where cl.polarity is distinct from
+                     (case when s.direction = cl.direction then 1 else -1 end)""",
         )
         assert wrong == 0
         assert _one(conn, "select polarity from causal_link where dst_story = %s", first["effect"]) == 1

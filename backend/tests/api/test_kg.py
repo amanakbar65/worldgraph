@@ -119,7 +119,8 @@ def test_entity_derived_properties(sdb):
     energy = props(call(sdb, "entity", {"id": "sector:energy", "sample": True}))
     assert energy["entity_count"]["kind"] == "number" and energy["entity_count"]["value"] > 10
     forecast_id = sdb.execute(
-        "select f.node_id from forecast f join node n on n.id = f.node_id where n.is_sample order by 1 limit 1"
+        "select f.node_id from forecast f join node n on n.id = f.node_id "
+        "where n.is_sample order by 1 limit 1"
     ).fetchone()["node_id"]
     fc = props(check("entity", call(sdb, "entity", {"id": forecast_id})))
     assert fc["provider"]["display"] == "Sample forecast"
