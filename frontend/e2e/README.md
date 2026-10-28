@@ -32,6 +32,7 @@ A failure leaves a trace and a screenshot in `test-results/` and a report in `pl
 ## How the tests work
 
 - `fixtures.ts` gives every test fresh settings (dark theme, calm motion, Sample data on, since the test database holds only sample data; change them with `test.use({ settings: … })`). It fails a test on any uncaught page error or any request to another host.
+- `global-setup.ts` first moves the database's sample clock to now (`api.refresh_sample_clock()`, as Supabase's cron does), so a database loaded days ago still has stories in the last 24 hours.
 - Website tests compare the screen with what the database says, through the same `/api/rpc` the page uses (`rpc()`).
 - Ask's AI is a stand-in: `ask-chat.spec.ts` answers `POST /api/ai` itself, so no AI account is needed.
 - The globe's camera and slow turn are read through the dev build's `window.__wgGlobe` hook (`home.spec.ts`).

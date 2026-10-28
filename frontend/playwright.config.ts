@@ -20,7 +20,7 @@ const PORT = Number(process.env.E2E_PORT ?? 5301);
 const ARTIFACT_PORT = Number(process.env.E2E_ARTIFACT_PORT ?? 5351);
 export const BASE_URL = `http://127.0.0.1:${PORT}`;
 const ARTIFACT_URL = `http://127.0.0.1:${ARTIFACT_PORT}`;
-const DATABASE_URL = process.env.DEV_DATABASE_URL ?? "postgresql://wg:wg@localhost:5432/worldgraph_dev";
+export const DATABASE_URL = process.env.DEV_DATABASE_URL ?? "postgresql://wg:wg@localhost:5432/worldgraph_dev";
 
 /** The cloud workspace ships Chromium here; elsewhere Playwright's own download is used. */
 const CHROMIUM = "/opt/pw-browsers/chromium";
@@ -45,6 +45,8 @@ const WEBSITE = { testDir: "./e2e", testIgnore: ["artifact/**"] };
 const TEST_LINK = { testDir: "./e2e/artifact" };
 
 export default defineConfig({
+  // Moves the sample clock to now, as Supabase does every 30 minutes (e2e/global-setup.ts).
+  globalSetup: "./e2e/global-setup.ts",
   outputDir: "./test-results/e2e-output",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
