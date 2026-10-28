@@ -706,7 +706,8 @@ $$;
 -- ===========================================================================
 -- api.entity({id}) → EntityResponse
 -- 0005's, plus `properties` (kg.properties) and `connections`
--- (kg.relations); empty lists while a flag is off. `backlinks` is kept for
+-- (kg.relations); empty lists while a flag is off. Facts gain "Operator"
+-- (the new operates relation). `backlinks` is kept for
 -- one release (deprecated: use connections).
 -- ===========================================================================
 create or replace function api.entity(args jsonb) returns jsonb
@@ -787,7 +788,11 @@ begin
             select string_agg(n.name, ', ' order by n.name)
             from edge e join node n on n.id = e.src
             where e.dst = v_id and e.type = 'owns' and (v_sample or not n.is_sample))),
-        (12, 'Applies to', case when v_node.type = 'policy' then (
+        (12, 'Operator', (
+            select string_agg(n.name, ', ' order by n.name)
+            from edge e join node n on n.id = e.src
+            where e.dst = v_id and e.type = 'operates' and (v_sample or not n.is_sample))),
+        (13, 'Applies to', case when v_node.type = 'policy' then (
             select string_agg(n.name, ', ' order by e.id)
             from edge e join node n on n.id = e.dst
             where e.src = v_id and e.type = 'about') end)

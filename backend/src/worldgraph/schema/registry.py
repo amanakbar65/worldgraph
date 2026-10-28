@@ -95,21 +95,24 @@ class PropertyDef(_Strict):
 
     def db(self) -> dict[str, Any]:
         """The object stored in node_type.properties (and sent by api.schema)."""
-        out: dict[str, Any] = {
+        # Every key is always present (null when it doesn't apply), as the
+        # API contract wants.
+        return {
             "key": self.key,
             "label": self.label,
             "kind": self.kind,
             "required": self.required,
             "derived": self.derived,
             "multiple": self.multiple,
+            "choices": [{"key": c.key, "label": c.label} for c in self.choices] if self.choices else None,
+            "unit": self.unit,
+            "unit_key": self.unit_key,
+            "entity_types": self.entity_types,
+            "pattern": self.pattern,
+            "min": self.min,
+            "max": self.max,
+            "description": self.description,
         }
-        if self.choices:
-            out["choices"] = [{"key": c.key, "label": c.label} for c in self.choices]
-        for name in ("unit", "unit_key", "entity_types", "pattern", "min", "max", "description"):
-            value = getattr(self, name)
-            if value is not None:
-                out[name] = value
-        return out
 
 
 class NodeType(_Strict):
