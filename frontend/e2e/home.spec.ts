@@ -124,16 +124,19 @@ test.describe("the logo is Home", () => {
       test.slow(); // a flight and 20 clock steps, each drawing a globe frame on the CPU
       await page.clock.install();
       await openApp(page);
-      const start = await camera(page);
+      await camera(page);
+      // A slow first load can outlast the 30 s idle time; a key press stops any turn that started.
+      await page.keyboard.press("Shift");
+      const start = await readCamera(page);
       expect(start.mode).toBe("still");
       // Somewhere else, zoomed in.
       await jumpTo(page, [77, 22], 4);
-      expect((await camera(page)).zoom).toBeCloseTo(4, 1);
+      expect((await readCamera(page)).zoom).toBeCloseTo(4, 1);
 
       await logo(page).click();
       // The flight lands on the home view, then the turn starts.
-      await expect.poll(async () => (await camera(page)).mode, { timeout: 30_000 }).toBe("turning");
-      const landed = await camera(page);
+      await expect.poll(async () => (await readCamera(page)).mode, { timeout: 30_000 }).toBe("turning");
+      const landed = await readCamera(page);
       expect(landed.lat).toBeCloseTo(HOME_CENTER.lat, 0);
       expect(landed.zoom).toBeCloseTo(start.zoom, 1);
       // It turns east, slowly: about 2.4° a second at full speed, after a 3 s ease-in.
@@ -164,8 +167,9 @@ test.describe("the logo is Home", () => {
       await goToView(page, "brief");
       await expect(page.locator("main h1")).toHaveText("Daily brief");
       await logo(page).click();
-      await expect.poll(async () => (await camera(page)).mode, { timeout: 30_000 }).toBe("turning");
-      expect((await camera(page)).lat).toBeCloseTo(HOME_CENTER.lat, 0);
+      // Within 20 s: after 30 s without input the globe would start turning by itself anyway.
+      await expect.poll(async () => (await camera(page)).mode, { timeout: 20_000 }).toBe("turning");
+      expect((await readCamera(page)).lat).toBeCloseTo(HOME_CENTER.lat, 0);
     });
 
     test("after 30 s without input the globe turns, but not while a panel is open", async ({ page }) => {
@@ -185,12 +189,12 @@ test.describe("the logo is Home", () => {
       // Only the whole globe turns by itself: frame it as the home view does.
       await jumpTo(page, [HOME_CENTER.lng, HOME_CENTER.lat], (await camera(page)).zoom);
       await expect
-        .poll(async () => (await camera(page)).mode, { timeout: 45_000, intervals: [2_000] })
+        .poll(async () => (await readCamera(page)).mode, { timeout: 45_000, intervals: [2_000] })
         .toBe("turning");
 
       // Any input stops it at once.
       await page.keyboard.press("Shift");
-      await expect.poll(async () => (await camera(page)).mode).toBe("still");
+      await expect.poll(async () => (await readCamera(page)).mode).toBe("still");
     });
   });
 
