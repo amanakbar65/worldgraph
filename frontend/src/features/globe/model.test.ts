@@ -190,7 +190,8 @@ describe("activity (replaces the hex tiles)", () => {
     expect(glowRadius(100)).toBeGreaterThan(glowRadius(0));
     expect(glowRadius(500)).toBe(glowRadius(100));
     expect(glowAlpha(90, "dark")).toBeGreaterThan(glowAlpha(10, "dark"));
-    expect(glowAlpha(50, "light")).toBeGreaterThan(glowAlpha(50, "dark"));
+    // A dark haze on pale land reads strongly: lighter on the light theme.
+    expect(glowAlpha(50, "light")).toBeLessThan(glowAlpha(50, "dark"));
     expect(glowAlpha(100, "light")).toBeLessThan(0.5);
   });
 });

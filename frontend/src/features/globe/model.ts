@@ -119,20 +119,20 @@ export function activityFill(
   return withAlpha(balanceColor(country.score, palette), lo + (hi - lo) * level);
 }
 
-/** The glow around an event, in pixels: 20 px for minor items up to 46 px for the most important. */
+/** The glow around an event, in pixels: 40 px for minor items up to 96 px for the most important. */
 export function glowRadius(importance: number): number {
-  return 20 + 26 * clamp01(importance / 100);
+  return 40 + 56 * clamp01(importance / 100);
 }
 
 /**
  * Each event's contribution to the glow (alpha before the zoom fade):
  * important events weigh more, and overlapping glows build up where news
- * clusters. A little stronger on the light theme, where a pale haze on pale
- * land would vanish.
+ * clusters. A little lighter on the light theme, where a darker haze on pale
+ * land reads strongly.
  */
 export function glowAlpha(importance: number, theme: GlobePalette["theme"]): number {
   const t = clamp01(importance / 100);
-  return (theme === "light" ? 0.2 : 0.16) + (theme === "light" ? 0.26 : 0.22) * t;
+  return theme === "light" ? 0.16 + 0.2 * t : 0.2 + 0.24 * t;
 }
 
 // ---------------------------------------------------------------------------

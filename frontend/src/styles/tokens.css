@@ -99,7 +99,7 @@
   --globe-border: oklch(0.72 0.02 255);
   --globe-label: oklch(0.35 0.02 262);
   --globe-atmosphere: oklch(0.8 0.06 240);
-  --globe-glow: oklch(0.46 0.07 258);
+  --globe-glow: oklch(0.56 0.08 255);
 
   --shadow: 0 10px 30px -12px oklch(0.2 0.02 262 / 0.25), 0 2px 6px -2px oklch(0.2 0.02 262 / 0.12);
 }
