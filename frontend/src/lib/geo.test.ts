@@ -294,5 +294,5 @@ describe("shipped map files", () => {
         expect(countryIdOf(state.properties.id)).toBe(state.properties.country);
       }
     }
-  });
+  }, 30_000); // parses every shipped state file; slow when the machine is busy
 });

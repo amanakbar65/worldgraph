@@ -8,10 +8,15 @@ import {
   arcColor,
   arcDash,
   arcPath,
+  arcTrust,
   arcWidth,
-  binEvents,
+  activityAt,
+  activityFill,
+  activityLevel,
+  ACTIVITY_ZOOM,
+  balanceColor,
   cameraForBounds,
-  countryFill,
+  countryShadeOpacity,
   countryStats,
   countryName,
   declutterLabels,
@@ -20,8 +25,8 @@ import {
   eventAsStory,
   eventRadius,
   filterArcs,
-  hexFill,
-  hexResolutionForZoom,
+  glowAlpha,
+  glowRadius,
   homeZoom,
   isBigMover,
   labelPoint,
@@ -109,58 +114,85 @@ describe("impact leaning", () => {
   });
 });
 
-describe("hex heat", () => {
-  it("uses finer hexes as you zoom in", () => {
-    const resolutions = [0.5, 1.5, 2, 3.5, 5, 7].map(hexResolutionForZoom);
-    expect(resolutions).toEqual([...resolutions].sort((a, b) => a - b));
-    expect(resolutions[0]).toBe(1);
-    expect(resolutions.at(-1)).toBe(5);
+describe("activity (replaces the hex tiles)", () => {
+  it("shades countries when zoomed out and glows when zoomed in, then lets the points take over", () => {
+    expect(activityAt(1.2)).toEqual({ countries: 1, glow: 0 });
+    expect(activityAt(ACTIVITY_ZOOM.countriesOut[0])).toEqual({ countries: 1, glow: 0 });
+    const between = activityAt(3.5);
+    expect(between.countries).toBeGreaterThan(0);
+    expect(between.countries).toBeLessThan(1);
+    expect(between.glow).toBeGreaterThan(0);
+    expect(between.glow).toBeLessThan(1);
+    expect(activityAt(4.6)).toEqual({ countries: 0, glow: 1 });
+    expect(activityAt(6.3).glow).toBeCloseTo(0.5);
+    expect(activityAt(8)).toEqual({ countries: 0, glow: 0 });
   });
 
-  it("bins nearby events together and counts impacts", () => {
-    const bins = binEvents(
-      [
-        event("a", { impact: "risk", importance: 80 }),
-        event("b", { impact: "risk", lon: 72.81, lat: 19.11, importance: 40 }),
-        event("c", { impact: "opportunity", lon: -74, lat: 40.7, importance: 30 }),
-      ],
-      2,
-    );
-    expect(bins).toHaveLength(2);
-    const [mumbai, newYork] = bins; // heaviest first
-    expect(mumbai.count).toBe(2);
-    expect(mumbai.risk).toBe(2);
-    expect(mumbai.impact).toBe("risk");
-    expect(mumbai.weight).toBe(120);
-    expect(mumbai.ids).toEqual(["story:a", "story:b"]);
-    expect(mumbai.polygon.length).toBeGreaterThanOrEqual(6);
-    expect(newYork.impact).toBe("opportunity");
+  it("cross-fades: the glow comes in as the shading goes out, with no gap between them", () => {
+    for (let z = 0; z <= 9; z += 0.25) {
+      const { countries, glow } = activityAt(z);
+      // Never both gone between the overview and the points taking over.
+      if (z < ACTIVITY_ZOOM.glowOut[0]) expect(countries + glow).toBeGreaterThanOrEqual(0.999);
+      // The glow only starts once the shading starts to fade.
+      if (countries === 1) expect(glow).toBe(0);
+    }
+    expect(ACTIVITY_ZOOM.glowIn[1]).toBeLessThanOrEqual(ACTIVITY_ZOOM.countriesOut[1]);
+    expect(ACTIVITY_ZOOM.glowOut[0]).toBeGreaterThan(ACTIVITY_ZOOM.countriesOut[1]);
   });
 
-  it("skips events H3 can't place", () => {
-    expect(binEvents([event("x", { lat: Number.NaN })], 2)).toEqual([]);
+  it("gives MapLibre the same shading ramp, worked out on the GPU", () => {
+    const [from, to] = ACTIVITY_ZOOM.countriesOut;
+    expect(countryShadeOpacity()).toEqual(["interpolate", ["linear"], ["zoom"], from, 1, to, 0]);
   });
 
-  it("keeps hexes on the antimeridian in one piece", () => {
-    const ring = unwrapRing([
-      [179, 0],
-      [-179, 1],
-      [-179, -1],
-    ]);
-    expect(ring.map((p) => p[0])).toEqual([179, 181, 181]);
-    const plain: [number, number][] = [
-      [10, 0],
-      [11, 1],
-    ];
-    expect(unwrapRing(plain)).toBe(plain);
+  it("measures how busy a country is on a log scale", () => {
+    expect(activityLevel(0, 10)).toBe(0);
+    expect(activityLevel(10, 10)).toBe(1);
+    expect(activityLevel(1, 100)).toBeCloseTo(Math.log(2) / Math.log(101));
+    // Log scale: one event in a window where the busiest has 100 still shows.
+    expect(activityLevel(1, 100)).toBeGreaterThan(0.1);
+    expect(activityLevel(50, 10)).toBe(1);
   });
 
-  it("makes busier hexes more opaque, in their impact colour", () => {
-    const [bin] = binEvents([event("a", { importance: 100 })], 2);
-    const strong = hexFill(bin, 100, palette);
-    const faint = hexFill(bin, 10_000, palette);
-    expect(strong.slice(0, 3)).toEqual(palette.risk.slice(0, 3));
-    expect(strong[3]).toBeGreaterThan(faint[3]);
+  it("colours by net score: amber for risk, slate when balanced, teal for opportunity", () => {
+    expect(balanceColor(0, palette)).toEqual(palette.neutral);
+    expect(balanceColor(-1, palette)).toEqual(palette.risk);
+    expect(balanceColor(1, palette)).toEqual(palette.opportunity);
+    expect(balanceColor(-0.6, palette)).toEqual(palette.risk);
+    const leaning = balanceColor(0.3, palette);
+    expect(leaning).not.toEqual(palette.neutral);
+    expect(leaning).not.toEqual(palette.opportunity);
+    expect(balanceColor(Number.NaN, palette)).toEqual(palette.neutral);
+  });
+
+  it("shades busier countries more strongly, and leaves quiet ones as plain land", () => {
+    const country = (count: number, score: number) => ({
+      id: "region:in",
+      count,
+      risk: 0,
+      opportunity: 0,
+      neutral: count,
+      score,
+    });
+    expect(activityFill(undefined, 10, palette)).toBeNull();
+    expect(activityFill(country(0, 0), 10, palette)).toBeNull();
+    const busy = activityFill(country(10, -1), 10, palette)!;
+    const quiet = activityFill(country(1, -1), 10, palette)!;
+    expect(busy.slice(0, 3)).toEqual(palette.risk.slice(0, 3));
+    expect(busy[3]).toBeGreaterThan(quiet[3]);
+    // Subtle on purpose: never more than about half opaque.
+    expect(busy[3]).toBeLessThanOrEqual(0.5 * 255);
+    const hopeful = activityFill(country(10, 1), 10, palette)!;
+    expect(hopeful.slice(0, 3)).toEqual(palette.opportunity.slice(0, 3));
+  });
+
+  it("weights the glow by importance", () => {
+    expect(glowRadius(100)).toBeGreaterThan(glowRadius(0));
+    expect(glowRadius(500)).toBe(glowRadius(100));
+    expect(glowAlpha(90, "dark")).toBeGreaterThan(glowAlpha(10, "dark"));
+    // A dark haze on pale land reads strongly: lighter on the light theme.
+    expect(glowAlpha(50, "light")).toBeLessThan(glowAlpha(50, "dark"));
+    expect(glowAlpha(100, "light")).toBeLessThan(0.5);
   });
 });
 
@@ -241,15 +273,44 @@ describe("arcs", () => {
     for (let i = 1; i < path.length; i++) expect(Math.abs(path[i][0] - path[i - 1][0])).toBeLessThan(10);
   });
 
-  it("is lighter for inferred links and strongest in focus", () => {
-    const reported = arcColor(arc(1, { link_type: "reported" }), palette, false);
-    const inferred = arcColor(arc(1), palette, false);
+  it("shows trust at a glance: fainter when less sure, strongest in focus, dimmed behind it", () => {
+    const sure = arcColor(arc(1, { confidence: 0.9 }), palette, false);
+    const unsure = arcColor(arc(1, { confidence: 0.3 }), palette, false);
     const focused = arcColor({ ...arc(1), focus: true }, palette, true);
+    const plain = arcColor(arc(1), palette, false);
     const dimmed = arcColor(arc(1), palette, true);
-    expect(reported[3]).toBeGreaterThan(inferred[3]);
-    expect(focused[3]).toBeGreaterThan(reported[3]);
-    expect(dimmed[3]).toBeLessThan(inferred[3]);
-    expect(arcWidth({ ...arc(1), confidence: 1 })).toBeGreaterThan(arcWidth({ ...arc(1), confidence: 0.3 }));
+    expect(sure[3]).toBeGreaterThan(unsure[3]);
+    expect(focused[3]).toBeGreaterThan(plain[3]);
+    expect(dimmed[3]).toBeLessThan(plain[3]);
+    // Opacity is about confidence only, the same for every link type (the dash tells them apart).
+    expect(arcColor(arc(1, { link_type: "reported" }), palette, false)).toEqual(plain);
+    expect(sure.slice(0, 3)).toEqual(palette.risk.slice(0, 3));
+  });
+
+  it("is thicker for stronger links, using confidence until a strength arrives", () => {
+    expect(arcWidth(arc(1, { confidence: 1 }))).toBeGreaterThan(arcWidth(arc(1, { confidence: 0.3 })));
+    expect(arcWidth(arc(1, { confidence: 0.3, strength: 0.9 }))).toBeGreaterThan(
+      arcWidth(arc(1, { confidence: 0.9, strength: 0.2 })),
+    );
+    expect(arcWidth(arc(1, { strength: null }))).toBe(arcWidth(arc(1)));
+    expect(arcWidth({ ...arc(1), focus: true })).toBeGreaterThan(arcWidth(arc(1)));
+    expect(arcTrust(arc(1, { confidence: 0.4 })).weak).toBe(true);
+    expect(arcTrust(arc(1, { confidence: 0.5 })).weak).toBe(false);
+  });
+
+  it("hides links under the shared minimum confidence, except the story in focus", () => {
+    const list = [
+      arc(1, { confidence: 0.3 }),
+      arc(2, { confidence: 0.55 }),
+      arc(3, { confidence: 0.8 }),
+      arc(4, { confidence: 0.2, dst_story: "story:focus" }),
+    ];
+    const ids = (min: number) =>
+      filterArcs(list, { minConfidence: min, focusId: "story:focus" }).map((a) => a.id);
+    expect(ids(0)).toEqual([4, 3, 2, 1]);
+    expect(ids(0.5)).toEqual([4, 3, 2]);
+    expect(ids(0.7)).toEqual([4, 3]);
+    expect(ids(0.9)).toEqual([4]);
   });
 
   it("draws reported links solid, inferred ones dashed and projected ones dotted", () => {
@@ -295,36 +356,6 @@ describe("forecast rings", () => {
     expect(ringStep(0.62)).toBe(60);
     expect(ringStep(0.63)).toBe(65);
     expect(ringStep(1.4)).toBe(100);
-  });
-});
-
-describe("country fills", () => {
-  const country = (risk: number, opportunity: number, neutral = 0) => ({
-    id: "region:in",
-    count: risk + opportunity + neutral,
-    risk,
-    opportunity,
-    neutral,
-    score: (opportunity - risk) / Math.max(1, risk + opportunity + neutral),
-  });
-
-  it("leaves quiet countries as plain land", () => {
-    expect(countryFill(undefined, 10, palette)).toEqual(palette.land);
-  });
-
-  it("tints towards the leaning impact, more where more happens", () => {
-    const risky = countryFill(country(9, 1), 10, palette);
-    const hopeful = countryFill(country(1, 9), 10, palette);
-    expect(risky[0]).toBeGreaterThan(hopeful[0]); // amber has more red than teal
-    expect(hopeful[2]).toBeGreaterThan(risky[2]);
-    const busy = countryFill(country(10, 0), 10, palette);
-    const quiet = countryFill(country(1, 0), 10, palette);
-    expect(busy[0]).toBeGreaterThan(quiet[0]);
-  });
-
-  it("stays neutral when risk and opportunity balance", () => {
-    const fill = countryFill(country(5, 5), 10, palette);
-    expect(fill[0]).toBe(fill[1] + (palette.landActive[0] - palette.landActive[1]));
   });
 });
 
@@ -390,7 +421,12 @@ describe("the list view", () => {
       ...eventAsStory(event("a"), { isSample: true }),
       event_type: "jobs_data",
       direction: "down",
-      region: { id: "region:us.washington-dc", name: "Washington, D.C.", subtype: "city", country_id: "region:us" },
+      region: {
+        id: "region:us.washington-dc",
+        name: "Washington, D.C.",
+        subtype: "city",
+        country_id: "region:us",
+      },
     };
     const known = new Map([[top.id, top]]);
     const story = storyForEvent(event("a"), "some", known);
@@ -417,6 +453,20 @@ describe("the list view", () => {
 });
 
 describe("geometry", () => {
+  it("keeps shapes on the antimeridian in one piece", () => {
+    const ring = unwrapRing([
+      [179, 0],
+      [-179, 1],
+      [-179, -1],
+    ]);
+    expect(ring.map((p) => p[0])).toEqual([179, 181, 181]);
+    const plain: [number, number][] = [
+      [10, 0],
+      [11, 1],
+    ];
+    expect(unwrapRing(plain)).toBe(plain);
+  });
+
   const square = {
     type: "Polygon",
     coordinates: [
@@ -548,7 +598,10 @@ describe("labels", () => {
       { x: 520, y: 200 }, // the big dot
     ];
     const out = declutterLabels(
-      [label("sa", { name: "Saudi Arabia", lon: 0 }), label("city", { kind: "city", capital: true, priority: 5, lon: 1 })],
+      [
+        label("sa", { name: "Saudi Arabia", lon: 0 }),
+        label("city", { kind: "city", capital: true, priority: 5, lon: 1 }),
+      ],
       (lon) => at[lon],
       { width: 800, height: 600 },
       4,
@@ -586,7 +639,9 @@ describe("labels", () => {
     });
     expect(marks).toEqual([{ lon: 45, lat: 24, radius: 12 * zoomScale(1.8) }]);
     // A hidden layer hides nothing.
-    expect(markerObstacles({ forecasts: [{ lon: 45, lat: 24 }], toggles: { forecasts: false }, zoom: 1.8 })).toEqual([]);
+    expect(
+      markerObstacles({ forecasts: [{ lon: 45, lat: 24 }], toggles: { forecasts: false }, zoom: 1.8 }),
+    ).toEqual([]);
   });
 });
 
@@ -605,20 +660,20 @@ describe("country activity", () => {
     ]);
   });
 
-  it("tints busy countries towards their leaning impact; quiet ones stay plain land", () => {
-    const busyRisk = countryFill(
+  it("shades busy countries towards their lean; quiet ones stay plain land", () => {
+    const busyRisk = activityFill(
       { id: "region:de", count: 10, risk: 9, opportunity: 1, neutral: 0, score: -0.8 },
       10,
       palette,
-    );
-    const balanced = countryFill(
+    )!;
+    const balanced = activityFill(
       { id: "region:fr", count: 10, risk: 5, opportunity: 5, neutral: 0, score: 0 },
       10,
       palette,
-    );
-    expect(countryFill(undefined, 10, palette)).toEqual(palette.land);
-    // A balanced country is plain "active" land; a risky one leans to amber (more red).
-    expect(balanced).toEqual(palette.landActive);
+    )!;
+    expect(activityFill(undefined, 10, palette)).toBeNull();
+    // A balanced country is shaded slate; a risky one leans to amber (more red).
+    expect(balanced.slice(0, 3)).toEqual(palette.neutral.slice(0, 3));
     expect(busyRisk[0]).toBeGreaterThan(balanced[0]);
   });
 });

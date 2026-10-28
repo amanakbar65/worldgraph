@@ -11,7 +11,7 @@ import {
   Square,
   Users,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 import { SECTOR_IDS, type SectorId, type TimeWindow } from "@/api/contract";
 import { LinkTypeSwatch } from "@/components/ConfidenceMeter";
@@ -22,9 +22,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Segmented } from "@/components/ui/segmented";
 import { SwitchField } from "@/components/ui/switch";
 import { IMPACT_ICONS, SECTORS } from "@/lib/icons";
-import { IMPACT_TONES } from "@/lib/meaning";
+import { DIRECTION_ARROWS, IMPACT_TONES, TRUST_LEGEND, TRUST_OPACITY, TRUST_WIDTH } from "@/lib/meaning";
 import { TIME_WINDOWS, WINDOW_LABELS } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import { MIN_CONFIDENCE } from "@/state/nav";
 
 import type { LayerToggles } from "./layers";
 import { lensSummary, type ReplaySpan } from "./model";
@@ -284,18 +285,69 @@ export function SectorLensBar(props: Omit<SectorLensProps, "layout">) {
 
 const LAYER_ROWS: { key: keyof LayerToggles; label: string; description: string }[] = [
   { key: "events", label: "Events", description: "Dots sized by importance" },
-  { key: "heat", label: "Heat", description: "Where events cluster" },
+  { key: "activity", label: "Activity", description: "Where news clusters" },
   { key: "arcs", label: "Cascade links", description: "Causes and effects across borders" },
   { key: "forecasts", label: "Crowd forecasts", description: "Rings filled to the chance of yes" },
 ];
 
+const percent = (v: number) => `${Math.round(v * 100)}%`;
+
+/**
+ * The shared minimum confidence (navigation state): links less sure than
+ * this are hidden, except those of the story in focus. A native range, so
+ * keyboards, screen readers and touch all work as they expect.
+ */
+export function MinConfidenceControl({
+  value,
+  onChange,
+  className,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  className?: string;
+}) {
+  const id = useId();
+  const hint = `${id}-hint`;
+  return (
+    <div className={cn("flex flex-col gap-1", className)}>
+      <div className="flex items-baseline justify-between gap-2">
+        <label htmlFor={id} className="text-body text-fg">
+          Minimum confidence
+        </label>
+        <output htmlFor={id} className="text-label text-fg-muted tabular-nums">
+          {value <= MIN_CONFIDENCE.min ? "Any" : `${percent(value)}+`}
+        </output>
+      </div>
+      <input
+        id={id}
+        type="range"
+        min={MIN_CONFIDENCE.min}
+        max={MIN_CONFIDENCE.max}
+        step={MIN_CONFIDENCE.step}
+        value={value}
+        onChange={(e) => onChange(Number(e.currentTarget.value))}
+        aria-describedby={hint}
+        aria-valuetext={value <= MIN_CONFIDENCE.min ? "Any confidence" : `${percent(value)} or more`}
+        className="h-10 w-full cursor-pointer accent-[var(--ring)]"
+      />
+      <p id={hint} className="text-label text-fg-muted">
+        Hides weaker links, except for the story in focus. Applies to every view.
+      </p>
+    </div>
+  );
+}
+
 export function LayersButton({
   toggles,
   onToggle,
+  minConfidence,
+  onMinConfidence,
   compact = false,
 }: {
   toggles: LayerToggles;
   onToggle: (key: keyof LayerToggles, on: boolean) => void;
+  minConfidence: number;
+  onMinConfidence: (value: number) => void;
   compact?: boolean;
 }) {
   const off = LAYER_ROWS.filter((row) => !toggles[row.key]).length;
@@ -313,7 +365,11 @@ export function LayersButton({
           {!compact && off > 0 && <span className="text-label text-fg-muted tabular-nums">{off} off</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" side={compact ? "bottom" : "top"} className="w-80 p-4">
+      <PopoverContent
+        align="end"
+        side={compact ? "bottom" : "top"}
+        className="max-h-[var(--radix-popover-content-available-height)] w-80 overflow-y-auto p-4"
+      >
         <div className="flex flex-col gap-1">
           <p className="text-label font-medium text-fg-muted">Show on the globe</p>
           {LAYER_ROWS.map((row) => (
@@ -326,8 +382,13 @@ export function LayersButton({
             />
           ))}
         </div>
+        <MinConfidenceControl
+          value={minConfidence}
+          onChange={onMinConfidence}
+          className="mt-2 border-t border-line pt-3"
+        />
         <div className="mt-3 border-t border-line pt-3">
-          <MapKey detailed />
+          <MapKey detailed minConfidence={minConfidence} />
         </div>
       </PopoverContent>
     </Popover>
@@ -338,11 +399,82 @@ function KeyItem({ children }: { children: ReactNode }) {
   return <li className="flex items-center gap-1.5 [&>*:not(:last-child)]:shrink-0">{children}</li>;
 }
 
+/** The "?" mark on weak items (confidence under 50 % or unknown). Decorative unless labelled. */
+export function WeakMark({ label, className }: { label?: string; className?: string }) {
+  return (
+    <span
+      role={label ? "img" : undefined}
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
+      title={label}
+      className={cn(
+        "inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-line-strong text-label leading-none font-semibold text-fg-muted",
+        className,
+      )}
+    >
+      ?
+    </span>
+  );
+}
+
+/** Country shading: amber ▼ through slate to teal ▲, as on the globe. */
+const SHADE_SWATCH: CSSProperties = {
+  backgroundImage: `linear-gradient(90deg, ${["--risk", "--neutral", "--opportunity"]
+    .map((token) => `color-mix(in oklch, var(${token}) 55%, transparent)`)
+    .join(", ")})`,
+};
+/** The soft glow, in its own token. */
+const GLOW_SWATCH: CSSProperties = {
+  backgroundImage: "radial-gradient(circle, var(--globe-glow) 0%, transparent 70%)",
+};
+
+/** Two short lines: a thin and a thick one, or a faint and a solid one. */
+function TrustSwatch({ kind }: { kind: "width" | "opacity" }) {
+  const lines =
+    kind === "width"
+      ? [
+          { y: 2, width: TRUST_WIDTH.min, opacity: 1 },
+          { y: 7, width: TRUST_WIDTH.max, opacity: 1 },
+        ]
+      : [
+          { y: 2, width: 2, opacity: TRUST_OPACITY.min },
+          { y: 7, width: 2, opacity: TRUST_OPACITY.max },
+        ];
+  return (
+    <svg aria-hidden viewBox="0 0 24 9" className="h-2.5 w-6 shrink-0 overflow-visible">
+      {lines.map((l) => (
+        <line
+          key={l.y}
+          x1="1"
+          x2="23"
+          y1={l.y}
+          y2={l.y}
+          className="stroke-fg-muted"
+          strokeWidth={l.width}
+          strokeOpacity={l.opacity}
+          strokeLinecap="round"
+        />
+      ))}
+    </svg>
+  );
+}
+
 /**
  * What the colours and shapes mean. Every colour sits next to its icon (and
- * ▲ ▼ where direction matters), so nothing depends on colour alone.
+ * ▲ ▼ where direction matters), so nothing depends on colour alone. The
+ * detailed key (in the Layers popover) also explains the activity shading
+ * and glow, and how links show their strength and certainty.
  */
-export function MapKey({ detailed = false, className }: { detailed?: boolean; className?: string }) {
+export function MapKey({
+  detailed = false,
+  minConfidence,
+  className,
+}: {
+  detailed?: boolean;
+  /** Said in the detailed key when links below it are hidden. */
+  minConfidence?: number;
+  className?: string;
+}) {
   return (
     <div className={cn("flex flex-col gap-2 text-label text-fg-muted", className)}>
       {detailed && <p className="font-medium">Key</p>}
@@ -357,12 +489,7 @@ export function MapKey({ detailed = false, className }: { detailed?: boolean; cl
             <KeyItem key={impact}>
               <span aria-hidden className={cn("size-2.5 rounded-full", tone.bg)} />
               <Icon aria-hidden className={cn("size-3.5", tone.text)} />
-              <span className="whitespace-nowrap">
-                {tone.label}
-                {detailed && impact !== "neutral" && (
-                  <span className="text-fg-subtle"> · countries lean this way</span>
-                )}
-              </span>
+              <span className="whitespace-nowrap">{tone.label}</span>
             </KeyItem>
           );
         })}
@@ -377,12 +504,40 @@ export function MapKey({ detailed = false, className }: { detailed?: boolean; cl
         {detailed && (
           <>
             <KeyItem>
+              <span aria-hidden className="h-2.5 w-6 rounded-sm" style={SHADE_SWATCH} />
+              <span>
+                Shaded country: more news, stronger shade; {DIRECTION_ARROWS.down} leans risk,{" "}
+                {DIRECTION_ARROWS.up} leans opportunity
+              </span>
+            </KeyItem>
+            <KeyItem>
+              <span aria-hidden className="size-3 rounded-full" style={GLOW_SWATCH} />
+              <span>Glow, zoomed in: where news clusters</span>
+            </KeyItem>
+            <KeyItem>
               <LinkTypeSwatch linkType="reported" />
               Reported link
             </KeyItem>
             <KeyItem>
               <LinkTypeSwatch linkType="inferred" />
               Inferred link
+            </KeyItem>
+            <KeyItem>
+              <TrustSwatch kind="width" />
+              {TRUST_LEGEND.width}
+            </KeyItem>
+            <KeyItem>
+              <TrustSwatch kind="opacity" />
+              <span>
+                {TRUST_LEGEND.opacity}
+                {minConfidence !== undefined && minConfidence > 0 && (
+                  <span className="text-fg-subtle"> · under {percent(minConfidence)} hidden</span>
+                )}
+              </span>
+            </KeyItem>
+            <KeyItem>
+              <WeakMark />
+              {TRUST_LEGEND.weak}
             </KeyItem>
             <KeyItem>
               <span aria-hidden className="size-3 rounded-full border border-fg-muted" />

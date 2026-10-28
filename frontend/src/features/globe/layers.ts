@@ -1,8 +1,9 @@
 /**
  * The deck.gl layers drawn over the MapLibre globe (interleaved, sharing its
- * WebGL context): hex heat, cascade arcs, forecast rings, event points and
- * place labels. Everything here is built from data that GlobeView memoises,
- * so the layers only change when their inputs do.
+ * WebGL context): the activity glow, cascade arcs, forecast rings, event
+ * points and place labels. (The activity shading of countries is a MapLibre
+ * layer; see GlobeMap.) Everything here is built from data that GlobeView
+ * memoises, so the layers only change when their inputs do.
  */
 import type { Layer, LayerExtension } from "@deck.gl/core";
 import { PathStyleExtension, type PathStyleExtensionProps } from "@deck.gl/extensions";
@@ -10,7 +11,6 @@ import {
   IconLayer,
   PathLayer,
   ScatterplotLayer,
-  SolidPolygonLayer,
   TextLayer,
   type PathLayerProps,
   type TextLayerProps,
@@ -19,6 +19,7 @@ import {
 import type { ForecastSummary } from "@/api/contract";
 import { withAlpha, type GlobePalette, type Rgba } from "@/lib/globe-color";
 
+import { GlowExtension } from "./glow-extension";
 import { HorizonExtension, HorizonFadeExtension } from "./horizon-extension";
 
 import {
@@ -27,25 +28,26 @@ import {
   arcWidth,
   densityScale,
   eventRadius,
-  hexFill,
+  glowAlpha,
+  glowRadius,
   impactColor,
   isBigMover,
   ringStep,
   zoomScale,
   type ArcDatum,
   type GlobeEvent,
-  type HexBin,
   type LabelCandidate,
 } from "./model";
 
 export interface LayerToggles {
-  heat: boolean;
+  /** Where news clusters: countries shaded when zoomed out, a soft glow zoomed in. */
+  activity: boolean;
   events: boolean;
   arcs: boolean;
   forecasts: boolean;
 }
 
-export const DEFAULT_TOGGLES: LayerToggles = { heat: true, events: true, arcs: true, forecasts: true };
+export const DEFAULT_TOGGLES: LayerToggles = { activity: true, events: true, arcs: true, forecasts: true };
 
 /** A place name on the globe (see declutterLabels). */
 export type PlaceLabel = LabelCandidate;
@@ -53,10 +55,10 @@ export type PlaceLabel = LabelCandidate;
 export interface LayerInput {
   palette: GlobePalette;
   paletteKey: string;
+  /** The glow's colour (the --globe-glow token). */
+  glow: Rgba;
   toggles: LayerToggles;
   zoom: number;
-  hexes: HexBin[];
-  maxHexWeight: number;
   events: GlobeEvent[];
   /** Events in the whole window (a replay draws fewer): busy windows draw smaller points. */
   crowd: number;
@@ -134,19 +136,19 @@ export function makeRingAtlas(): RingAtlas | null {
 
 /**
  * Picking passes over the layer ids, in order, with their radius in pixels:
- * the marks first (they sit on top), then the links and the heat.
+ * the marks first (they sit on top), then the links. The glow isn't
+ * pickable: under it, the country (with its counts) answers instead.
  */
 export const PICK_PASSES: readonly (readonly [readonly string[], number])[] = [
   [["events", "forecasts"], 6],
-  [["arcs", "hex"], 3],
+  [["arcs"], 3],
 ];
 
 const dashes = new PathStyleExtension({ dash: true });
 const horizon = new HorizonExtension();
 const horizonFade = new HorizonFadeExtension();
+const glowExtension = new GlowExtension();
 
-/** Flat shapes on the sphere: no depth fighting with the globe, back faces culled. */
-const SURFACE = { depthCompare: "always", cullMode: "back" } as const;
 /**
  * Billboards: never cut by the sphere (the horizon test hides the far side),
  * and no face culling: the globe view culls back faces by default, which
@@ -164,19 +166,25 @@ export function buildLayers(input: LayerInput): Layer[] {
   const pointScale = zoomScale(zoom);
   const eventScale = pointScale * densityScale(input.crowd, zoom);
 
-  if (toggles.heat && input.hexes.length > 0) {
-    // Fades as you zoom in, where the points tell the story better.
-    const fade = Math.max(0.35, Math.min(1, 1.35 - zoom * 0.12));
+  if (toggles.activity && input.events.length > 0) {
+    // Zoomed in, a soft glow where news clusters, weighted by importance. Its
+    // shader fades it in as the country shading fades out (GlobeMap), and out
+    // again where the points spread apart; it is invisible when zoomed out.
+    const theme = palette.theme;
     layers.push(
-      new SolidPolygonLayer<HexBin>({
-        id: "hex",
-        data: input.hexes,
-        getPolygon: (d) => d.polygon,
-        getFillColor: (d) => hexFill(d, input.maxHexWeight, palette),
-        opacity: fade,
-        pickable: true,
-        parameters: SURFACE,
-        updateTriggers: { getFillColor: [paletteKey, input.maxHexWeight] },
+      new ScatterplotLayer<GlobeEvent>({
+        id: "glow",
+        data: input.events,
+        getPosition: (d) => [d.lon, d.lat],
+        getRadius: (d) => glowRadius(d.importance),
+        radiusUnits: "pixels",
+        getFillColor: (d) => withAlpha(input.glow, glowAlpha(d.importance, theme)),
+        stroked: false,
+        antialiasing: false,
+        billboard: true,
+        ...BILLBOARD,
+        extensions: [horizon, glowExtension],
+        updateTriggers: { getFillColor: [paletteKey, input.glow.join(",")] },
       }),
     );
   }

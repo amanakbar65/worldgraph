@@ -150,18 +150,139 @@ See `SOURCES.md`. Each source's terms are checked before it's integrated and its
 - **Now (testing):** the app runs on live news by default. The Settings → Sample data switch stays, off by default (change the default from `auto` to `off`), so a demo can turn it on.
 - **At the commercial launch:** remove sample data and everything that exists only for it: the seed loader and sample clock (pg_cron `wg-sample-clock`), the sample snapshot mode, the Settings switch, the sample labels and the `is_sample` filters. The app then runs on live data only. Tests keep their own fixtures.
 
-## Knowledge graph upgrade (owner request, 22 Oct 2026)
+## Roadmap to a complete product (owner decisions, 22–23 Oct 2026)
 
-Source: `docs/KNOWLEDGE_GRAPH_UPGRADE.md` (kept word for word). What exists today: `docs/knowledge-graph-inventory.md`.
-**Status:** planned; waiting for the owner's approval. Build one phase at a time, and stop after each phase for review (build, tests, how to try it, update this plan).
+Sources: `docs/KNOWLEDGE_GRAPH_UPGRADE.md` (the spec, word for word), `docs/knowledge-graph-inventory.md` (what exists today) and `docs/COMMERCIAL.md` (services, data sources, storage, AI clock, costs, plans).
+
+**Owner decisions:**
+1. The personal graph lives in per-viewer storage.
+2. Keep 90 days of history now, with permanent storage at launch (tiered: Postgres plus an R2 archive).
+3. Everything goes to the test link first. The public launch happens only when the owner says the app is complete.
+4. Add the influence graph on top of Phase C.
+5. The app is AI-native: a scheduled AI "clock" keeps extracting, checking and summarising knowledge.
+6. Cause and effect gets the most attention.
+7. The audience is learners, analysts, business people and investors, as a one-stop place to learn and extract information.
+8. Use free data enrichment now; paid sources are costed for launch.
+9. Build "How X connects to Y" as a process, change tracking, trust at a glance, learning trails and starter tours.
+10. Replace the hexagon heat map with something sleek.
+11. New sections are welcome.
+12. Nothing half done: each phase is complete, simple and connected before the next starts.
+
+**Status:** waiting for approval to start Phase A. Each phase ends with the build, tests, steps to try it, an update to this plan and a stop for the owner's review.
 
 **Rules for every phase:**
-- Migrations are additive and come with a matching `migrations/down/NNNN_name.down.sql`. A test applies up, then down, then up on a scratch database.
+- Migrations are additive and come with a down file; a test runs up, then down, then up.
 - Every feature sits behind a flag.
 - Personal data stays in the per-viewer store. The world graph changes only through the pipeline.
-- No new paid service without asking. AI goes through the existing reserve-then-settle budget and prompt cache.
+- No new paid service without the owner's yes.
+- AI goes through the reserve-then-settle budget and prompt cache.
 - Colour is never used alone.
-- Tests cover the data logic.
+- Data logic is tested.
+- Website deploys happen only on purpose (`[deploy]`).
+
+**Order:**
+
+| # | Phase | What it delivers | Rough size |
+|---|---|---|---|
+| 1 | **A. Structure and trust** | Typed properties, named relations, sources on everything, history and "as of", schema map, trust at a glance, new heat map | 35–45 L |
+| 2 | **K. Knowledge engine** | AI clock (needs a Claude API key), free data enrichment (Wikidata, GLEIF, BACI, WDI, EDGAR, PortWatch, ports, UCDP, sanctions, EIA, USDA), tiered permanent storage | 40–55 L |
+| 3 | **C. Cause and effect** | Influence graph, "How X connects to Y" as a process, cascade upgrades, loops, what-if, guided stories | 35–45 L |
+| 4 | **B. Lenses** | Focus mode, table, timeline, globe link, canvas, saved lenses, semantic zoom with a GPU renderer | 50–65 L |
+| 5 | **T. Track and learn** | Change tracking, alerts and digests, learning trails, starter tours, Learn hub, audience modes | 30–40 L |
+| 6 | **D. AI helpers** | Add from documents, Ask the graph with highlights, insights, suggested links, summaries and mind maps | 35–45 L |
+| 7 | **S. New sections** | Markets, Countries, Supply chains, Risk radar, Investor lens, Calendar | 40–55 L |
+| 8 | **E. Convenience** | Command palette commands, time slider, quick capture, import and export, performance, accessibility (also kept up throughout) | 25–35 L |
+| 9 | **L. Launch kit** | Accounts, plans and payments, email, analytics, monitoring, legal pages, domain, Supabase Pro and archive, paid feeds, public website | 30–40 L |
+
+These sizes are rough token estimates for the build agents.
+
+### Phase K: knowledge engine (outline; needs the owner's Claude API key)
+- **K1. AI clock:** the scheduled jobs in `docs/COMMERCIAL.md` §4:
+  - sort every story with Haiku;
+  - Sonnet batch analysis of the most important stories;
+  - nightly upkeep of entities and links, with citations;
+  - weekly re-checks;
+  - daily and weekly digests.
+
+  Every output carries provenance (A3) and stays within the daily cap. The clock pauses itself at the cap, and its health shows in Settings.
+- **K2. Data enrichment (free sources):** Wikidata and GLEIF ownership; BACI trade flows; WDI and Pink Sheet; EDGAR subsidiaries and revenue by region; PortWatch chokepoint flows and the World Port Index; UCDP; official sanctions lists; EIA and USDA. Each source:
+  - gets a SOURCES.md row first;
+  - fills typed properties and named relations (A1, A2);
+  - carries its own source and confidence.
+- **K3. Permanent storage:** hot, knowledge and archive tiers (`docs/COMMERCIAL.md` §3). Older raw rows go to Parquet on R2 when the owner turns it on, with the 90-day hot window. Aggregates (influence graph, indicators) are kept for ever.
+- **Done when:** the graph has thousands of real companies, ownership links and trade flows, more than half of the important stories have cause-and-effect analysis, and the AI spend report stays under the cap.
+
+### Phase C: cause and effect (outline; the main focus)
+- **C0. Influence graph:**
+  - Roll story-level cause and effect up to lasting links between things, for example crude oil → shipping costs ▲, seen 37 times in 90 days, last seen 2 days ago, with a strength trend.
+  - New stories strengthen or weaken these links over time. The totals survive when stories are pruned.
+- **C1. "How X connects to Y":** pick any two things to see the strongest chains between them. They play as a step-by-step process (each step: mechanism, evidence, time lag, confidence), and can be saved as a trail.
+- **C2. Cascade upgrades:**
+  - Live cascades fed by the AI clock.
+  - "What's new in this cascade since your last visit".
+  - Influence links behind each story.
+  - Polarity and delay shown.
+  - The minimum-confidence filter.
+- **C3. Feedback loops:** detected on the influence graph, as chips (reinforcing or balancing). Tapping a chip highlights the loop.
+- **C4. What-if:** shocks spread with sign and strength, fading at each step, up to 4 steps. Labelled "Scenario, not a forecast", and feeds "Affects you".
+- **C5. Guided stories:** step-by-step focus views with a one-line caption each, shared as read-only links.
+
+### Phase B: lenses (outline)
+- **B1. Focus mode:** tap to re-centre, back and forward, relation and direction filters, pinning, under 300 ms.
+- **B2. Semantic zoom:** networkx Louvain clusters at 2–3 levels (BSD licence), a sigma.js GPU renderer (MIT) with layout in a web worker, and cached cluster labels.
+- **B3. Table lens:** TanStack Table plus Virtual, with filters shared with the graph.
+- **B4. Canvas boards:** React Flow; cards are live references; drawing a line creates a personal link.
+- **B5. Timeline lens**, linked to all lenses.
+- **B6. Globe link:** "Show on globe", and a globe region filters the graph.
+- **B7. Saved lenses:** a sidebar; read-only share links carry the lens in the URL.
+
+### Phase T: track and learn (outline)
+- **T1. Change tracking:**
+  - "What changed" in the graph: new, stronger, weaker and broken links. Shown as a daily strip and a weekly digest.
+  - Alerts on watched items, delivered by email at launch.
+  - An "as of" comparison of two dates.
+- **T2. Learning trails:** focus mode keeps a breadcrumb trail; save it, add a note to each step, share it read-only, and turn it into a guided story.
+- **T3. Starter tours:** about 8 curated tours, for example "How a Brazilian drought reaches your coffee", "Why the Red Sea matters to Europe", "Oil → inflation → interest rates".
+- **T4. Learn hub:**
+  - Plain-language explainers for each relation type, loop and indicator.
+  - A glossary.
+  - "Explain like I'm new" on any panel (AI, cached).
+- **T5. Audience modes:** Learner, Analyst, Business and Investor. Each changes defaults (explanations, depth, panels and starting screens), with the same data underneath.
+
+### Phase D: AI helpers (outline)
+- **D1.** Add from documents, through a per-viewer review queue.
+- **D2.** Ask the graph: answers cite nodes, links and sources, and highlight them in the current lens.
+- **D3.** Insights: gaps, contradictions, stale items, weakly linked clusters.
+- **D4.** Suggested links, hidden unless "Suggestions" is on.
+- **D5.** Summaries and mind maps, cached by a hash of the content.
+
+### Phase S: new sections (outline; free data first, licensed prices at launch)
+- **S1. Markets:**
+  - Commodity, currency and index tiles linked to graph nodes. "Why it moved" pulls in the cascade stories.
+  - Free monthly Pink Sheet data now; licensed live prices at launch.
+- **S2. Countries:** a profile per country: macro dashboard (WDI and IMF), trade partners (BACI), exposure, risks, forecasts and what changed.
+- **S3. Supply chains:** chokepoints, ports and trade flows by product, with a "who depends on this?" ranking and a globe heat view.
+- **S4. Risk radar:** conflict (UCDP), sanctions, disasters (GDACS, USGS) and policy changes, mapped to exposure.
+- **S5. Investor lens:** company exposure (EDGAR revenue by region, subsidiaries, sector links), with what-if on holdings. Information only, never advice.
+- **S6. Calendar:** scheduled policy and economic events (central bank meetings, releases) linked to forecasts and cascades.
+
+### Phase E: convenience (outline; kept up throughout)
+- **E1.** Command palette: properties and commands.
+- **E2.** Time slider using A4.
+- **E3.** Quick capture (voice through the browser's speech recognition).
+- **E4.** Obsidian import; export to Markdown, CSV, JSON and GraphML.
+- **E5.** Performance: 10k visible nodes.
+- **E6.** A list or table version of every lens, plus keyboard moves between nodes.
+- **E7.** Flag a problem.
+
+### Phase L: launch kit (outline; built and switched off until the owner launches)
+- **Accounts:** Supabase Auth with email links. Personal data moves from per-viewer storage into tables protected by row-level security, with export and delete.
+- **Plans and payments:** Paddle, with Free, Pro, Team and Learner plans, usage metering and limits, and a billing page.
+- **Services:** Resend email (sign-in, alerts, digests), PostHog, Sentry, Better Stack heartbeat and status page.
+- **Legal:** Termly privacy policy, terms and cookies.
+- **Domain:** worldgraph.com on Cloudflare.
+- **Storage and feeds:** Supabase Pro, the R2 archive, Twelve Data and NewsAPI.ai adapters.
+- **Settings:** a launch checklist in `docs/LAUNCH.md`, and every switch in one admin-only Settings page.
 
 ### Phase A: structure and trust (full detail)
 
@@ -271,6 +392,20 @@ Source: `docs/KNOWLEDGE_GRAPH_UPGRADE.md` (kept word for word). What exists toda
   - Tapping a relation filters the graph to it.
 - **Done when:** it matches the live schema and counts, and each type opens its list or table.
 
+
+**A6. Trust at a glance (added by the owner)**
+- Line thickness shows strength and transparency shows confidence on every graph, cascade and globe link, alongside the existing solid, dashed and dotted styles.
+- Unsourced or weak items get a "?" badge.
+- One legend explains all of this.
+- **Done when:** the same link looks the same in every view, and tests cover the mapping from confidence and strength to visual weight.
+
+**A7. Sleek heat map (added by the owner)**
+- Replace the hexagon tiles (`features/globe/layers.ts`, `model.ts binEvents`) with two layers:
+  - **Zoomed out:** countries shaded by activity, coloured by the net balance of risk and opportunity (amber or teal), with ▲ or ▼ on hover. It shares the region data the globe already loads.
+  - **Zoomed in:** a smooth, soft glow of event density (a GPU heat layer) that fades out where the event points take over.
+- It respects the calm setting, the theme and both border views.
+- **Done when:** there are no hexagons, it is readable in dark and light at every zoom, and phone screenshots are reviewed.
+
 **How to try Phase A:** Settings → Sample data On. Then:
 - open `#entity=` on a curated company and check its property chips and grouped links;
 - tap any graph link and open "Why is this here?";
@@ -279,54 +414,4 @@ Source: `docs/KNOWLEDGE_GRAPH_UPGRADE.md` (kept word for word). What exists toda
 
 **Rough size:** 30–45 L tokens. Order: A0 and A1/A2 database work (one agent, because migrations run in order), then A3 and A4 database work, then the screens split by area.
 
-### Phase B: lenses (outline)
-- **B1. Focus mode:**
-  - Tapping a node re-centres it (the panel opens from a button). The graph scope joins back/forward history.
-  - Relation and direction filters come from A2. Pinning uses fixed positions.
-  - Neighbours are prefetched on hover to stay under 300 ms.
-- **B2. Semantic zoom:**
-  - A pipeline job computes 2–3 levels of communities with networkx Louvain. That library is BSD-licensed; the usual Leiden package is GPL, so it's avoided.
-  - New tables `cluster` and `cluster_member`. Cluster labels come from top members, with an optional cached AI label.
-  - Needs a WebGL renderer: sigma.js (MIT), with the layout in a web worker. This also covers E5.
-- **B3. Table lens:** TanStack Table plus Virtual (MIT). Filters are shared with the graph. Only fields the user owns can be edited inline.
-- **B4. Canvas:**
-  - Boards built with React Flow (already used).
-  - Cards are live references to nodes. Drawing a line creates a personal link, with a relation picker.
-  - Boards are stored per viewer.
-- **B5. Timeline:** a zoomable timeline for events and relationship periods. The time range is shared with the other lenses.
-- **B6. Globe link:** "Show on globe" for any selection. A globe region selection filters the graph. One shared selection.
-- **B7. Saved lenses:** stored per viewer and listed in a sidebar. A read-only share link carries the lens in the URL, so it opens with fresh data and needs no server.
 
-### Phase C: cause and effect (outline)
-- **C0. Influence graph** (Claude's suggestion, see question 4):
-  - Roll story-level causal links up to the entities they're about, for example crude oil → shipping costs (+), seen 37 times in 90 days, last seen 2 days ago.
-  - Keep these totals when stories are pruned, so lasting knowledge builds up.
-  - Loops and what-if run on this graph.
-- **C1. Feedback loops:**
-  - A bounded cycle search (length up to 6) over signed links, precomputed by the pipeline into `causal_loop`. An even number of "−" links means reinforcing; odd means balancing.
-  - Loops appear as chips on entity, story and cascade views.
-- **C2. What-if:**
-  - Spreads sign × strength with a fade at each step, up to 4 steps, reusing the fading from `api.affects`.
-  - Results reuse the "Affects you" rendering and are labelled "Scenario, not a forecast".
-- **C3. Guided stories:** a sequence of focus views, each with a one-line caption, played step by step or shared as a read-only link.
-
-### Phase D: AI helpers (outline)
-- **D1. Add from documents:**
-  - Paste text or a PDF (read in the browser with pdf.js). Links are fetched on the website only, because the test link has no network.
-  - Matching uses names, aliases and trigrams; free local entity embeddings come from the pipeline.
-  - Everything lands in a per-viewer review queue.
-- **D2. Ask the graph:** answers cite nodes and links as well as stories; cited items are highlighted in the current lens; "not enough evidence" stays.
-- **D3. Insights:** SQL checks for unsourced or low-confidence links, links of opposite sign between the same pair, weakly linked clusters, and items not updated for a set time.
-- **D4. Suggested links:** from co-occurrence plus local embeddings, hidden unless "Suggestions" is on. One tap to accept with a relation.
-- **D5. Summaries and mind maps:** cached by a hash of the underlying content and regenerated only when it changes.
-
-### Phase E: convenience (outline)
-- **E1.** The command palette also searches properties, and gains commands: focus on, open lens, show on globe, add note.
-- **E2.** A time slider using A4.
-- **E3.** Quick capture: a "+" button anywhere. Voice notes use the browser's free speech recognition and go to the D1 queue.
-- **E4.** Import an Obsidian vault (zip, read in the browser) into the personal graph. Export to Markdown, CSV, JSON or GraphML (on the test link through the downloads capability).
-- **E5.** Performance: the B2 renderer, virtual lists and on-demand neighbourhoods.
-- **E6.** A list or table version of every lens, plus keyboard moves between nodes.
-- **E7.** Flag a problem: website flags go through a narrow, rate-limited function; the owner reviews them on the test link.
-
-**Suggested order:** A → C0 → B1, B3 → C1, C2 → B2 (with the renderer switch) → D1–D3 → the rest.

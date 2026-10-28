@@ -21,11 +21,11 @@ import { buildLayers, PICK_PASSES, type LayerInput } from "./layers";
 import {
   angularDistance,
   cameraForBounds,
+  countryShadeOpacity,
   declutterLabels,
   markerObstacles,
   type ArcDatum,
   type GlobeEvent,
-  type HexBin,
   type LabelCandidate,
   type LngLat,
   screenRadius,
@@ -40,7 +40,6 @@ export type PickInfo =
   | { kind: "event"; id: string; x: number; y: number; event: GlobeEvent }
   | { kind: "forecast"; id: string; x: number; y: number; forecast: ForecastSummary }
   | { kind: "arc"; id: string; x: number; y: number; arc: ArcDatum }
-  | { kind: "hex"; id: string; x: number; y: number; hex: HexBin }
   | { kind: "country" | "state"; id: string; x: number; y: number; name: string };
 
 /** A camera move asked for by the view (fly to a region, the zoom buttons). */
@@ -75,8 +74,13 @@ export interface GlobeMapProps {
   animate: boolean;
   countries: CountryCollection | null;
   states: StateCollection | null;
-  /** Fill colour per country id (rgba strings). */
-  countryFills: ReadonlyMap<string, string>;
+  /**
+   * The activity shading per country id (rgba strings); countries without
+   * one show plain land. It fades out as you zoom in (on the GPU).
+   */
+  activityFills: ReadonlyMap<string, string>;
+  /** The "Activity" layer is on: show the shading. */
+  showActivity: boolean;
   selectedRegionId: string | null;
   padding: Padding;
   /** Where "reset view" goes, and where the globe starts. */
@@ -113,7 +117,10 @@ const RIM_STYLE: CSSProperties = {
 };
 const FLIGHT_MS = 1600;
 
-function baseStyle(p: GlobePalette): StyleSpecification {
+/** No paint transitions: theme and data changes apply at once (calm-safe, and nothing to animate). */
+const INSTANT = { duration: 0, delay: 0 };
+
+function baseStyle(p: GlobePalette, showActivity: boolean): StyleSpecification {
   return {
     version: 8,
     projection: { type: "globe" },
@@ -128,7 +135,23 @@ function baseStyle(p: GlobePalette): StyleSpecification {
         id: "countries-fill",
         type: "fill",
         source: "countries",
-        paint: { "fill-color": countryFillExpr(p), "fill-antialias": true },
+        paint: { "fill-color": toCss(p.land), "fill-antialias": true },
+      },
+      {
+        // Activity, zoomed out: each country shaded by how busy it is and
+        // which way its news leans; under the borders, fading out as you
+        // zoom in (MapLibre interpolates the opacity every frame).
+        id: "countries-activity",
+        type: "fill",
+        source: "countries",
+        layout: { visibility: showActivity ? "visible" : "none" },
+        paint: {
+          "fill-color": ["to-color", ["coalesce", ["feature-state", "activity"], "rgba(0, 0, 0, 0)"]],
+          "fill-opacity": countryShadeOpacity(),
+          "fill-antialias": false,
+          "fill-color-transition": INSTANT,
+          "fill-opacity-transition": INSTANT,
+        },
       },
       {
         id: "states-fill",
@@ -188,11 +211,6 @@ const hoverOpacity = (on: number): ExpressionSpecification => [
   0,
 ];
 
-const countryFillExpr = (p: GlobePalette): ExpressionSpecification => [
-  "to-color",
-  ["coalesce", ["feature-state", "fill"], toCss(p.land)],
-];
-
 /** A thin token-coloured halo around the planet (the sky shader; the physical atmosphere is off). */
 function skySpec(p: GlobePalette): NonNullable<StyleSpecification["sky"]> {
   const halo = toCss(withAlpha(p.atmosphere, p.theme === "dark" ? 0.6 : 0.75));
@@ -245,7 +263,7 @@ export function GlobeMap(props: GlobeMapProps) {
     try {
       map = new MapLibreMap({
         container: el,
-        style: baseStyle(initial.layerInput.palette),
+        style: baseStyle(initial.layerInput.palette, initial.showActivity),
         center: start.center,
         zoom: start.zoom,
         minZoom: 0.2,
@@ -284,15 +302,14 @@ export function GlobeMap(props: GlobeMapProps) {
         const f = object as ForecastSummary;
         return f.lon !== null && f.lat !== null && isVisible(f.lon, f.lat);
       }
-      if (layer === "hex") return isVisible((object as HexBin).lon, (object as HexBin).lat);
       return coordinate ? isVisible(coordinate[0], coordinate[1]) : true;
     };
 
     /**
      * What deck.gl has under the pointer. One picking pass for the marks
      * (events, forecast rings) with a generous radius, and only if that finds
-     * nothing, one more for links and heat: each pass redraws the picking
-     * buffer, so a deep multi-pick on every pointer move would be slow.
+     * nothing, one more for links: each pass redraws the picking buffer, so a
+     * deep multi-pick on every pointer move would be slow.
      */
     const pickDeck = (x: number, y: number): PickInfo | null => {
       for (const [layerIds, radius] of PICK_PASSES) {
@@ -312,8 +329,6 @@ export function GlobeMap(props: GlobeMapProps) {
             };
           case "arcs":
             return { kind: "arc", id: String((object as ArcDatum).id), x, y, arc: object as ArcDatum };
-          case "hex":
-            return { kind: "hex", id: (object as HexBin).h3, x, y, hex: object as HexBin };
         }
       }
       return null;
@@ -505,7 +520,7 @@ export function GlobeMap(props: GlobeMapProps) {
     const map = mapRef.current;
     if (!map || !loaded) return;
     map.setPaintProperty("ocean", "background-color", toCss(palette.ocean));
-    map.setPaintProperty("countries-fill", "fill-color", countryFillExpr(palette));
+    map.setPaintProperty("countries-fill", "fill-color", toCss(palette.land));
     map.setPaintProperty("countries-line", "line-color", toCss(palette.border));
     map.setPaintProperty("states-line", "line-color", toCss(palette.border));
     map.setPaintProperty("countries-hover", "fill-color", toCss(palette.fg));
@@ -517,7 +532,7 @@ export function GlobeMap(props: GlobeMapProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paletteKey, loaded]);
 
-  const { countries, states, countryFills, selectedRegionId } = props;
+  const { countries, states, activityFills, showActivity, selectedRegionId } = props;
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loaded) return;
@@ -530,14 +545,22 @@ export function GlobeMap(props: GlobeMapProps) {
     (map.getSource("states") as GeoJSONSource | undefined)?.setData(states ?? EMPTY);
   }, [states, loaded]);
 
+  // The shading follows both border views: it is keyed by country id on
+  // whichever country shapes are loaded.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loaded || !countries) return;
     for (const f of countries.features) {
       const id = f.properties.id;
-      if (id) map.setFeatureState({ source: "countries", id }, { fill: countryFills.get(id) ?? null });
+      if (id) map.setFeatureState({ source: "countries", id }, { activity: activityFills.get(id) ?? null });
     }
-  }, [countries, countryFills, loaded]);
+  }, [countries, activityFills, loaded]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loaded) return;
+    map.setLayoutProperty("countries-activity", "visibility", showActivity ? "visible" : "none");
+  }, [showActivity, loaded]);
 
   useEffect(() => {
     const map = mapRef.current;

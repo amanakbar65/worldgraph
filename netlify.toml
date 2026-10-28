@@ -16,6 +16,10 @@
   command = "npm run build"
   publish = "dist"
   functions = "netlify/functions"
+  # Every production deploy costs credits (the free plan pauses the site at its cap), so the
+  # website deploys only on purpose: a commit whose message contains "[deploy]" AND that changes
+  # what the website serves (compared with the last deploy). Exit 0 = skip. Runs in frontend/.
+  ignore = "case \"$(git log -1 --format=%B)\" in *'[deploy]'*) git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- src public server netlify index.html package.json package-lock.json vite.config.ts ../netlify.toml ':(exclude)src/**/*.test.ts' ':(exclude)src/**/*.test.tsx' ;; *) exit 0 ;; esac"
 
 [build.environment]
   NODE_VERSION = "22"

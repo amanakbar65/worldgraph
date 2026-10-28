@@ -10,7 +10,7 @@ Scripts are in this folder; `S` below means wherever you copied them in the proj
 ## Setup (once per project)
 1. Copy `checkpoint.sh`, `status.sh` and `loss-report.py` into the repo; commit.
 2. Create a short `CHECKPOINT.md` (template below). Point the project's CLAUDE.md to it.
-3. From inside the repo: `setsid nohup S/checkpoint.sh 600 12 >/dev/null 2>&1 </dev/null &`. It saves silently every 10 min for 12 h. Starting it twice is safe.
+3. From inside the repo: `setsid nohup S/checkpoint.sh 120 12 >/dev/null 2>&1 </dev/null &`. It saves silently every 2 min for 12 h (a snapshot costs no tokens and pushes only when something changed; usage can burn fast, so short intervals lose least). Starting it twice is safe.
 
 ## While building
 - Launch workflows from inside the repo, after pushing main.
