@@ -94,6 +94,9 @@ def schema_sql(
 @kg_app.command("review")
 def kg_review(
     out: str = typer.Option("../docs/kg-review.md", help="Where to write the review list (Markdown)."),
+    source: str = typer.Option(
+        "the database in DATABASE_URL", help="How to name the database in the header."
+    ),
 ) -> None:
     """Write the owner's review list: leftover facts, unknown keys, rule breaks, relates_to links."""
     from pathlib import Path
@@ -104,7 +107,7 @@ def kg_review(
     with connect() as conn:
         data = collect(conn)
     path = Path(out)
-    path.write_text(render(data), encoding="utf-8")
+    path.write_text(render(data, source), encoding="utf-8")
     typer.secho(f"Wrote {path}", fg=typer.colors.GREEN)
     for label, value in data["summary"].items():
         typer.echo(f"  {label}: {value}")

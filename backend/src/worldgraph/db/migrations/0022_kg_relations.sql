@@ -91,8 +91,8 @@ declare
 begin
     select n.type into v_src from node n where n.id = new.src;
     select n.type into v_dst from node n where n.id = new.dst;
-    if v_src is null or v_dst is null then
-        return new;  -- the foreign keys report a missing node
+    if v_src is null or v_dst is null or not exists (select 1 from relation_type r where r.key = new.type) then
+        return new;  -- the foreign keys report a missing node or relation
     end if;
     if not api._relation_allows(new.type, v_src, v_dst) then
         raise exception 'Relation % does not connect % (%) to % (%)', new.type, new.src, v_src, new.dst, v_dst
