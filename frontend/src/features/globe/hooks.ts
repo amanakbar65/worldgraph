@@ -1,24 +1,36 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
-import { paletteKey, readGlobePalette, type GlobePalette } from "@/lib/globe-color";
+import { paletteKey, parseCssColor, readGlobePalette, type GlobePalette, type Rgba } from "@/lib/globe-color";
 
 import type { ReplaySpan } from "./model";
+
+/** The activity glow's colour: the --globe-glow token, else the label colour. */
+function readGlow(palette: GlobePalette): Rgba {
+  try {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue("--globe-glow");
+    return parseCssColor(raw) ?? palette.label;
+  } catch {
+    return palette.label;
+  }
+}
+
+function readColors(): { palette: GlobePalette; glow: Rgba; key: string } {
+  const palette = readGlobePalette();
+  const glow = readGlow(palette);
+  return { palette, glow, key: `${paletteKey(palette)}|${glow.join(",")}` };
+}
 
 /**
  * The globe's colours, read from the CSS tokens and read again whenever the
  * theme attribute on <html> changes (the app's theme setting or the host's).
  */
-export function useGlobePalette(): { palette: GlobePalette; key: string } {
-  const [state, setState] = useState(() => {
-    const palette = readGlobePalette();
-    return { palette, key: paletteKey(palette) };
-  });
+export function useGlobePalette(): { palette: GlobePalette; glow: Rgba; key: string } {
+  const [state, setState] = useState(readColors);
   useEffect(() => {
     const root = document.documentElement;
     const reread = () => {
-      const palette = readGlobePalette();
-      const key = paletteKey(palette);
-      setState((prev) => (prev.key === key ? prev : { palette, key }));
+      const next = readColors();
+      setState((prev) => (prev.key === next.key ? prev : next));
     };
     reread();
     const observer = new MutationObserver(reread);

@@ -17,12 +17,30 @@ export type Panel =
   | { kind: "ask"; q?: string; scope?: string }
   | { kind: "settings" };
 
+/**
+ * The one minimum-confidence setting (Phase A3): links and items less sure
+ * than this are hidden in the graph, the cascade and on the globe (except
+ * what is in focus). 0–0.9 in steps of 0.05 (the graph's slider step);
+ * 0.5 by default, the globe's long-standing floor.
+ */
+export const MIN_CONFIDENCE = { min: 0, max: 0.9, step: 0.05, default: 0.5 } as const;
+
+/** Clamp to 0–0.9 and round to the 0.05 step (NaN gives the default). */
+export function clampMinConfidence(value: number): number {
+  if (!Number.isFinite(value)) return MIN_CONFIDENCE.default;
+  const v = Math.min(MIN_CONFIDENCE.max, Math.max(MIN_CONFIDENCE.min, value));
+  const perUnit = Math.round(1 / MIN_CONFIDENCE.step);
+  return Math.round(v * perUnit) / perUnit;
+}
+
 interface NavState {
   view: View;
   /** Panel history; the last one is shown. Back pops it. */
   panels: Panel[];
   window: TimeWindow;
   sectors: SectorId[]; // empty = all sectors (lens off)
+  /** Hide links (and items) less sure than this, 0–0.9 (see MIN_CONFIDENCE). */
+  minConfidence: number;
   /** A camera request for the globe: fly to this region or point. */
   focus: { regionId?: string; lon?: number; lat?: number; zoom?: number; nonce: number } | null;
   setView: (view: View) => void;
@@ -33,15 +51,17 @@ interface NavState {
   setWindow: (window: TimeWindow) => void;
   toggleSector: (sector: SectorId) => void;
   clearSectors: () => void;
+  setMinConfidence: (value: number) => void;
   flyTo: (focus: Omit<NonNullable<NavState["focus"]>, "nonce">) => void;
 }
 
 const samePanel = (a: Panel, b: Panel) => JSON.stringify(a) === JSON.stringify(b);
 
 // ---------------------------------------------------------------------------
-// Deep links: the view, the top panel, the window and the sector lens live in
-// the URL hash (only bare #anchors survive inside claude.ai), e.g.
-//   #globe   #story=story:abc   #region=region:in-gj&w=24h   #graph&s=energy
+// Deep links: the view, the top panel, the window, the sector lens and the
+// minimum confidence live in the URL hash (only bare #anchors survive inside
+// claude.ai), e.g.
+//   #globe   #story=story:abc   #region=region:in-gj&w=24h   #graph&s=energy&c=0.7
 // ---------------------------------------------------------------------------
 
 /** The part of the navigation state that a link carries. */
@@ -50,6 +70,8 @@ export interface LinkState {
   panel: Panel | null;
   window: TimeWindow;
   sectors: SectorId[];
+  /** Missing means the default (0.5); parseHash always fills it in. */
+  minConfidence?: number;
 }
 
 const DEFAULT_VIEW: View = "globe";
@@ -83,7 +105,13 @@ const decodeText = (text: string) => decode(text.replace(/\+/g, "%20"));
 export function parseHash(hash: string): LinkState | null {
   const body = hash.replace(/^#/, "").trim();
   if (!body) return null;
-  const state: LinkState = { view: DEFAULT_VIEW, panel: null, window: DEFAULT_WINDOW, sectors: [] };
+  const state: LinkState = {
+    view: DEFAULT_VIEW,
+    panel: null,
+    window: DEFAULT_WINDOW,
+    sectors: [],
+    minConfidence: MIN_CONFIDENCE.default,
+  };
   let recognised = false;
   let ask: { q?: string; scope?: string } | null = null;
   for (const part of body.split("&")) {
@@ -98,6 +126,9 @@ export function parseHash(hash: string): LinkState | null {
       recognised = true;
     } else if (key === "s") {
       state.sectors = [...new Set(raw.split(",").filter(isSector))];
+      recognised = true;
+    } else if (key === "c" && /^\d*\.?\d+$/.test(raw)) {
+      state.minConfidence = clampMinConfidence(Number(raw));
       recognised = true;
     } else if (isIdPanel(key)) {
       const id = decode(raw);
@@ -153,15 +184,27 @@ export function formatHash(state: LinkState): string {
   if (state.panel) parts.push(panelPart(state.panel));
   if (state.window !== DEFAULT_WINDOW) parts.push(`w=${state.window}`);
   if (state.sectors.length) parts.push(`s=${state.sectors.join(",")}`);
+  const c = clampMinConfidence(state.minConfidence ?? MIN_CONFIDENCE.default);
+  if (c !== MIN_CONFIDENCE.default) parts.push(`c=${c}`);
   return `#${parts.join("&")}`;
 }
 
 /** The link state of the store right now. */
-export function linkStateOf(s: Pick<NavState, "view" | "panels" | "window" | "sectors">): LinkState {
-  return { view: s.view, panel: s.panels[s.panels.length - 1] ?? null, window: s.window, sectors: s.sectors };
+export function linkStateOf(
+  s: Pick<NavState, "view" | "panels" | "window" | "sectors"> & { minConfidence?: number },
+): LinkState {
+  return {
+    view: s.view,
+    panel: s.panels[s.panels.length - 1] ?? null,
+    window: s.window,
+    sectors: s.sectors,
+    minConfidence: s.minConfidence ?? MIN_CONFIDENCE.default,
+  };
 }
 
-function initialFromLocation(): Partial<Pick<NavState, "view" | "panels" | "window" | "sectors">> {
+function initialFromLocation(): Partial<
+  Pick<NavState, "view" | "panels" | "window" | "sectors" | "minConfidence">
+> {
   try {
     const link = parseHash(window.location.hash);
     if (!link) return {};
@@ -170,6 +213,7 @@ function initialFromLocation(): Partial<Pick<NavState, "view" | "panels" | "wind
       panels: link.panel ? [link.panel] : [],
       window: link.window,
       sectors: link.sectors,
+      minConfidence: link.minConfidence ?? MIN_CONFIDENCE.default,
     };
   } catch {
     return {};
@@ -181,6 +225,7 @@ export const useNav = create<NavState>((set) => ({
   panels: [],
   window: "7d",
   sectors: [],
+  minConfidence: MIN_CONFIDENCE.default,
   focus: null,
   ...initialFromLocation(),
   setView: (view) => set({ view }),
@@ -199,6 +244,7 @@ export const useNav = create<NavState>((set) => ({
       sectors: s.sectors.includes(sector) ? s.sectors.filter((x) => x !== sector) : [...s.sectors, sector],
     })),
   clearSectors: () => set({ sectors: [] }),
+  setMinConfidence: (value) => set({ minConfidence: clampMinConfidence(value) }),
   flyTo: (focus) => set({ focus: { ...focus, nonce: Date.now() } }),
 }));
 
@@ -219,7 +265,13 @@ export function applyLink(link: LinkState): void {
         panels = at >= 0 ? panels.slice(0, at + 1) : [...panels.slice(-15), link.panel];
       }
     }
-    return { view: link.view, panels, window: link.window, sectors: link.sectors };
+    return {
+      view: link.view,
+      panels,
+      window: link.window,
+      sectors: link.sectors,
+      minConfidence: clampMinConfidence(link.minConfidence ?? MIN_CONFIDENCE.default),
+    };
   });
 }
 
@@ -227,7 +279,7 @@ export function applyLink(link: LinkState): void {
  * Keep the hash and the store in step, and make the browser's Back button
  * walk back through screens and panels:
  * - opening a screen or panel adds a history entry;
- * - changing the window or sector lens replaces the current entry;
+ * - changing the window, sector lens or minimum confidence replaces the current entry;
  * - closing a panel with the app's own Back goes back in history when the
  *   previous entry is that same place, so history doesn't fill with repeats;
  * - Back/Forward (or editing the hash) moves the app to that place.

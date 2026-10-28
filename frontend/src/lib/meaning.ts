@@ -250,6 +250,80 @@ export const LINK_TYPES: Record<LinkType, LinkTypeInfo> = {
 };
 
 // ---------------------------------------------------------------------------
+// Trust at a glance (Phase A6): one mapping for every graph, cascade and globe link
+// ---------------------------------------------------------------------------
+
+/** Below this confidence an item is weak: it wears a "?" mark. */
+export const WEAK_CONFIDENCE = 0.5;
+
+/** Line widths in pixels for the weakest and the strongest link. */
+export const TRUST_WIDTH = { min: 0.75, max: 2.75 } as const;
+
+/** Opacity for a link nobody is sure of (confidence 0) and a certain one (1). */
+export const TRUST_OPACITY = { min: 0.3, max: 1 } as const;
+
+export interface TrustInput {
+  /** 0–1; null or missing means unknown (drawn as middling and marked weak). */
+  confidence: number | null | undefined;
+  /** 0–1, how strongly the cause moves the effect; missing means "use confidence". */
+  strength?: number | null;
+  linkType?: LinkType | null;
+}
+
+export interface TrustVisual {
+  /** 0–1: the strength, or the confidence when the strength is unknown. */
+  weight: number;
+  /** Line width in pixels, from the weight. */
+  width: number;
+  /** 0.3–1, from the confidence: less certain links are more transparent. */
+  opacity: number;
+  /** Solid, dashed or dotted, from the link type (solid without one). */
+  line: LineStyle;
+  /** SVG `stroke-dasharray` for the link type (undefined = solid). */
+  dash: string | undefined;
+  /** Confidence under 50 % or unknown: show a "?" mark. */
+  weak: boolean;
+}
+
+const unit = (v: number | null | undefined): number | null =>
+  typeof v === "number" && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : null;
+
+/**
+ * How a link looks, so the same link looks the same everywhere: thickness
+ * from strength (or confidence when strength is unknown), transparency from
+ * confidence, and the line pattern from the link type. Views that draw
+ * thinner or thicker lines scale `width`, keeping the ratio.
+ */
+export function trustVisual({ confidence, strength, linkType }: TrustInput): TrustVisual {
+  const c = unit(confidence);
+  const weight = unit(strength) ?? c ?? 0.5;
+  const info = linkType ? LINK_TYPES[linkType] : undefined;
+  return {
+    weight,
+    width: Math.round((TRUST_WIDTH.min + (TRUST_WIDTH.max - TRUST_WIDTH.min) * weight) * 100) / 100,
+    opacity:
+      Math.round((TRUST_OPACITY.min + (TRUST_OPACITY.max - TRUST_OPACITY.min) * (c ?? 0.5)) * 1000) / 1000,
+    line: info?.line ?? "solid",
+    dash: info?.dasharray,
+    weak: isWeak(c),
+  };
+}
+
+/** Unknown, or under 50 % sure: the "?" mark. */
+export function isWeak(confidence: number | null | undefined): boolean {
+  const c = unit(confidence);
+  return c === null || c < WEAK_CONFIDENCE;
+}
+
+/** The words for the one legend that explains link weight (shared by every view). */
+export const TRUST_LEGEND = {
+  width: "Thicker line: stronger effect",
+  opacity: "Fainter line: less certain",
+  /** Next to the "?" mark itself. */
+  weak: "Under 50% sure, or no source",
+} as const;
+
+// ---------------------------------------------------------------------------
 // Horizon and direction
 // ---------------------------------------------------------------------------
 
@@ -261,6 +335,22 @@ export const HORIZON_LABELS: Record<Horizon, { label: string; description: strin
 
 export const DIRECTION_ARROWS: Record<Direction, string> = { up: "▲", down: "▼" };
 export const DIRECTION_WORDS: Record<Direction, string> = { up: "rising", down: "falling" };
+
+/**
+ * Which way a place's news leans, from its net score ((opportunity − risk) /
+ * events, −1…1): ▲ towards opportunity, ▼ towards risk, nothing when it is
+ * balanced (within 15 points), always with words so colour is never alone.
+ */
+export function balanceLean(score: number | null | undefined): {
+  impact: Impact;
+  glyph: string | null;
+  label: string;
+} {
+  const s = typeof score === "number" && Number.isFinite(score) ? score : 0;
+  if (s > 0.15) return { impact: "opportunity", glyph: DIRECTION_ARROWS.up, label: "Leans opportunity" };
+  if (s < -0.15) return { impact: "risk", glyph: DIRECTION_ARROWS.down, label: "Leans risk" };
+  return { impact: "neutral", glyph: null, label: "Balanced" };
+}
 
 /**
  * The impact a KPI change carries: up on a "worse" indicator is a risk,
