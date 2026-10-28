@@ -437,3 +437,60 @@ def test_web_reader_can_read_the_new_tables(sdb):
     assert call(sdb, "schema", {})["types"]
     assert call(sdb, "entity", {"id": "org:dp-world"})["properties"]
     assert json.dumps(call(sdb, "meta", {})["flags"])
+
+
+def test_where_filter_operators(sdb):
+    sdb.execute(
+        """insert into node (id, type, subtype, name, properties) values
+           ('org:kg-a', 'organization', 'company', 'A', '{"ticker": "NYSE: ALPHA", "founded": "1904",
+             "sector": ["sector:energy", "sector:tech"], "size": "large"}'),
+           ('org:kg-b', 'organization', 'company', 'B', '{"ticker": "LSE: BETA", "founded": "2010-06",
+             "sector": ["sector:finance"]}'),
+           ('org:kg-c', 'organization', 'company', 'C', '{}'),
+           ('infra:kg-p', 'infrastructure', 'port', 'P', '{"capacity": 5, "kind": "port"}'),
+           ('infra:kg-q', 'infrastructure', 'port', 'Q', '{"capacity": 50.5, "kind": "port"}')"""
+    )
+    orgs = ["org:kg-a", "org:kg-b", "org:kg-c"]
+
+    def where(node_type: str, ids: list[str], *conds: dict[str, Any]) -> list[str]:
+        row = sdb.execute(
+            "select api._where_filter(%s, %s, api._where_conditions(%s, %s::jsonb)) as ids",
+            (ids, node_type, node_type, json.dumps(list(conds))),
+        ).fetchone()
+        assert row is not None
+        return list(row["ids"])
+
+    assert where("organization", orgs, {"prop": "ticker", "op": "contains", "value": "nyse"}) == ["org:kg-a"]
+    assert where("organization", orgs, {"prop": "ticker", "op": "eq", "value": "lse: beta"}) == ["org:kg-b"]
+    assert where("organization", orgs, {"prop": "sector", "op": "contains", "value": "sector:tech"}) == [
+        "org:kg-a"
+    ]
+    assert where(
+        "organization", orgs, {"prop": "sector", "op": "in", "value": ["sector:finance", "sector:x"]}
+    ) == ["org:kg-b"]
+    assert where("organization", orgs, {"prop": "founded", "op": "gte", "value": "2000"}) == ["org:kg-b"]
+    assert where("organization", orgs, {"prop": "founded", "op": "lte", "value": "1999-12-31"}) == [
+        "org:kg-a"
+    ]
+    assert where(
+        "organization",
+        orgs,
+        {"prop": "founded", "op": "lte", "value": "2020"},
+        {"prop": "size", "op": "eq", "value": "large"},
+    ) == ["org:kg-a"]
+    assert where("organization", orgs) == orgs  # no conditions: every node of the type
+    ports = ["infra:kg-q", "infra:kg-p", "org:kg-a"]  # order kept; other types dropped
+    assert where("infrastructure", ports, {"prop": "capacity", "op": "gte", "value": 5}) == [
+        "infra:kg-q",
+        "infra:kg-p",
+    ]
+    assert where("infrastructure", ports, {"prop": "capacity", "op": "in", "value": [50.5, 7]}) == [
+        "infra:kg-q"
+    ]
+    assert where("infrastructure", ports, {"prop": "capacity", "op": "lte", "value": 10}) == ["infra:kg-p"]
+    # Derived values filter too.
+    assert where(
+        "region",
+        ["region:in", "region:in-gj", "region:in-gj.ahmedabad"],
+        {"prop": "level", "op": "eq", "value": "city"},
+    ) == ["region:in-gj.ahmedabad"]

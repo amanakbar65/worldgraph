@@ -6,9 +6,6 @@ drop trigger if exists node_properties_valid on node;
 drop function if exists public.node_properties_valid();
 
 drop function if exists api._where_filter(text[], text, jsonb);
-drop function if exists api._where_match(jsonb, jsonb);
-drop function if exists api._where_one(jsonb, jsonb);
-drop function if exists api._where_eq(jsonb, jsonb, text);
 drop function if exists api._where_conditions(text, jsonb);
 drop function if exists api._entity_properties(text);
 drop function if exists api._property_item(jsonb, jsonb, jsonb);
@@ -16,6 +13,7 @@ drop function if exists api._fmt_date(text);
 drop function if exists api._fmt_number(numeric);
 drop function if exists api._node_values(text);
 drop function if exists api._derived_properties(text, text);
+drop function if exists api._derived_many(text[], text);
 drop function if exists api._property_coerce(jsonb, text);
 drop function if exists api._property_problems(text, jsonb);
 drop function if exists api._prop_value_problem(jsonb, jsonb);

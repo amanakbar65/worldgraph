@@ -369,66 +369,70 @@ $$;
 -- Derived (read-only) values for regions, sectors, stories and forecasts,
 -- from their side tables. Other types have none.
 -- ---------------------------------------------------------------------------
+-- Derived values for many nodes of one type at once (set-based, for filters).
+create or replace function api._derived_many(p_ids text[], p_type text)
+returns table (id text, vals jsonb)
+language sql stable set search_path = public, extensions as $$
+    select r.node_id,
+           jsonb_strip_nulls(jsonb_build_object(
+               'level', r.level,
+               'iso_code', case when r.level in ('country', 'bloc') then r.iso2
+                                when r.level = 'state' then r.code end,
+               'parent', r.parent_id,
+               'country', case when r.level = 'city' then r.country_id end,
+               'population', r.population,
+               'continent', r.continent,
+               'subregion', r.subregion))
+    from region r
+    where p_type = 'region' and r.node_id = any(p_ids)
+    union all
+    select n.id, jsonb_build_object('entity_count', (
+               select count(*) from edge e where e.dst = n.id and e.type = 'in_sector'))
+    from node n
+    where p_type = 'sector' and n.id = any(p_ids) and n.type = 'sector'
+    union all
+    select s.node_id,
+           jsonb_strip_nulls(jsonb_build_object(
+               'kind', s.kind,
+               'event_type', s.event_type,
+               'impact', s.impact,
+               'direction', s.direction,
+               'magnitude', s.magnitude,
+               'horizon', s.horizon,
+               'confidence', round(s.confidence::numeric * 100),
+               'importance', round(s.importance::numeric, 1),
+               'first_seen', to_char(s.first_seen at time zone 'UTC', 'YYYY-MM-DD'),
+               'sectors', case when cardinality(s.sectors) > 0
+                               then to_jsonb(array(select 'sector:' || x from unnest(s.sectors) as x)) end,
+               'region', s.primary_region))
+    from story s
+    where p_type = 'story' and s.node_id = any(p_ids)
+    union all
+    select f.node_id,
+           jsonb_strip_nulls(jsonb_build_object(
+               'provider', fp.name,
+               'category', f.category,
+               'probability', round(l.probability::numeric * 100),
+               'end_date', to_char(f.end_date at time zone 'UTC', 'YYYY-MM-DD'),
+               'status', f.status,
+               'volume', l.volume,
+               'volume_unit', f.volume_unit))
+    from forecast f
+    join forecast_provider fp on fp.id = f.provider
+    left join lateral (
+        select fs.probability, fs.volume from forecast_snapshot fs
+        where fs.forecast_id = f.node_id order by fs.ts desc limit 1
+    ) l on true
+    where p_type = 'forecast' and f.node_id = any(p_ids)
+$$;
+
+-- Derived values of one node ({} for types without derived properties).
 create or replace function api._derived_properties(p_id text, p_type text default null) returns jsonb
-language plpgsql stable set search_path = public, extensions as $$
-declare
-    v_type text := p_type;
-    v_out jsonb;
-begin
-    if v_type is null then
-        select n.type into v_type from node n where n.id = p_id;
-    end if;
-    if v_type = 'region' then
-        select jsonb_strip_nulls(jsonb_build_object(
-                   'level', r.level,
-                   'iso_code', case when r.level in ('country', 'bloc') then r.iso2
-                                    when r.level = 'state' then r.code end,
-                   'parent', r.parent_id,
-                   'country', case when r.level = 'city' then r.country_id end,
-                   'population', r.population,
-                   'continent', r.continent,
-                   'subregion', r.subregion))
-        into v_out
-        from region r where r.node_id = p_id;
-    elsif v_type = 'sector' then
-        select jsonb_build_object('entity_count', count(*)) into v_out
-        from edge e where e.dst = p_id and e.type = 'in_sector';
-    elsif v_type = 'story' then
-        select jsonb_strip_nulls(jsonb_build_object(
-                   'kind', s.kind,
-                   'event_type', s.event_type,
-                   'impact', s.impact,
-                   'direction', s.direction,
-                   'magnitude', s.magnitude,
-                   'horizon', s.horizon,
-                   'confidence', round(s.confidence::numeric * 100),
-                   'importance', round(s.importance::numeric, 1),
-                   'first_seen', to_char(s.first_seen at time zone 'UTC', 'YYYY-MM-DD'),
-                   'sectors', case when cardinality(s.sectors) > 0
-                                   then to_jsonb(array(select 'sector:' || x from unnest(s.sectors) as x)) end,
-                   'region', s.primary_region))
-        into v_out
-        from story s where s.node_id = p_id;
-    elsif v_type = 'forecast' then
-        select jsonb_strip_nulls(jsonb_build_object(
-                   'provider', fp.name,
-                   'category', f.category,
-                   'probability', round(l.probability::numeric * 100),
-                   'end_date', to_char(f.end_date at time zone 'UTC', 'YYYY-MM-DD'),
-                   'status', f.status,
-                   'volume', l.volume,
-                   'volume_unit', f.volume_unit))
-        into v_out
-        from forecast f
-        join forecast_provider fp on fp.id = f.provider
-        left join lateral (
-            select fs.probability, fs.volume from forecast_snapshot fs
-            where fs.forecast_id = f.node_id order by fs.ts desc limit 1
-        ) l on true
-        where f.node_id = p_id;
-    end if;
-    return coalesce(v_out, '{}'::jsonb);
-end
+language sql stable set search_path = public, extensions as $$
+    select coalesce(
+        (select d.vals
+         from api._derived_many(array[p_id], coalesce(p_type, (select n.type from node n where n.id = p_id))) d),
+        '{}'::jsonb)
 $$;
 
 -- Every property value of a node: stored ones and derived ones.
@@ -624,62 +628,55 @@ begin
 end
 $$;
 
--- Equal, the way a filter means it: numbers by value, text ignoring case,
--- ids and choices exactly.
-create or replace function api._where_eq(p_a jsonb, p_b jsonb, p_kind text) returns boolean
-language sql immutable set search_path = pg_catalog as $$
-    select case
-        when p_kind = 'number' then jsonb_typeof(p_a) = 'number' and jsonb_typeof(p_b) = 'number'
-                                    and (p_a #>> '{}')::numeric = (p_b #>> '{}')::numeric
-        when p_kind = 'text' then lower(p_a #>> '{}') = lower(p_b #>> '{}')
-        else (p_a #>> '{}') = (p_b #>> '{}')
-    end
-$$;
-
--- Does one property value (a list for multiple properties) meet one condition?
-create or replace function api._where_one(p_value jsonb, p_cond jsonb) returns boolean
-language sql immutable set search_path = public, extensions as $$
-    select case
-        when p_value is null or jsonb_typeof(p_value) = 'null' then false
-        else exists (
-            select 1
-            from jsonb_array_elements(case when jsonb_typeof(p_value) = 'array' then p_value
-                                           else jsonb_build_array(p_value) end) as el
-            where case p_cond ->> 'op'
-                when 'eq' then api._where_eq(el, p_cond -> 'value', p_cond ->> 'kind')
-                when 'in' then exists (select 1 from jsonb_array_elements(p_cond -> 'value') x
-                                       where api._where_eq(el, x, p_cond ->> 'kind'))
-                when 'gte' then case when p_cond ->> 'kind' = 'number'
-                                     then jsonb_typeof(el) = 'number'
-                                          and (el #>> '{}')::numeric >= (p_cond ->> 'value')::numeric
-                                     else (el #>> '{}') collate "C" >= (p_cond ->> 'value') collate "C" end
-                when 'lte' then case when p_cond ->> 'kind' = 'number'
-                                     then jsonb_typeof(el) = 'number'
-                                          and (el #>> '{}')::numeric <= (p_cond ->> 'value')::numeric
-                                     else (el #>> '{}') collate "C" <= (p_cond ->> 'value') collate "C" end
-                when 'contains' then case when p_cond ->> 'kind' = 'text'
-                                          then strpos(lower(el #>> '{}'), lower(p_cond ->> 'value')) > 0
-                                          else api._where_eq(el, p_cond -> 'value', p_cond ->> 'kind') end
-                else false
-            end)
-    end
-$$;
-
--- Do a node's values meet every condition?
-create or replace function api._where_match(p_values jsonb, p_conds jsonb) returns boolean
-language sql immutable set search_path = public, extensions as $$
-    select coalesce(bool_and(api._where_one(p_values -> (c ->> 'prop'), c)), true)
-    from jsonb_array_elements(coalesce(p_conds, '[]'::jsonb)) as c
-$$;
-
--- The ids (in their order) of nodes of p_type that meet the conditions.
+-- The ids (in their order) of nodes of p_type whose values meet every
+-- condition (from api._where_conditions). For each condition, some value
+-- (any item of a list) must match: eq is equality (numbers by value, text
+-- ignoring case, ids and choices exactly); in is eq with one of a list;
+-- gte / lte compare numbers, or dates as text ("2024" ≤ "2024-03"); contains
+-- is a text substring (ignoring case), or a list item. One set-based query:
+-- filters run over thousands of stories.
 create or replace function api._where_filter(p_ids text[], p_type text, p_conds jsonb) returns text[]
 language sql stable set search_path = public, extensions as $$
     select coalesce(array_agg(u.id order by u.ord), '{}')
     from unnest(p_ids) with ordinality as u(id, ord)
-    join node n on n.id = u.id
-    where n.type = p_type
-      and api._where_match(n.properties || api._derived_properties(n.id, n.type), p_conds)
+    join node n on n.id = u.id and n.type = p_type
+    left join api._derived_many(p_ids, p_type) d on d.id = u.id
+    cross join lateral (select n.properties || coalesce(d.vals, '{}'::jsonb) as v) x
+    where not exists (
+        select 1
+        from jsonb_array_elements(coalesce(p_conds, '[]'::jsonb)) as c
+        where not exists (
+            select 1
+            from jsonb_array_elements(case
+                     when x.v -> (c ->> 'prop') is null or jsonb_typeof(x.v -> (c ->> 'prop')) = 'null'
+                         then '[]'::jsonb
+                     when jsonb_typeof(x.v -> (c ->> 'prop')) = 'array' then x.v -> (c ->> 'prop')
+                     else jsonb_build_array(x.v -> (c ->> 'prop'))
+                 end) as el
+            cross join lateral (
+                select case when c ->> 'op' = 'in' then c -> 'value' else jsonb_build_array(c -> 'value') end as wanted
+            ) w
+            where exists (
+                select 1
+                from jsonb_array_elements(w.wanted) as want
+                where case
+                    when c ->> 'op' in ('eq', 'in') or (c ->> 'op' = 'contains' and c ->> 'kind' <> 'text') then
+                        case when c ->> 'kind' = 'number'
+                             then jsonb_typeof(el) = 'number' and jsonb_typeof(want) = 'number'
+                                  and (el #>> '{}')::numeric = (want #>> '{}')::numeric
+                             when c ->> 'kind' = 'text' then lower(el #>> '{}') = lower(want #>> '{}')
+                             else (el #>> '{}') = (want #>> '{}') end
+                    when c ->> 'op' = 'contains' then strpos(lower(el #>> '{}'), lower(want #>> '{}')) > 0
+                    when c ->> 'op' = 'gte' then
+                        case when c ->> 'kind' = 'number'
+                             then jsonb_typeof(el) = 'number' and (el #>> '{}')::numeric >= (want #>> '{}')::numeric
+                             else (el #>> '{}') collate "C" >= (want #>> '{}') collate "C" end
+                    when c ->> 'op' = 'lte' then
+                        case when c ->> 'kind' = 'number'
+                             then jsonb_typeof(el) = 'number' and (el #>> '{}')::numeric <= (want #>> '{}')::numeric
+                             else (el #>> '{}') collate "C" <= (want #>> '{}') collate "C" end
+                    else false
+                end)))
 $$;
 
 -- ===========================================================================
