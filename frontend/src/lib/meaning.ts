@@ -301,7 +301,8 @@ export function trustVisual({ confidence, strength, linkType }: TrustInput): Tru
   return {
     weight,
     width: Math.round((TRUST_WIDTH.min + (TRUST_WIDTH.max - TRUST_WIDTH.min) * weight) * 100) / 100,
-    opacity: Math.round((TRUST_OPACITY.min + (TRUST_OPACITY.max - TRUST_OPACITY.min) * (c ?? 0.5)) * 1000) / 1000,
+    opacity:
+      Math.round((TRUST_OPACITY.min + (TRUST_OPACITY.max - TRUST_OPACITY.min) * (c ?? 0.5)) * 1000) / 1000,
     line: info?.line ?? "solid",
     dash: info?.dasharray,
     weak: isWeak(c),

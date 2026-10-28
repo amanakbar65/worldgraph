@@ -305,7 +305,8 @@ describe("arcs", () => {
       arc(3, { confidence: 0.8 }),
       arc(4, { confidence: 0.2, dst_story: "story:focus" }),
     ];
-    const ids = (min: number) => filterArcs(list, { minConfidence: min, focusId: "story:focus" }).map((a) => a.id);
+    const ids = (min: number) =>
+      filterArcs(list, { minConfidence: min, focusId: "story:focus" }).map((a) => a.id);
     expect(ids(0)).toEqual([4, 3, 2, 1]);
     expect(ids(0.5)).toEqual([4, 3, 2]);
     expect(ids(0.7)).toEqual([4, 3]);
@@ -420,7 +421,12 @@ describe("the list view", () => {
       ...eventAsStory(event("a"), { isSample: true }),
       event_type: "jobs_data",
       direction: "down",
-      region: { id: "region:us.washington-dc", name: "Washington, D.C.", subtype: "city", country_id: "region:us" },
+      region: {
+        id: "region:us.washington-dc",
+        name: "Washington, D.C.",
+        subtype: "city",
+        country_id: "region:us",
+      },
     };
     const known = new Map([[top.id, top]]);
     const story = storyForEvent(event("a"), "some", known);
@@ -592,7 +598,10 @@ describe("labels", () => {
       { x: 520, y: 200 }, // the big dot
     ];
     const out = declutterLabels(
-      [label("sa", { name: "Saudi Arabia", lon: 0 }), label("city", { kind: "city", capital: true, priority: 5, lon: 1 })],
+      [
+        label("sa", { name: "Saudi Arabia", lon: 0 }),
+        label("city", { kind: "city", capital: true, priority: 5, lon: 1 }),
+      ],
       (lon) => at[lon],
       { width: 800, height: 600 },
       4,
@@ -630,7 +639,9 @@ describe("labels", () => {
     });
     expect(marks).toEqual([{ lon: 45, lat: 24, radius: 12 * zoomScale(1.8) }]);
     // A hidden layer hides nothing.
-    expect(markerObstacles({ forecasts: [{ lon: 45, lat: 24 }], toggles: { forecasts: false }, zoom: 1.8 })).toEqual([]);
+    expect(
+      markerObstacles({ forecasts: [{ lon: 45, lat: 24 }], toggles: { forecasts: false }, zoom: 1.8 }),
+    ).toEqual([]);
   });
 });
 

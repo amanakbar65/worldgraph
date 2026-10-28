@@ -135,9 +135,7 @@ export function PickContent({
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-label font-medium text-fg-muted">Cascade link</span>
               <ConfidenceMeter confidence={arc.confidence} linkType={arc.link_type} />
-              {weak && (
-                <WeakMark label={`Weak link: under ${Math.round(WEAK_CONFIDENCE * 100)}% sure`} />
-              )}
+              {weak && <WeakMark label={`Weak link: under ${Math.round(WEAK_CONFIDENCE * 100)}% sure`} />}
             </div>
             <ol className="flex flex-col gap-1 text-body">
               <li className="flex min-w-0 flex-col">

@@ -91,7 +91,9 @@ describe("meaning", () => {
 
   it("describes forecasts for screen readers", () => {
     expect(describeForecast(0.62, 0.08)).toBe("62% crowd forecast, up 8 points in 24 hours");
-    expect(describeForecast(0.31, -0.01, true)).toBe("31% crowd forecast, down 1 point in 24 hours, thin market");
+    expect(describeForecast(0.31, -0.01, true)).toBe(
+      "31% crowd forecast, down 1 point in 24 hours, thin market",
+    );
     expect(describeForecast(0.5, 0)).toBe("50% crowd forecast, unchanged in 24 hours");
     expect(describeForecast(0.5, null)).toBe("50% crowd forecast");
   });
@@ -109,23 +111,32 @@ describe("trust at a glance (one mapping for every view)", () => {
     expect(sureButSlight.width).toBeLessThan(weak.width);
     expect(sureButSlight.weight).toBe(0.1);
     expect(sureButSlight.opacity).toBe(strong.opacity);
-    expect(trustVisual({ confidence: 0.6, strength: null }).width).toBe(trustVisual({ confidence: 0.6 }).width);
+    expect(trustVisual({ confidence: 0.6, strength: null }).width).toBe(
+      trustVisual({ confidence: 0.6 }).width,
+    );
   });
 
   it("makes links more transparent the less sure we are", () => {
-    expect(trustVisual({ confidence: 0.9 }).opacity).toBeGreaterThan(trustVisual({ confidence: 0.4 }).opacity);
+    expect(trustVisual({ confidence: 0.9 }).opacity).toBeGreaterThan(
+      trustVisual({ confidence: 0.4 }).opacity,
+    );
     expect(trustVisual({ confidence: 0 }).opacity).toBe(TRUST_OPACITY.min);
     expect(trustVisual({ confidence: 1 }).opacity).toBe(TRUST_OPACITY.max);
     expect(trustVisual({ confidence: 7 }).opacity).toBe(TRUST_OPACITY.max);
   });
 
   it("keeps the line pattern of each link type", () => {
-    expect(trustVisual({ confidence: 0.7, linkType: "reported" })).toMatchObject({ line: "solid", dash: undefined });
+    expect(trustVisual({ confidence: 0.7, linkType: "reported" })).toMatchObject({
+      line: "solid",
+      dash: undefined,
+    });
     expect(trustVisual({ confidence: 0.7, linkType: "inferred" })).toMatchObject({
       line: "dashed",
       dash: LINK_TYPES.inferred.dasharray,
     });
-    expect(trustVisual({ confidence: 0.7, linkType: "conditional" }).dash).toBe(LINK_TYPES.conditional.dasharray);
+    expect(trustVisual({ confidence: 0.7, linkType: "conditional" }).dash).toBe(
+      LINK_TYPES.conditional.dasharray,
+    );
     expect(trustVisual({ confidence: 0.7 }).line).toBe("solid");
   });
 

@@ -43,7 +43,10 @@ describe("parseHash / formatHash", () => {
     ["#brief&w=24h&s=tech", { ...base, view: "brief", window: "24h", sectors: ["tech"] }],
     ["#graph&c=0.7", { ...base, view: "graph", minConfidence: 0.7 }],
     ["#globe&c=0", { ...base, minConfidence: 0 }],
-    ["#story=story:abc&w=24h&c=0.35", { ...base, panel: { kind: "story", id: "story:abc" }, window: "24h", minConfidence: 0.35 }],
+    [
+      "#story=story:abc&w=24h&c=0.35",
+      { ...base, panel: { kind: "story", id: "story:abc" }, window: "24h", minConfidence: 0.35 },
+    ],
   ])("round-trips %s", (hash, state) => {
     expect(parseHash(hash)).toEqual(state);
     expect(formatHash(state)).toBe(hash);

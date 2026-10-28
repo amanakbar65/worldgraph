@@ -718,7 +718,9 @@ export function markerObstacles(input: {
 }): MarkerObstacle[] {
   if (!input.toggles.forecasts) return [];
   const radius = 12 * zoomScale(input.zoom);
-  return input.forecasts.flatMap((f) => (f.lon !== null && f.lat !== null ? [{ lon: f.lon, lat: f.lat, radius }] : []));
+  return input.forecasts.flatMap((f) =>
+    f.lon !== null && f.lat !== null ? [{ lon: f.lon, lat: f.lat, radius }] : [],
+  );
 }
 
 /** Whether a label belongs at this zoom at all (before collisions). */
@@ -756,7 +758,8 @@ export function declutterLabels<T extends LabelCandidate>(
     const r = o.radius + 2;
     if (p) marks.push({ x0: p.x - r, y0: p.y - r, x1: p.x + r, y1: p.y + r });
   }
-  const onScreen = (b: ScreenBox) => b.x0 >= 0 && b.y0 >= 0 && b.x1 <= viewport.width && b.y1 <= viewport.height;
+  const onScreen = (b: ScreenBox) =>
+    b.x0 >= 0 && b.y0 >= 0 && b.x1 <= viewport.width && b.y1 <= viewport.height;
   const placed: ScreenBox[] = [];
   const out: T[] = [];
   const ranked = candidates
@@ -789,7 +792,8 @@ export function declutterLabels<T extends LabelCandidate>(
     // Step down to just below the marker(s) it would cover.
     const dy = Math.max(...hits.map((m) => m.y1)) - box.y0 + 1;
     const moved = { ...box, y0: box.y0 + dy, y1: box.y1 + dy };
-    if (!onScreen(moved) || placed.some((b) => overlaps(b, moved)) || marks.some((m) => overlaps(m, moved))) continue;
+    if (!onScreen(moved) || placed.some((b) => overlaps(b, moved)) || marks.some((m) => overlaps(m, moved)))
+      continue;
     placed.push(moved);
     out.push({ ...label, dy: Math.round(dy) });
   }
