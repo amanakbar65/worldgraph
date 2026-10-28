@@ -16,6 +16,12 @@ seed/
   storylines/<id>.yaml      one connected story arc per file
 ```
 
+## Properties and relations
+
+Entities get typed `properties` checked against `backend/src/worldgraph/schema/types.yaml` (`wg seed check` refuses values that don't fit, and links whose relation doesn't allow their endpoint types). The build fills in what the structured fields already state: an organisation's `sector` (from `sectors`) and `headquarters` (from `located_in`), a commodity's `hs_code`, an infrastructure item's `kind` (its subtype), `place` and `operator` (the organisation whose `operates` lists it), a policy's `scope` (`regions`), and an indicator's unit, frequency and source. Give `properties:` in the YAML only for true background facts the files already state (a headquarters city named in the summary, a benchmark, a policy's issuer); they win over the filled-in ones. Use `operates` when the summary says an organisation runs an asset, and `owns` only for ownership.
+
+A reload never deletes reference links or property keys that other writers added; a link that changes relation needs a migration (as 0022 did for `owns` → `operates`).
+
 ## Honesty rules (non-negotiable)
 
 1. **Never invent news about a real company or person.** Real organisations appear only in true background facts (in `entities/`). If a story needs a company, invent one inside the storyline with `sample: true` and a plausible but clearly fictional name (for example "Kestrel Lines"). Public institutions (central banks, OPEC, canal authorities, ministries) may appear in sample events about their normal role, such as a rate decision or output targets. No people at all.

@@ -168,7 +168,7 @@ Sources: `docs/KNOWLEDGE_GRAPH_UPGRADE.md` (the spec, word for word), `docs/know
 11. New sections are welcome.
 12. Nothing half done: each phase is complete, simple and connected before the next starts.
 
-**Status:** waiting for approval to start Phase A. Each phase ends with the build, tests, steps to try it, an update to this plan and a stop for the owner's review.
+**Status:** Phase A approved and under way. A0–A2 (database, pipeline and API) are built; their screens, A3–A5 and the rest follow. Each phase ends with the build, tests, steps to try it, an update to this plan and a stop for the owner's review.
 
 **Rules for every phase:**
 - Migrations are additive and come with a down file; a test runs up, then down, then up.
@@ -287,6 +287,7 @@ These sizes are rough token estimates for the build agents.
 ### Phase A: structure and trust (full detail)
 
 **A0. Groundwork**
+- **Status (28 Oct): done** (migration 0021, `backend/src/worldgraph/schema/`, `frontend/src/lib/flags.ts`). All five flags are on (the website isn't launched). `wg db down 0021` undoes 0021 and 0022 with their down files in `db/migrations/down/`. To try: `uv run wg schema sql` prints the registry upserts; `uv run wg seed check` validates the sample properties; `select api.meta('{}') -> 'flags'`.
 - **Feature flags:**
   - New table `app_flag(key, enabled, note, updated_at)`. `api.meta` returns `flags`; the client reads them with `useFlag(key)`. SQL functions that serve flagged data check `api._flag(key)`.
   - Phase A flags: `kg.properties`, `kg.relations`, `kg.provenance`, `kg.history`, `kg.schema_map`.
@@ -297,6 +298,7 @@ These sizes are rough token estimates for the build agents.
 - **Single source for the schema:** `backend/src/worldgraph/schema/types.yaml` defines node types, their properties and relation types. `wg schema sql` writes the registry inserts into the migration, `wg seed check` validates sample data against the YAML, and a test checks that the YAML matches the database.
 
 **A1. Node types with properties (migration 0021)**
+- **Status (28 Oct): database and API done; screens next.** `node_type` holds the 11 types; `node.properties` is checked by a trigger (wrong kinds, unknown choices, broken entity references, missing required values). Backfill: no live node has `props.facts`, so values come from what the graph already states (organisation sector and headquarters, commodity HS code, infrastructure kind, place and operator, policy scope, indicator unit, frequency and source); the curated YAML adds headquarters cities, a crude-oil benchmark and policy issuers, all from the existing summaries. `docs/kg-review.md` (`wg kg review`) lists what is left. API: `api.entity` → `properties`; `api.graph` / `api.local_graph` → `where` (one type; `local_graph` also takes `types`); new `api.schema()`. To try: `select api.entity('{"id":"infra:jebel-ali-port"}') -> 'properties'`; `select api.graph('{"types":["organization"],"where":[{"prop":"sector","op":"eq","value":"sector:energy"}],"sample":true}')`.
 - **Type table:** `node_type(key, label, plural, icon, tone, properties jsonb, description)`.
   - `properties` is a list of `{key, label, kind: text|number|date|choice|url|place|entity, required, choices?, unit?, entity_types?}`.
   - It is seeded with the 11 existing types. Their labels, icons and tones move out of the TypeScript maps, which stay only as an offline fallback.
@@ -325,6 +327,7 @@ These sizes are rough token estimates for the build agents.
 - **Done when:** properties validate against their type in the database, appear on entity pages and filter the graph. Tests cover each property kind, required fields and bad values.
 
 **A2. Named relations (migration 0022)**
+- **Status (28 Oct): database and API done; screens next.** `relation_type` holds the 14 edge types plus supplies, operates, regulates and the causal `drives`; a trigger checks the endpoint types of new links (the pipeline writes only allowed ones). Five curated links became `operates` (DP World, Adani Ports, BHP and the two canal authorities "run" their assets). Causal links carry `relation`, `polarity` (backfilled; a trigger sets it for every new link, so `api.save_analysis` and the pipeline need no change, and fills it in when AI analysis gives a draft cause its direction), `strength` and `delayed`. API: `api.entity` → `connections` (grouped, read from the entity's side; `backlinks` is deprecated and goes next release); graph links and cascade links carry `relation`, `polarity`, `strength`, `delayed`; graph functions take `relations` and `direction`. To try: `select api.entity('{"id":"org:dp-world"}') -> 'connections'`; `select api.local_graph('{"id":"infra:jebel-ali-port","depth":1,"direction":"in","relations":["operates"]}')`.
 - **Relation table:** `relation_type(key, label, inverse_label, causal, symmetric, src_types[], dst_types[], description)`.
   - Seeded with the 14 existing edge types, with readable pairs: owns / owned by, part of / includes, depends on / needed by, member of / has member, competes with (symmetric), related to (symmetric)…
   - Plus new types: supplies / supplied by, operates / operated by, regulates / regulated by.

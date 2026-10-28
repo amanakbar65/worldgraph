@@ -13,7 +13,8 @@ A visual world-knowledge app for businesses: a globe, a knowledge graph, cascade
 ```
 backend/                 Python 3.12 (uv): DB migrations, the api.* SQL layer, sample data, pipeline
   src/worldgraph/
-    db/migrations/       NNNN_name.sql, applied in order (api.* functions live here too)
+    db/migrations/       NNNN_name.sql, applied in order (api.* functions live here too); down/ undoes 0021 on
+    schema/              types.yaml: node types, their properties and relation types (the graph schema)
     seed/                sample data: entities/*.yaml, storylines/*.yaml, gazetteer.json, build + load
     geo/                 Natural Earth gazetteer + map assets builder
     pipeline/            live ingest (GDELT, RSS, USGS, GDACS), clustering, forecasts, AI job
@@ -37,6 +38,8 @@ orchestration/           multi-agent build scripts and the progress saver (check
 | Backend tests (local PostGIS) | `cd backend && TEST_DATABASE_URL=postgresql://wg:wg@localhost:5432/postgres uv run pytest` |
 | Lint and format Python | `uv run ruff check . && uv run ruff format .` |
 | Apply migrations / load sample data | `uv run wg db migrate`, `uv run wg seed load` (uses DATABASE_URL) |
+| Undo migrations (0021 on) | `uv run wg db down NNNN` (runs the down files, newest first) |
+| Graph schema SQL / review list | `uv run wg schema sql` (paste into a new migration), `uv run wg kg review` → `docs/kg-review.md` |
 | Check sample data (no DB) | `uv run wg seed check` |
 | Frontend dev (with the local RPC middleware) | `cd frontend && npm run dev` |
 | Frontend checks | `npm run lint && npm run typecheck && npm test && npm run build` |
@@ -48,7 +51,9 @@ The local Postgres in the cloud workspace starts with `pg_ctlcluster 16 main sta
 
 - **Node IDs** are permanent and readable: `type:slug`, e.g. `region:in-gj`, `commodity:crude-oil`, `story:red-sea-attacks`. Wikidata QIDs go in `node.qid`, never in the ID.
 - **Region IDs:** country `region:<iso2>`; state `region:<iso-3166-2>` (or `region:<iso2>-ne<id>`); city `region:<parent-suffix>.<slug>`. All lowercase.
-- **Migrations:** never edit one that has been applied to Supabase (`schema_migrations` there is the record); add a new file. `api.*` functions use `create or replace`, so later migrations can redefine them.
+- **Migrations:** never edit one that has been applied to Supabase (`schema_migrations` there is the record); add a new file. `api.*` functions use `create or replace`, so later migrations can redefine them. From 0021 on, every migration has a down file `db/migrations/down/NNNN_name.down.sql` (restoring any function it redefined) and must pass `test_migrations_reversible`. Merged migrations reach production on the next 15-minute run, so test them on live-style rows (`tests/live_style.py`).
+- **Graph schema:** node types, their properties (text, number, date, choice, url, place, entity) and relation types (label and inverse label, endpoint types, causal, symmetric) are defined once in `backend/src/worldgraph/schema/types.yaml`. To change them: edit the YAML, run `uv run wg schema sql` and put its output in a new migration; update `contract.ts` if a shape changes. The database refuses property values that don't fit and new links whose endpoint types the relation doesn't allow; `wg seed check` applies the same rules to the sample data. Region, sector, story and forecast properties are derived from their side tables, never stored.
+- **Feature flags:** `app_flag` rows; SQL checks `api._flag(key)`, the client `useFlag(key)` (`src/lib/flags.ts`; a missing flag is off). New features ship behind one.
 - **API contract:** every `api.<fn>(args jsonb) returns jsonb`. The response shapes are in `frontend/src/api/contract.ts` and mirrored by the pytest contract tests. Change both together.
 - **Text limits** (enforced in Pydantic or TS and in SQL): headline ≤ 12 words, so-what ≤ 20, each action ≤ 8, mechanism 2–4 words, evidence snippet = one sentence (≤ 300 characters).
 - **Facts, inferences and forecasts stay visibly separate.** Causal links always carry type and confidence. Forecasts always show source, volume and last update.

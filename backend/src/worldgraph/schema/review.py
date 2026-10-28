@@ -118,12 +118,12 @@ def collect(conn: psycopg.Connection) -> dict[str, Any]:
         """,
     )
     summary = {
-        "facts left as notes": len(facts),
-        "unknown property keys": sum(r["nodes"] for r in unknown_keys),
-        "property values that don't validate": len(problems),
-        "links that break relation rules": sum(r["links"] for r in broken),
-        "relates_to links": len(related),
-        "causal links with unknown polarity": sum(r["links"] for r in polarity),
+        "Facts left as notes": len(facts),
+        "Unknown property keys": sum(r["nodes"] for r in unknown_keys),
+        "Property values that don't validate": len(problems),
+        "Links that break relation rules": sum(r["links"] for r in broken),
+        "Generic relates_to links": len(related),
+        "Causal links with unknown polarity": sum(r["links"] for r in polarity),
     }
     return {
         "generated_at": datetime.now(UTC),
@@ -160,7 +160,7 @@ def render(data: dict[str, Any], source: str = "the database in DATABASE_URL") -
         "",
         "| What | Count |",
         "| --- | --- |",
-        *[f"| {k[0].upper() + k[1:]} | {v} |" for k, v in data["summary"].items()],
+        *[f"| {k} | {v} |" for k, v in data["summary"].items()],
         "",
         "## Facts left as notes",
         "",

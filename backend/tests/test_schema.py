@@ -499,7 +499,7 @@ def test_review_lists_what_the_schema_could_not_place(sdb):
         {"type": "organization", "key": "colour", "nodes": 1, "example": "org:kg-review"}
     ]
     assert data["problems"] == [] and data["broken"] == [] and data["polarity"] == []
-    assert data["summary"]["relates_to links"] == 27  # the sample data's 26, plus this one
+    assert data["summary"]["Generic relates_to links"] == 27  # the sample data's 26, plus this one
     text = render(data, "the test database")
     assert text.startswith("# Knowledge graph: review list")
     assert "| org:kg-review | organization | Motto | Ship it |" in text
@@ -515,5 +515,5 @@ def test_wg_kg_review_writes_the_file(seeded_db_url, tmp_path, monkeypatch):
     out = tmp_path / "kg-review.md"
     result = CliRunner().invoke(app, ["kg", "review", "--out", str(out), "--source", "the test database"])
     assert result.exit_code == 0, result.output
-    assert "relates_to links: 26" in result.output
+    assert "Generic relates_to links: 26" in result.output
     assert "from the test database" in out.read_text(encoding="utf-8")
