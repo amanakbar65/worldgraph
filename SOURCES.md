@@ -7,7 +7,7 @@ Each source used by WorldGraph has a row here before it is integrated: what we u
 - ⏳ **To verify before use**: noted from the brief or from memory. These must be read and confirmed before the integration is built.
 - ⛔ **Excluded**: not to be used.
 
-Last updated: 22 Oct 2026.
+Last updated: 22 Oct 2026. Since 29 Oct (migration 0023) every node and link in the graph names one of these sources in the database (`source` table), plus two of our own rows: "WorldGraph curated" (reference entities and links compiled from public information) and "Crowd forecast providers" (a forecast whose provider has no row of its own).
 
 ## In use now
 

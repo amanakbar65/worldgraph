@@ -18,6 +18,14 @@ See `CHECKPOINT.md` for the live state and resume steps.
 
 ## Log
 
+### 29 Oct 2026: Phase A, part 2 (A3–A5 database, pipeline and API)
+- Migration 0023 (sources on everything): `source_id`, `confidence`, `kind`, `created_by` on nodes and edges (NOT NULL source and creator, backfilled: Natural Earth, WorldGraph curated, the story's feed, the forecast's provider, `ai:<model>`, sample), `updated_at` on links, evidence for edges and nodes, `api.provenance`, `weak` on graph, cascade and connection links. The pipeline, the forecast sync, `api.save_analysis` and the seed loader set them.
+- Migration 0024 (history and "as of"): append-only `history.change_log` with per-story mentions rows and changed-keys `before`, a baseline snapshot, 90-day retention from the prune job, `wg history show/revert/prune`, `api.graph_as_of` and `api.local_graph_as_of` through views the live graph functions share; links outside their valid dates leave the graph.
+- Migration 0025 (schema map): property coverage and each type's biggest relations in `api.schema`; counts follow the graph.
+- Checked on a production-scale database (main's 0022 with sample data, live-style news, forecasts and AI analysis, plus 5,000 stories, 32,000 articles and 38,000 edges): 0023 applies in about 2.5 s, 0024 in about 2.5 s (baseline 23,600 rows, 15 MB); live graph timings close to before on a noisy machine (api.graph 0.40–0.57 s against 0.37–0.47 s, local graph 26–46 ms against 28–33 ms); as-of about 1–2 s; up, down and up again with writes at each head.
+- Change-log volume: about 4 rows and 2 KB over a pipeline story's life, 8 rows and 4.7 KB when AI analysis rewrites it; at 300–1,000 new stories a day that is 1,300–5,000 rows and 0.7–2.3 MB a day, so 70–210 MB at the 90-day steady state (`history.info.keep_days` can go down to 30 if the free database fills).
+- Next: the screens (Why is this here? sheet, ? badges, time slider, schema view), personal undo/redo.
+
 ### 28 Oct 2026: Phase A, part 1 (A0–A2 database, pipeline and API)
 - Migrations 0021 (feature flags, `node_type`, `node.properties` with a validating trigger and backfill) and 0022 (`relation_type`, edge endpoint rules, causal polarity, strength and delay, and the api: properties, connections, `where`, `relations`, `direction`, `api.schema`). Each has a down file; `wg db down` undoes them.
 - One schema source, `backend/src/worldgraph/schema/types.yaml`: `wg schema sql` prints the registry upserts, `wg seed check` validates the sample data against it, tests check the database matches it, and `wg kg review` writes `docs/kg-review.md`.
