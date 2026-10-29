@@ -73,7 +73,12 @@ def _batched(rows: list[Any], size: int = BATCH) -> Iterable[list[Any]]:
         yield rows[i : i + size]
 
 
-NODE_COLS = "id, type, subtype, name, aliases, summary, qid, props, properties, geom, is_sample"
+NODE_COLS = (
+    "id, type, subtype, name, aliases, summary, qid, props, properties, geom, is_sample, "
+    "source_id, created_by, kind"
+)
+EDGE_COLS = "src, dst, type, props, is_sample, source_id, created_by"
+ACTOR_SQL = "select set_config('wg.actor', 'seed', true)"  # the change log's actor (migration 0024)
 
 
 def _node_row(n: dict[str, Any]) -> tuple:
@@ -89,12 +94,16 @@ def _node_row(n: dict[str, Any]) -> tuple:
         n["properties"],
         point(n["lon"], n["lat"]),
         n["is_sample"],
+        n["source_id"],
+        n["created_by"],
+        n["kind"],
     )
 
 
 def bundle_statements(bundle: Bundle) -> list[str]:
     stmts: list[str] = [
         "set search_path to public, extensions",
+        ACTOR_SQL,
         # Sample rows go first (cascades remove their stories, links, snapshots…).
         "delete from article where is_sample",
         "delete from edge where is_sample",
@@ -112,7 +121,8 @@ def bundle_statements(bundle: Bundle) -> list[str]:
             "qid = excluded.qid, props = excluded.props, geom = excluded.geom, "
             # Merged, so values other writers add (enrichment) survive a reload.
             "properties = node.properties || excluded.properties, "
-            "is_sample = excluded.is_sample, updated_at = now()"
+            "is_sample = excluded.is_sample, source_id = excluded.source_id, kind = excluded.kind, "
+            "updated_at = now()"
         )
     region_cols = (
         "node_id, level, iso2, code, parent_id, country_id, population, continent, subregion, capital"
@@ -141,13 +151,12 @@ def bundle_statements(bundle: Bundle) -> list[str]:
             "subregion = excluded.subregion, capital = excluded.capital"
         )
     ref_edges = [
-        (e["src"], e["dst"], e["type"], e["props"], False) for e in bundle.edges if not e["is_sample"]
+        (e["src"], e["dst"], e["type"], e["props"], False, e["source_id"], e["created_by"])
+        for e in bundle.edges
+        if not e["is_sample"]
     ]
     for batch in _batched(ref_edges):
-        stmts.append(
-            "insert into edge (src, dst, type, props, is_sample) values\n"
-            f"{_values(batch)}\non conflict do nothing"
-        )
+        stmts.append(f"insert into edge ({EDGE_COLS}) values\n{_values(batch)}\non conflict do nothing")
 
     for batch in _batched(sample):
         stmts.append(f"insert into node ({NODE_COLS}) values\n{_values(_node_row(n) for n in batch)}")
@@ -260,16 +269,17 @@ def bundle_statements(bundle: Bundle) -> list[str]:
     for batch in _batched(point_rows, 800):
         stmts.append(f"insert into indicator_point (series_id, date, value) values\n{_values(batch)}")
 
-    sample_edges = [(e["src"], e["dst"], e["type"], e["props"], True) for e in bundle.edges if e["is_sample"]]
+    sample_edges = [
+        (e["src"], e["dst"], e["type"], e["props"], True, e["source_id"], e["created_by"])
+        for e in bundle.edges
+        if e["is_sample"]
+    ]
     for batch in _batched(sample_edges):
-        stmts.append(
-            "insert into edge (src, dst, type, props, is_sample) values\n"
-            f"{_values(batch)}\non conflict do nothing"
-        )
+        stmts.append(f"insert into edge ({EDGE_COLS}) values\n{_values(batch)}\non conflict do nothing")
 
     link_cols = (
         "src_story, dst_story, link_type, mechanism, direction, lag_days, confidence, forecast_id, "
-        "outcome, method, model_version, is_sample"
+        "outcome, method, model_version, is_sample, created_by"
     )
     link_rows = [
         (
@@ -285,6 +295,7 @@ def bundle_statements(bundle: Bundle) -> list[str]:
             "sample",
             None,
             True,
+            "sample",
         )
         for lk in bundle.links
     ]
@@ -322,7 +333,7 @@ def write_sql_chunks(bundle: Bundle, out_dir: Path, max_bytes: int = 400_000) ->
     chunks: list[list[str]] = [[]]
     size = 0
     for stmt in bundle_statements(bundle):
-        if stmt.startswith("set search_path"):
+        if stmt.startswith("set search_path") or stmt == ACTOR_SQL:
             continue
         if size + len(stmt) > max_bytes and chunks[-1]:
             chunks.append([])
@@ -333,7 +344,7 @@ def write_sql_chunks(bundle: Bundle, out_dir: Path, max_bytes: int = 400_000) ->
     for i, chunk in enumerate(chunks, start=1):
         path = out_dir / f"seed_{i:03d}.sql"
         path.write_text(
-            "set search_path to public, extensions;\n" + ";\n\n".join(chunk) + ";\n",
+            f"set search_path to public, extensions;\n{ACTOR_SQL};\n" + ";\n\n".join(chunk) + ";\n",
             encoding="utf-8",
         )
         paths.append(path)

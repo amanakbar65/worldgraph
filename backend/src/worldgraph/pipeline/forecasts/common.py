@@ -14,6 +14,7 @@ from worldgraph.pipeline.entities import EntityMatcher
 from worldgraph.pipeline.places import Places
 
 MAX_TITLE_WORDS = 12
+CREATED_BY = "pipeline:forecasts"  # provenance (migration 0023)
 
 # Questions about people's private lives, games and entertainment are not shown.
 EXCLUDE = re.compile(
@@ -147,13 +148,14 @@ def upsert(
                 node_id = f"{node_id[:70]}-{slugify(m.ref)[:12]}"
         cur.execute(
             """
-            insert into node (id, type, subtype, name, summary, geom, is_sample)
+            insert into node (id, type, subtype, name, summary, geom, is_sample, source_id, created_by)
             values (%s, 'forecast', 'binary', %s, %s, case when %s::text is null then null
-                    else st_geogfromtext(%s) end, false)
+                    else st_geogfromtext(%s) end, false,
+                    coalesce((select s.id from source s where s.id = %s), 'crowd-forecasts'), %s)
             on conflict (id) do update set name = excluded.name, summary = excluded.summary,
                 geom = coalesce(excluded.geom, node.geom), updated_at = now()
             """,
-            (node_id, title, m.question, point, point),
+            (node_id, title, m.question, point, point, m.provider, CREATED_BY),
         )
         cur.execute(
             """
@@ -195,11 +197,14 @@ def upsert(
         )
         targets = list(dict.fromkeys((regions[:2] if regions else []) + matcher.match(m.question)))
         if targets:
+            # What a forecast is about comes from its provider: it takes the forecast's source.
             cur.execute(
-                "insert into edge (src, dst, type) select %s, n.id, 'about' from node n "
-                "where n.id = any(%s) and api._relation_allows('about', 'forecast', n.type) "
+                "insert into edge (src, dst, type, source_id, created_by) "
+                "select %(id)s, n.id, 'about', (select f.source_id from node f where f.id = %(id)s), %(by)s "
+                "from node n where n.id = any(%(targets)s) "
+                "and api._relation_allows('about', 'forecast', n.type) "
                 "on conflict do nothing",
-                (node_id, targets),
+                {"id": node_id, "targets": targets, "by": CREATED_BY},
             )
     return is_new
 

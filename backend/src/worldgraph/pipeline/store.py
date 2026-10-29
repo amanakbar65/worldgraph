@@ -125,12 +125,30 @@ def _point_sql(lon: float, lat: float) -> str:
     return f"SRID=4326;POINT({lon:.6f} {lat:.6f})"
 
 
+# Provenance (migration 0023): a story's source is the feed its items came
+# from (the provenance API lists its own articles); created_by names the job.
+PROVIDER_SOURCES = (("usgs", "usgs"), ("gdacs", "gdacs"), ("rss", "news-feeds"), ("gdelt", "gdelt"))
+CREATED_BY = "pipeline:news"
+
+
+def story_source(providers: list[str]) -> str:
+    """The source row for a story's items (the same rule as api._story_source)."""
+    return next((source for provider, source in PROVIDER_SOURCES if provider in providers), "news-feeds")
+
+
 def insert_story(cur: psycopg.Cursor, d: dict[str, Any]) -> bool:
     place: Place = d["place"]
     cur.execute(
-        "insert into node (id, type, subtype, name, geom, is_sample) "
-        "values (%s, 'story', 'event', %s, st_geogfromtext(%s), false) on conflict (id) do nothing",
-        (d["id"], d["headline"], _point_sql(place.lon, place.lat)),
+        "insert into node (id, type, subtype, name, geom, is_sample, source_id, created_by, kind) "
+        "values (%s, 'story', 'event', %s, st_geogfromtext(%s), false, %s, %s, 'reported') "
+        "on conflict (id) do nothing",
+        (
+            d["id"],
+            d["headline"],
+            _point_sql(place.lon, place.lat),
+            story_source(d["providers"]),
+            CREATED_BY,
+        ),
     )
     if cur.rowcount == 0:
         return False
@@ -224,11 +242,13 @@ def insert_edges(cur: psycopg.Cursor, sid: str, items: list[Item], place: Place 
         return
     # Only node types a story may mention (relation_type, migration 0022);
     # anything else would be refused by the edge check and stop the run.
+    # A mention comes from the story's own articles: it takes the story's source.
     cur.execute(
-        "insert into edge (src, dst, type) select %s, n.id, 'mentions' from node n "
-        "where n.id = any(%s) and api._relation_allows('mentions', 'story', n.type) "
+        "insert into edge (src, dst, type, source_id, created_by) "
+        "select %(sid)s, n.id, 'mentions', (select s.source_id from node s where s.id = %(sid)s), %(by)s "
+        "from node n where n.id = any(%(targets)s) and api._relation_allows('mentions', 'story', n.type) "
         "on conflict do nothing",
-        (sid, targets),
+        {"sid": sid, "targets": targets, "by": CREATED_BY},
     )
 
 

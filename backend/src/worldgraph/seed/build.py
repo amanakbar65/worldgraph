@@ -250,6 +250,8 @@ def build_bundle(now: datetime | None = None, seed_dir: Path = SEED_DIR) -> Bund
                 lon=row["lon"],
                 lat=row["lat"],
                 is_sample=False,
+                source_id="natural-earth",
+                created_by="gazetteer",
             )
         )
         bundle.regions.append(
@@ -267,7 +269,16 @@ def build_bundle(now: datetime | None = None, seed_dir: Path = SEED_DIR) -> Bund
             }
         )
         if row.get("parent"):
-            bundle.edges.append(_edge(rid, row["parent"], "part_of", sample=False))
+            bundle.edges.append(
+                _edge(
+                    rid,
+                    row["parent"],
+                    "part_of",
+                    sample=False,
+                    source_id="natural-earth",
+                    created_by="gazetteer",
+                )
+            )
 
     known: dict[str, str] = {r["id"]: "region" for r in gazetteer}  # id -> type
 
@@ -715,7 +726,11 @@ def _node(
     lon: float | None = None,
     lat: float | None = None,
     is_sample: bool,
+    source_id: str = "curated",
+    created_by: str = "curated",
 ) -> dict[str, Any]:
+    # Provenance (migration 0023): sample rows come from the sample source;
+    # reference rows from Natural Earth (the gazetteer) or WorldGraph curated.
     return {
         "id": node_id,
         "type": node_type,
@@ -729,11 +744,31 @@ def _node(
         "lon": lon,
         "lat": lat,
         "is_sample": is_sample,
+        "source_id": "sample" if is_sample else source_id,
+        "created_by": "sample" if is_sample else created_by,
+        "kind": "projected" if node_type == "story" and subtype == "projected" else "reported",
     }
 
 
-def _edge(src: str, dst: str, edge_type: str, *, sample: bool, props: dict | None = None) -> dict[str, Any]:
-    return {"src": src, "dst": dst, "type": edge_type, "props": props or {}, "is_sample": sample}
+def _edge(
+    src: str,
+    dst: str,
+    edge_type: str,
+    *,
+    sample: bool,
+    props: dict | None = None,
+    source_id: str = "curated",
+    created_by: str = "curated",
+) -> dict[str, Any]:
+    return {
+        "src": src,
+        "dst": dst,
+        "type": edge_type,
+        "props": props or {},
+        "is_sample": sample,
+        "source_id": "sample" if sample else source_id,
+        "created_by": "sample" if sample else created_by,
+    }
 
 
 def _dedupe_edges(bundle: Bundle) -> None:

@@ -53,10 +53,24 @@ def migrated_db_url() -> Iterator[str]:
             admin.execute(f'drop database if exists "{name}" with (force)')
 
 
+# Tests write rows by hand: their sessions declare an actor and a source, so
+# new rows get created_by and source_id (migration 0023 refuses rows
+# without them). The real writers name both per row; tests that check them
+# use a plain connection.
+TEST_SESSION_SQL = "select set_config('wg.actor', 'test', false), set_config('wg.source', 'news-feeds', false)"
+
+
+def declared_connect(url: str) -> psycopg.Connection:
+    conn = connect(url)
+    conn.execute(TEST_SESSION_SQL)
+    conn.commit()
+    return conn
+
+
 @pytest.fixture
 def db(migrated_db_url: str) -> Iterator[psycopg.Connection]:
     """A connection whose changes are rolled back after each test."""
-    with connect(migrated_db_url) as conn:
+    with declared_connect(migrated_db_url) as conn:
         yield conn
         conn.rollback()
 
@@ -79,6 +93,6 @@ def seeded_db_url(migrated_db_url: str) -> str:
 @pytest.fixture
 def sdb(seeded_db_url: str) -> Iterator[psycopg.Connection]:
     """A connection to the seeded database; changes are rolled back."""
-    with connect(seeded_db_url) as conn:
+    with declared_connect(seeded_db_url) as conn:
         yield conn
         conn.rollback()
