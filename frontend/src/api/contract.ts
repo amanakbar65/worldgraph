@@ -575,6 +575,20 @@ export type GraphResponse = z.infer<typeof GraphResponse>;
 export const LocalGraphResponse = GraphData.extend({ focus: Id, truncated: z.boolean() });
 export type LocalGraphResponse = z.infer<typeof LocalGraphResponse>;
 
+/**
+ * "As of" (migration 0024, kg.history): api.graph_as_of({at, ...graph args})
+ * and api.local_graph_as_of({at, ...local_graph args}) return the graph as
+ * WorldGraph knew it at `at` (links outside their valid dates left out),
+ * live data only (sample data has no history). `at`: a time, or a date
+ * (YYYY-MM-DD: the end of that day, UTC); a future time means now. Before
+ * `history_starts` the call fails with "History starts on <d Mon yyyy>".
+ */
+const AsOf = { as_of: Iso, history_starts: Iso };
+export const GraphAsOfResponse = GraphResponse.extend(AsOf);
+export type GraphAsOfResponse = z.infer<typeof GraphAsOfResponse>;
+export const LocalGraphAsOfResponse = LocalGraphResponse.extend(AsOf);
+export type LocalGraphAsOfResponse = z.infer<typeof LocalGraphAsOfResponse>;
+
 /** api.forecasts({sectors?, regions?, categories?, sort?, include_thin?, profile?, sample?}) */
 export const ForecastsResponse = z.object({ forecasts: z.array(ForecastSummary) });
 export type ForecastsResponse = z.infer<typeof ForecastsResponse>;
@@ -830,6 +844,8 @@ export const RESPONSES = {
   entity: EntityResponse,
   graph: GraphResponse,
   local_graph: LocalGraphResponse,
+  graph_as_of: GraphAsOfResponse,
+  local_graph_as_of: LocalGraphAsOfResponse,
   forecasts: ForecastsResponse,
   forecast: ForecastResponse,
   search: SearchResponse,
@@ -903,6 +919,9 @@ export interface RpcArgs {
     direction?: RelationDirection;
     sample?: boolean;
   };
+  /** The graph as it was at `at` (see GraphAsOfResponse). */
+  graph_as_of: RpcArgs["graph"] & { at: string };
+  local_graph_as_of: RpcArgs["local_graph"] & { at: string };
   forecasts: {
     sectors?: SectorId[];
     regions?: string[];

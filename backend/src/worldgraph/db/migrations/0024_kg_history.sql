@@ -730,97 +730,107 @@ $$;
 
 -- ===========================================================================
 -- Graph data (0023's), reading through the views: the live graph, or the
--- graph as of wg.as_of.
+-- graph as of wg.as_of. The graph functions are plpgsql with custom plans
+-- every call (plan_cache_mode), so a plan made for the live graph is never
+-- reused for "as of" (the planner reads wg.as_of when it estimates rows),
+-- and without JIT (the views' estimates are rough).
 -- ===========================================================================
 create or replace function api._b_graph_data(
     p_ids text[], p_viewer text, p_sample boolean,
     p_min_conf numeric default 0, p_drop_isolated boolean default false,
     p_relations text[] default null, p_focus text default null, p_direction text default 'both')
 returns jsonb
-language sql stable set search_path = public, extensions set jit = off as $$
-    with ids as (
-        select u.id, min(u.ord) as ord
-        from unnest(p_ids) with ordinality as u(id, ord)
-        group by u.id
-    ),
-    prov as (
-        select api._flag('kg.provenance') as enabled
-    ),
-    edge_links as (
-        select distinct on (e.src, e.dst, e.type)
-               e.id, e.src as source, e.dst as target, e.type, false as causal,
-               round(e.confidence::numeric, 3) as confidence, e.created_at,
-               e.type as relation, null::smallint as polarity, null::numeric as strength,
-               null::boolean as delayed,
-               e.confidence < 0.5 as weak
-        from api._g_edges e
-        join ids a on a.id = e.src
-        join ids b on b.id = e.dst
-        where (p_relations is null or e.type = any(p_relations))
-          and (e.confidence is null or e.confidence >= p_min_conf)
-        order by e.src, e.dst, e.type, e.id
-    ),
-    causal_links as (
-        select distinct on (cl.src_story, cl.dst_story, cl.link_type)
-               cl.id, cl.src_story as source, cl.dst_story as target, cl.link_type as type, true as causal,
-               round(cl.confidence::numeric, 3) as confidence, cl.created_at,
-               cl.relation, cl.polarity, round(coalesce(cl.strength, cl.confidence)::numeric, 3) as strength,
-               cl.delayed,
-               cl.confidence < 0.5 or not exists (select 1 from evidence ev where ev.causal_link_id = cl.id) as weak
-        from api._g_links cl
-        join ids a on a.id = cl.src_story
-        join ids b on b.id = cl.dst_story
-        where cl.confidence >= p_min_conf
-          and (cl.forecast_id is null or api._b_forecast_ok(cl.forecast_id, p_viewer, p_sample))
-          and (p_relations is null or cl.relation = any(p_relations))
-        order by cl.src_story, cl.dst_story, cl.link_type, cl.confidence desc, cl.id
-    ),
-    all_links as (
-        select * from edge_links
-        union all
-        select * from causal_links
-    ),
-    links as (
-        select l.*
-        from all_links l
-        left join relation_type rt on rt.key = l.relation
-        where p_focus is null
-           or coalesce(p_direction, 'both') = 'both'
-           or coalesce(rt.symmetric, false)
-           or (p_direction = 'out' and l.target <> p_focus)
-           or (p_direction = 'in' and l.source <> p_focus)
-    ),
-    deg as (
-        select x.id, count(*) as degree
-        from (select source as id from links union all select target from links) x
-        group by x.id
-    ),
-    nodes as (
-        select i.ord, jsonb_build_object(
-            'id', n.id,
-            'type', n.type,
-            'subtype', n.subtype,
-            'name', coalesce(s.headline, n.name),
-            'degree', coalesce(d.degree, 0),
-            'impact', s.impact,
-            'created_at', case when s.kind = 'event' then s.first_seen else n.created_at end,
-            'is_sample', n.is_sample) as j
-        from ids i
-        join api._g_nodes n on n.id = i.id
-        left join api._g_stories s on s.node_id = n.id
-        left join deg d on d.id = n.id
-        where not p_drop_isolated or n.type = 'story' or d.degree is not null
-    )
-    select jsonb_build_object(
-        'nodes', coalesce((select jsonb_agg(j order by ord) from nodes), '[]'::jsonb),
-        'links', coalesce((select jsonb_agg(jsonb_build_object(
-                               'id', id, 'source', source, 'target', target, 'type', type, 'causal', causal,
-                               'confidence', confidence, 'created_at', created_at,
-                               'relation', relation, 'polarity', polarity, 'strength', strength,
-                               'delayed', delayed,
-                               'weak', coalesce(weak, false) and (select enabled from prov))
-                           order by causal, source, target, type)
-                           from links), '[]'::jsonb))
+language plpgsql stable set search_path = public, extensions set jit = off set plan_cache_mode = force_custom_plan as $$
+begin
+    return (
+        with ids as (
+            select u.id, min(u.ord) as ord
+            from unnest(p_ids) with ordinality as u(id, ord)
+            group by u.id
+        ),
+        prov as (
+            select api._flag('kg.provenance') as enabled
+        ),
+        edge_links as (
+            select distinct on (e.src, e.dst, e.type)
+                   e.id, e.src as source, e.dst as target, e.type, false as causal,
+                   round(e.confidence::numeric, 3) as confidence, e.created_at,
+                   e.type as relation, null::smallint as polarity, null::numeric as strength,
+                   null::boolean as delayed,
+                   e.confidence < 0.5 as weak
+            from api._g_edges e
+            join ids a on a.id = e.src
+            join ids b on b.id = e.dst
+            where (p_relations is null or e.type = any(p_relations))
+              and (e.confidence is null or e.confidence >= p_min_conf)
+            order by e.src, e.dst, e.type, e.id
+        ),
+        causal_links as (
+            select distinct on (cl.src_story, cl.dst_story, cl.link_type)
+                   cl.id, cl.src_story as source, cl.dst_story as target, cl.link_type as type, true as causal,
+                   round(cl.confidence::numeric, 3) as confidence, cl.created_at,
+                   cl.relation, cl.polarity, round(coalesce(cl.strength, cl.confidence)::numeric, 3) as strength,
+                   cl.delayed,
+                   -- (as of a past time, a link deleted since has lost its evidence: confidence only)
+                   cl.confidence < 0.5
+                   or (not exists (select 1 from evidence ev where ev.causal_link_id = cl.id)
+                       and exists (select 1 from causal_link x where x.id = cl.id)) as weak
+            from api._g_links cl
+            join ids a on a.id = cl.src_story
+            join ids b on b.id = cl.dst_story
+            where cl.confidence >= p_min_conf
+              and (cl.forecast_id is null or api._b_forecast_ok(cl.forecast_id, p_viewer, p_sample))
+              and (p_relations is null or cl.relation = any(p_relations))
+            order by cl.src_story, cl.dst_story, cl.link_type, cl.confidence desc, cl.id
+        ),
+        all_links as (
+            select * from edge_links
+            union all
+            select * from causal_links
+        ),
+        links as (
+            select l.*
+            from all_links l
+            left join relation_type rt on rt.key = l.relation
+            where p_focus is null
+               or coalesce(p_direction, 'both') = 'both'
+               or coalesce(rt.symmetric, false)
+               or (p_direction = 'out' and l.target <> p_focus)
+               or (p_direction = 'in' and l.source <> p_focus)
+        ),
+        deg as (
+            select x.id, count(*) as degree
+            from (select source as id from links union all select target from links) x
+            group by x.id
+        ),
+        nodes as (
+            select i.ord, jsonb_build_object(
+                'id', n.id,
+                'type', n.type,
+                'subtype', n.subtype,
+                'name', coalesce(s.headline, n.name),
+                'degree', coalesce(d.degree, 0),
+                'impact', s.impact,
+                'created_at', case when s.kind = 'event' then s.first_seen else n.created_at end,
+                'is_sample', n.is_sample) as j
+            from ids i
+            join api._g_nodes n on n.id = i.id
+            left join api._g_stories s on s.node_id = n.id
+            left join deg d on d.id = n.id
+            where not p_drop_isolated or n.type = 'story' or d.degree is not null
+        )
+        select jsonb_build_object(
+            'nodes', coalesce((select jsonb_agg(j order by ord) from nodes), '[]'::jsonb),
+            'links', coalesce((select jsonb_agg(jsonb_build_object(
+                                   'id', id, 'source', source, 'target', target, 'type', type, 'causal', causal,
+                                   'confidence', confidence, 'created_at', created_at,
+                                   'relation', relation, 'polarity', polarity, 'strength', strength,
+                                   'delayed', delayed,
+                                   'weak', coalesce(weak, false) and (select enabled from prov))
+                               order by causal, source, target, type)
+                               from links), '[]'::jsonb))
+    );
+end
 $$;
 
 -- ===========================================================================
@@ -828,7 +838,7 @@ $$;
 -- ===========================================================================
 create or replace function api._b_top_children(p_parents text[], p_per integer)
 returns table (child text, parent text)
-language plpgsql stable set search_path = public, extensions set jit = off as $$
+language plpgsql stable set search_path = public, extensions set jit = off set plan_cache_mode = force_custom_plan as $$
 begin
     return query
     with kids as (
@@ -870,7 +880,7 @@ create or replace function api._b_local_ids(
     p_focus text, p_depth integer, p_limit integer, p_viewer text, p_sample boolean,
     p_relations text[] default null, p_direction text default 'both',
     out ids text[], out truncated boolean)
-language plpgsql stable set search_path = public, extensions set jit = off as $$
+language plpgsql stable set search_path = public, extensions set jit = off set plan_cache_mode = force_custom_plan as $$
 declare
     v_frontier text[] := array[p_focus];
     v_next text[];
@@ -952,7 +962,7 @@ $$;
 -- graph as it was then.
 -- ===========================================================================
 create or replace function api.graph(args jsonb) returns jsonb
-language plpgsql stable set search_path = public, extensions set jit = off as $$
+language plpgsql stable set search_path = public, extensions set jit = off set plan_cache_mode = force_custom_plan as $$
 declare
     v_sample boolean := api._use_sample(args);
     v_viewer text := api._viewer_country(args);
@@ -1093,7 +1103,7 @@ $$;
 -- api.local_graph (0022's), through the views (see api.graph).
 -- ===========================================================================
 create or replace function api.local_graph(args jsonb) returns jsonb
-language plpgsql stable set search_path = public, extensions set jit = off as $$
+language plpgsql stable set search_path = public, extensions set jit = off set plan_cache_mode = force_custom_plan as $$
 declare
     v_id text := args ->> 'id';
     v_depth integer := greatest(1, least(3, api._b_int(args -> 'depth', 1)));
@@ -1169,7 +1179,7 @@ begin
         raise exception 'History starts on %',
             to_char(coalesce(v_start, now()) at time zone 'UTC', 'FMDD Mon YYYY');
     end if;
-    return least(v_at, now());
+    return least(v_at, clock_timestamp());  -- a future time means now
 end
 $$;
 
