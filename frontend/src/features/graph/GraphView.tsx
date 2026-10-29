@@ -147,6 +147,17 @@ export default function GraphView() {
   }, [raw, focusId]);
 
   const truncated = local ? (localQuery.data?.truncated ?? false) : (globalQuery.data?.truncated ?? false);
+  // Around one node the confidence filter runs here, so the view can say how many links it hid.
+  const weakHidden = useMemo(
+    () =>
+      local && localQuery.data
+        ? localQuery.data.links.filter((l) => l.causal && (l.confidence ?? 0) < minConfidence - 1e-9).length
+        : 0,
+    [local, localQuery.data, minConfidence],
+  );
+  // When only cause-and-effect links are asked for, the confidence filter may be why nothing shows.
+  const confidenceMayHide =
+    minConfidence > 0 && (weakHidden > 0 || (features.relations && filters.relations.includes("drives")));
   const times = useMemo(() => (raw ? revealTimes(raw.nodes, raw.links) : null), [raw]);
   const timelapse = useTimelapse(times, calm);
 
@@ -318,7 +329,7 @@ export default function GraphView() {
       )}
       {!loading && !failed && !schemaView && (noTypes || empty) && (
         <CenterCard>
-          <NothingToShow noTypes={noTypes} local={local} minConfidence={minConfidence} />
+          <NothingToShow noTypes={noTypes} local={local} confidenceHint={confidenceMayHide} />
         </CenterCard>
       )}
 
@@ -335,7 +346,12 @@ export default function GraphView() {
           {scope.kind === "local" ? <ScopeBar name={scope.name} depth={scope.depth} /> : <WindowSwitch />}
         </div>
         {graph && !empty && !schemaView && (
-          <Summary graph={graph} truncated={truncated} updating={query.isFetching && query.isPlaceholderData} />
+          <Summary
+            graph={graph}
+            truncated={truncated}
+            weakHidden={weakHidden}
+            updating={query.isFetching && query.isPlaceholderData}
+          />
         )}
       </div>
 
@@ -554,7 +570,18 @@ function FiltersButton({ local }: { local: boolean }) {
   );
 }
 
-function Summary({ graph, truncated, updating }: { graph: VizGraph; truncated: boolean; updating: boolean }) {
+function Summary({
+  graph,
+  truncated,
+  weakHidden,
+  updating,
+}: {
+  graph: VizGraph;
+  truncated: boolean;
+  /** Cause-and-effect links under the shared minimum confidence (around one node). */
+  weakHidden: number;
+  updating: boolean;
+}) {
   const filters = useGraphState((s) => s.filters);
   const setLimit = useGraphState((s) => s.setLimit);
   // Phones don't invite more: a bigger graph doesn't read on a small screen (Filters still offers it).
@@ -565,6 +592,11 @@ function Summary({ graph, truncated, updating }: { graph: VizGraph; truncated: b
         {graph.nodes.length} items · {graph.links.length} links
       </span>
       {graph.hasSample && <SampleBadge />}
+      {weakHidden > 0 && (
+        <span className="tabular-nums">
+          {weakHidden} weaker {weakHidden === 1 ? "link" : "links"} hidden
+        </span>
+      )}
       {truncated && (
         <span className="inline-flex items-center gap-1">
           Most connected first
@@ -641,7 +673,7 @@ function CenterCard({ children }: { children: React.ReactNode }) {
   );
 }
 
-function NothingToShow({ noTypes, local, minConfidence }: { noTypes: boolean; local: boolean; minConfidence: number }) {
+function NothingToShow({ noTypes, local, confidenceHint }: { noTypes: boolean; local: boolean; confidenceHint: boolean }) {
   const setTypes = useGraphState((s) => s.setTypes);
   const resetFilters = useGraphState((s) => s.resetFilters);
   const setAllTime = useGraphState((s) => s.setAllTime);
@@ -663,7 +695,7 @@ function NothingToShow({ noTypes, local, minConfidence }: { noTypes: boolean; lo
       icon={SearchX}
       title="Nothing matches these filters"
       description={`${local ? "Try more steps away or fewer filters." : "Try a longer time window or fewer filters."}${
-        minConfidence > 0 ? ` ${LOWER_CONFIDENCE_HINT}` : ""
+        confidenceHint ? ` ${LOWER_CONFIDENCE_HINT}` : ""
       }`}
       action={
         !local && !allTime

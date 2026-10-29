@@ -333,13 +333,17 @@ function FactsSection({ facts, chips, nav }: { facts: ShapedFact[]; chips: Prope
   return (
     <Section icon={Info} title="Key facts">
       {chips.length > 0 && (
+        // With typed properties, the older facts they don't cover read as chips too.
         <ul aria-label="Properties" className="flex flex-wrap gap-1.5">
           {chips.map((chip) => (
             <PropertyChipView key={chip.key} chip={chip} nav={nav} />
           ))}
+          {facts.map((fact) => (
+            <PropertyChipView key={`fact:${fact.label}`} chip={factChip(fact)} nav={nav} />
+          ))}
         </ul>
       )}
-      {facts.length > 0 && (
+      {chips.length === 0 && facts.length > 0 && (
         <dl className="grid grid-cols-[minmax(6rem,auto)_1fr] items-baseline gap-x-4 gap-y-2.5 rounded-xl border border-line p-3">
           {facts.map((fact) => (
             <FactRow key={fact.label} fact={fact} onOpen={nav.openNode} />
@@ -348,6 +352,19 @@ function FactsSection({ facts, chips, nav }: { facts: ShapedFact[]; chips: Prope
       )}
     </Section>
   );
+}
+
+/** An older free-text fact as a chip (names it links open their pages; places their panel). */
+function factChip(fact: ShapedFact): PropertyChip {
+  return {
+    key: fact.label.toLowerCase(),
+    label: fact.label,
+    kind: "text",
+    display: fact.value,
+    derived: true,
+    targets: fact.links,
+    opens: fact.links ? "page" : null,
+  };
 }
 
 /**

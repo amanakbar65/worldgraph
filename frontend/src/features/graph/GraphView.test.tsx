@@ -221,10 +221,17 @@ describe("GraphView", () => {
     expect(mocks.drawn.at(-1)).toEqual({ nodes: 6, links: 8 });
   });
 
-  it("explains that the confidence filter may hide links when nothing matches", () => {
+  it("says how many weaker links the shared confidence hides around a node", () => {
+    useNav.setState({ minConfidence: 0.7 });
+    useGraphState.getState().showAround({ id: "commodity:crude-oil", name: "Crude oil" }, 1);
+    render(<GraphView />);
+    expect(screen.getByText("1 weaker link hidden")).toBeTruthy();
+  });
+
+  it("doesn't blame the confidence filter for an empty graph it didn't cause", () => {
     mocks.responses.graph = { nodes: [], links: [], truncated: false };
     render(<GraphView />);
-    expect(screen.getByText(/Lower the confidence filter to see weaker links\./)).toBeTruthy();
+    expect(screen.queryByText(/Lower the confidence filter/)).toBeNull();
   });
 
   it("suggests a longer window when nothing matches", () => {

@@ -45,6 +45,13 @@ describe("factsBeyondProperties", () => {
   it("keeps only the older facts the properties don't say", () => {
     expect(factsBeyondProperties(PORT.entity.facts, PORT.properties).map((f) => f.label)).toEqual(["Depth"]);
     expect(factsBeyondProperties(PORT.entity.facts, [])).toHaveLength(3);
+    // The same value under another name ("Located in" next to "Place"), or a plural label, goes too.
+    const facts = [
+      { label: "Located in", value: "United Arab Emirates" },
+      { label: "Kinds", value: "Container port" },
+      { label: "Sectors", value: "Logistics and Trade" },
+    ];
+    expect(factsBeyondProperties(facts, PORT_PROPERTIES.slice(0, 7)).map((f) => f.label)).toEqual(["Sectors"]);
   });
 });
 

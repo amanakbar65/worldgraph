@@ -270,6 +270,13 @@ describe("GraphView with named relations and properties", () => {
     expect(within(red).getByText("raises")).toBeTruthy();
   });
 
+  it("explains an empty cause-and-effect graph by the confidence filter", () => {
+    mocks.responses.graph = { nodes: [], links: [], truncated: false };
+    useGraphState.getState().setRelations(["drives"]);
+    render(<GraphView />);
+    expect(screen.getByText(/Lower the confidence filter to see weaker links\./)).toBeTruthy();
+  });
+
   it("keeps the old graph when the flags are off", async () => {
     mocks.responses.meta = { flags: {} };
     render(<GraphView />);

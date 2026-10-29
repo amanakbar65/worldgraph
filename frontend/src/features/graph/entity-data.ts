@@ -237,16 +237,20 @@ export function propertyChips(properties: readonly PropertyValue[] | undefined):
 }
 
 /**
- * The older free-text facts the properties don't already say (matched by
- * label, ignoring case), so nothing shows twice.
+ * The older free-text facts the properties don't already say, so nothing
+ * shows twice: a fact goes when a property has its label (ignoring case
+ * and a plural "s") or says the same value ("Located in: Egypt" next to
+ * "Place: Egypt").
  */
-export function factsBeyondProperties<F extends { label: string }>(
+export function factsBeyondProperties<F extends { label: string; value: string }>(
   facts: readonly F[],
-  properties: readonly Pick<PropertyValue, "label" | "key">[] | undefined,
+  properties: readonly Pick<PropertyValue, "label" | "key" | "display">[] | undefined,
 ): F[] {
   if (!properties?.length) return [...facts];
-  const said = new Set(properties.flatMap((p) => [p.label.toLowerCase(), readable(p.key).toLowerCase()]));
-  return facts.filter((f) => !said.has(f.label.trim().toLowerCase()));
+  const norm = (s: string) => s.trim().toLowerCase().replace(/s$/, "");
+  const labels = new Set(properties.flatMap((p) => [norm(p.label), norm(readable(p.key))]));
+  const values = new Set(properties.map((p) => p.display.trim().toLowerCase()));
+  return facts.filter((f) => !labels.has(norm(f.label)) && !values.has(f.value.trim().toLowerCase()));
 }
 
 // ---------------------------------------------------------------------------

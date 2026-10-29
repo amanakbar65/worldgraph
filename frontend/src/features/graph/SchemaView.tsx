@@ -137,7 +137,7 @@ function SchemaMap({
         <>
           <svg aria-hidden width={box.width} height={box.height} className="absolute inset-0 overflow-visible">
             <defs>
-              <marker id={markerId} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <marker id={markerId} viewBox="0 0 10 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
                 <path d="M0,1 L9,5 L0,9 z" className="fill-fg-muted" />
               </marker>
             </defs>
