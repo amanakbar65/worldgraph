@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, type MutableRefObject, type Ref } from "react";
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from "react-force-graph-2d";
 
-import { FORECAST_TONE, LINK_TYPES } from "@/lib/meaning";
+import { FORECAST_TONE, trustVisual } from "@/lib/meaning";
 
 import { paletteColor, rgba, type Palette } from "./graph-colors";
 import { endId, focusSet, labelBudget, type VizGraph, type VizLink, type VizNode } from "./graph-data";
@@ -42,6 +42,12 @@ export interface GraphCanvasProps {
   onNodeClick: (node: VizNode) => void;
   onNodeHover?: (node: VizNode | null) => void;
   onLinkHover?: (link: VizLink | null) => void;
+  /** A link was tapped (every link when `linksInteractive`, else cause and effect only). */
+  onLinkClick?: (link: VizLink) => void;
+  /** Every link answers hover and taps, not only cause and effect (kg.relations). */
+  linksInteractive?: boolean;
+  /** The chosen link (VizLink id): drawn in the focus colour. */
+  selectedLinkId?: string | null;
   onBackgroundClick?: () => void;
   /** The user zoomed or panned (to stop automatic fitting). */
   onUserMove?: () => void;
@@ -89,6 +95,9 @@ export function GraphCanvas({
   onNodeClick,
   onNodeHover,
   onLinkHover,
+  onLinkClick,
+  linksInteractive = false,
+  selectedLinkId = null,
   onBackgroundClick,
   onUserMove,
   onSettled,
@@ -331,14 +340,26 @@ export function GraphCanvas({
       if (len < 0.01) return;
       const ux = dx / len;
       const uy = dy / len;
-      const touches = lit !== null && (s.id === litId || t.id === litId);
+      const chosen = link.id === selectedLinkId;
+      const touches = chosen || (lit !== null && (s.id === litId || t.id === litId));
       const dim = lit !== null && !touches;
       const causal = link.linkType !== null;
+      // Cause and effect wear the shared trust look (lib/meaning.ts trustVisual):
+      // width from strength, transparency from confidence, pattern from type.
+      const trust = causal
+        ? trustVisual({ confidence: link.confidence, strength: link.strength, linkType: link.linkType })
+        : null;
       // Conditional links hang on a crowd forecast: violet, as in the cascade.
-      const tone = !causal ? "--fg-subtle" : link.linkType === "conditional" ? FORECAST_TONE.cssVar : "--fg-muted";
-      const base = causal ? 0.8 : 0.28;
-      const alpha = dim ? base * 0.2 : touches ? Math.min(1, base * 1.6) : base;
-      const px = (causal ? 1.4 : 0.75) * (touches ? 1.5 : 1);
+      const tone = chosen
+        ? "--ring"
+        : !causal
+          ? "--fg-subtle"
+          : link.linkType === "conditional"
+            ? FORECAST_TONE.cssVar
+            : "--fg-muted";
+      const base = trust ? trust.opacity : 0.28;
+      const alpha = chosen ? 1 : dim ? base * 0.2 : touches ? Math.min(1, base * (causal ? 1.25 : 1.6)) : base;
+      const px = (trust ? trust.width : 0.75) * (chosen ? 1.8 : touches ? 1.4 : 1);
 
       const x1 = s.x + ux * s.r;
       const y1 = s.y + uy * s.r;
@@ -350,7 +371,7 @@ export function GraphCanvas({
       ctx.strokeStyle = color(tone, alpha);
       ctx.lineWidth = px / k;
       ctx.lineCap = "round";
-      const dash = causal ? LINK_TYPES[link.linkType!]?.dasharray : undefined;
+      const dash = trust?.dash;
       if (dash) ctx.setLineDash(dash.split(/\s+/).map((v) => Number(v) / k));
       ctx.beginPath();
       ctx.moveTo(x1, y1);
@@ -371,25 +392,49 @@ export function GraphCanvas({
         ctx.fillStyle = color(tone, alpha);
         ctx.fill();
       }
+
+      // A weak link in focus wears the "?" mark at its middle (never on the
+      // whole hairball: only where the viewer is looking).
+      if (trust?.weak && touches && !dim && len * k > 48) {
+        const mx = (x1 + x2) / 2;
+        const my = (y1 + y2) / 2;
+        const r = 7 / k;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(mx, my, r, 0, Math.PI * 2);
+        ctx.fillStyle = color("--surface");
+        ctx.fill();
+        ctx.lineWidth = 1 / k;
+        ctx.strokeStyle = color("--line-strong");
+        ctx.stroke();
+        ctx.fillStyle = color("--fg-muted");
+        ctx.font = `600 ${10 / k}px ${font}`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("?", mx, my + 0.5 / k);
+      }
       ctx.restore();
     },
-    [lit, litId, color],
+    [lit, litId, selectedLinkId, color, font],
   );
 
-  const paintLinkPointer = useCallback((raw: FgLink, paint: string, ctx: CanvasRenderingContext2D, k: number) => {
-    const link = raw as VizLink;
-    // Only cause-and-effect links are hoverable (they show type and confidence).
-    if (link.linkType === null) return;
-    const s = link.source as VizNode;
-    const t = link.target as VizNode;
-    if (typeof s !== "object" || typeof t !== "object" || s.x === undefined || t.x === undefined) return;
-    ctx.strokeStyle = paint;
-    ctx.lineWidth = 7 / k;
-    ctx.beginPath();
-    ctx.moveTo(s.x, s.y!);
-    ctx.lineTo(t.x, t.y!);
-    ctx.stroke();
-  }, []);
+  const paintLinkPointer = useCallback(
+    (raw: FgLink, paint: string, ctx: CanvasRenderingContext2D, k: number) => {
+      const link = raw as VizLink;
+      // Without named relations only cause-and-effect links answer (they show type and confidence).
+      if (link.linkType === null && !linksInteractive) return;
+      const s = link.source as VizNode;
+      const t = link.target as VizNode;
+      if (typeof s !== "object" || typeof t !== "object" || s.x === undefined || t.x === undefined) return;
+      ctx.strokeStyle = paint;
+      ctx.lineWidth = (link.linkType === null ? 5 : 7) / k;
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y!);
+      ctx.lineTo(t.x, t.y!);
+      ctx.stroke();
+    },
+    [linksInteractive],
+  );
 
   const drawLabels = useCallback(
     (ctx: CanvasRenderingContext2D, k: number) => {
@@ -504,12 +549,13 @@ export function GraphCanvas({
         enableNodeDrag={!mini}
         enableZoomInteraction={!mini}
         enablePanInteraction={!mini}
-        showPointerCursor={(obj) => !!obj && "shape" in obj}
+        showPointerCursor={(obj) => !!obj && ("shape" in obj || (!!onLinkClick && "sourceId" in obj))}
         onEngineTick={handleTick}
         onEngineStop={handleStop}
         onNodeClick={(n) => onNodeClick(n as VizNode)}
         onNodeHover={(n) => onNodeHover?.((n as VizNode | null) ?? null)}
         onLinkHover={(l) => onLinkHover?.((l as VizLink | null) ?? null)}
+        onLinkClick={(l) => onLinkClick?.(l as VizLink)}
         onBackgroundClick={() => onBackgroundClick?.()}
       />
     </div>

@@ -324,6 +324,45 @@ export const TRUST_LEGEND = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// Polarity of a cause-and-effect link (Phase A2)
+// ---------------------------------------------------------------------------
+
+export interface PolarityInfo {
+  /** ▲ same way, ▼ the opposite way. */
+  glyph: string;
+  /** "raises" / "lowers": what the cause does to the effect. */
+  word: string;
+  /** One line for tooltips and screen readers. */
+  description: string;
+}
+
+/**
+ * +1: the effect moves the same way as the cause (▲ raises); -1: the
+ * opposite way (▼ lowers). Always the glyph and the word together, never
+ * a colour alone. Null when the polarity is unknown or the link isn't causal.
+ */
+export function polarityInfo(polarity: number | null | undefined): PolarityInfo | null {
+  if (polarity === 1) {
+    return { glyph: "▲", word: "raises", description: "Raises: the effect moves the same way as the cause" };
+  }
+  if (polarity === -1) {
+    return { glyph: "▼", word: "lowers", description: "Lowers: the effect moves the opposite way to the cause" };
+  }
+  return null;
+}
+
+/** The accessible label of the "?" mark on a weak link (TRUST_LEGEND.weak, as a sentence). */
+export const WEAK_LINK_LABEL = "Weak link: under 50% sure, or no source";
+
+/** The shared minimum confidence in words: "At least 50%", or "Any confidence" at 0. */
+export function minConfidenceWords(percent: number): string {
+  return percent <= 0 ? "Any confidence" : `At least ${Math.round(percent)}%`;
+}
+
+/** Said next to the clock icon on links whose effect shows only after a while. */
+export const DELAYED_WORDS = { label: "Delayed", description: "The effect shows after a delay" } as const;
+
+// ---------------------------------------------------------------------------
 // Horizon and direction
 // ---------------------------------------------------------------------------
 

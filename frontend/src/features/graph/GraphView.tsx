@@ -1,4 +1,4 @@
-import { List, Maximize2, Network, SlidersHorizontal, SearchX, X, ZoomIn, ZoomOut } from "lucide-react";
+import { List, Maximize2, Network, SearchX, Shapes, SlidersHorizontal, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { GraphData, RpcArgs, TimeWindow } from "@/api/contract";
@@ -20,6 +20,7 @@ import { GraphCanvas, type GraphCanvasHandle, type Insets } from "./GraphCanvas"
 import {
   activeFilterCount,
   buildGraphArgs,
+  buildLocalArgs,
   describeGraph,
   filterGraph,
   GRAPH_TYPES,
@@ -34,12 +35,13 @@ import {
   type VizNode,
 } from "./graph-data";
 import { GraphFilters } from "./GraphFilters";
-import { useGraphState } from "./graph-state";
+import { useGraphState, type GraphMode } from "./graph-state";
 import { LinkHoverCard, NodeHoverCard } from "./GraphHoverCard";
 import { GraphLegend } from "./GraphLegend";
 import { GraphList } from "./GraphList";
 import { GraphSearch, type SearchPick } from "./GraphSearch";
 import { GraphTimelapseBar } from "./GraphTimelapseBar";
+import { useGraphFeatures, useRelationIndex } from "./use-graph-schema";
 import { useElementSize, useGraphTheme } from "./use-graph-theme";
 import { useGraphNav } from "./use-graph-nav";
 import { useTimelapse } from "./use-timelapse";
@@ -63,6 +65,9 @@ const PHONE_STATUS_SPACE = 12;
 /** On desktop the replay control starts right of the status pill. */
 const DESKTOP_BAR_LEFT = 340;
 
+/** Said wherever a view may be empty because of the shared minimum confidence. */
+const LOWER_CONFIDENCE_HINT = "Lower the confidence filter to see weaker links.";
+
 /** Where each node sat, so returning to the graph (or new data) doesn't reshuffle it. */
 const POSITIONS = new Map<string, { x: number; y: number }>();
 
@@ -75,9 +80,14 @@ export default function GraphView() {
   const scope = useGraphState((s) => s.scope);
   const filters = useGraphState((s) => s.filters);
   const pinned = useGraphState((s) => s.pinned);
-  const listView = useGraphState((s) => s.listView);
+  const mode = useGraphState((s) => s.mode);
+  const selectedLinkId = useGraphState((s) => s.selectedLink);
   const navWindow = useNav((s) => s.window);
   const sectors = useNav((s) => s.sectors);
+  const minConfidence = useNav((s) => s.minConfidence);
+  const features = useGraphFeatures();
+  const relations = useRelationIndex(features.relations);
+  const listView = mode === "list";
   const top = useNav(currentPanel);
   const sample = useSettings((s) => s.sample);
   const isDesktop = useIsDesktop();
@@ -94,19 +104,19 @@ export default function GraphView() {
 
   // Data ------------------------------------------------------------------------
   const globalArgs = useMemo(
-    () => buildGraphArgs(filters, { window: navWindow, sectors }, sampleArg(sample)),
-    [filters, navWindow, sectors, sample],
+    () => buildGraphArgs(filters, { window: navWindow, sectors, minConfidence }, sampleArg(sample), features),
+    [filters, navWindow, sectors, minConfidence, sample, features],
   );
   const globalQuery = useRpc("graph", globalArgs, {
     enabled: !local && !noTypes,
     placeholderData: (previous) => previous,
     refetchInterval: 300_000,
   });
-  const localArgs: RpcArgs["local_graph"] = {
-    id: scope.kind === "local" ? scope.id : "",
-    depth: scope.kind === "local" ? scope.depth : 1,
-    limit: 300,
-  };
+  const localArgs: RpcArgs["local_graph"] = buildLocalArgs(
+    { id: scope.kind === "local" ? scope.id : "", depth: scope.kind === "local" ? scope.depth : 1 },
+    filters,
+    features,
+  );
   const localQuery = useRpc("local_graph", localArgs, {
     enabled: local,
     placeholderData: (previous) => (previous && previous.focus === focusId ? previous : undefined),
@@ -117,8 +127,8 @@ export default function GraphView() {
   const raw = useMemo<GraphData | undefined>(() => {
     if (!local) return noTypes ? { nodes: [], links: [] } : globalQuery.data;
     if (!localQuery.data) return undefined;
-    return filterGraph(localQuery.data, { types: filters.types, minConfidence: filters.minConfidence, keep: focusId });
-  }, [local, noTypes, globalQuery.data, localQuery.data, filters.types, filters.minConfidence, focusId]);
+    return filterGraph(localQuery.data, { types: filters.types, minConfidence, keep: focusId });
+  }, [local, noTypes, globalQuery.data, localQuery.data, filters.types, minConfidence, focusId]);
 
   const graph = useMemo<VizGraph | null>(() => {
     if (!raw) return null;
@@ -139,6 +149,9 @@ export default function GraphView() {
   const rightInset = isDesktop && top && top.kind !== "cascade" && top.kind !== "compare" ? PANEL_INSET : 0;
   const [hover, setHover] = useState<{ node: VizNode; at: { left: number; top: number } } | null>(null);
   const [linkHover, setLinkHover] = useState<{ link: VizLink; at: { left: number; top: number } } | null>(null);
+  // The chosen link (tapped, or picked in the list) and where its card sits.
+  const [linkAt, setLinkAt] = useState<{ id: string; at: { left: number; top: number } } | null>(null);
+  const selectedLink = selectedLinkId ? (graph?.links.find((l) => l.id === selectedLinkId) ?? null) : null;
   const pinnedId = pinned && graph?.byId.has(pinned.id) ? pinned.id : null;
   const litId = hover?.node.id ?? pinnedId;
 
@@ -169,16 +182,39 @@ export default function GraphView() {
     },
     [size],
   );
-  const onLinkHover = useCallback(
-    (link: VizLink | null) => {
-      if (!link || !link.linkType || typeof link.source !== "object" || typeof link.target !== "object") {
-        return setLinkHover(null);
-      }
+  /** Where a link's card goes: by the link's middle, inside the canvas. */
+  const cardAt = useCallback(
+    (link: VizLink, height: number) => {
+      if (typeof link.source !== "object" || typeof link.target !== "object") return null;
       const a = canvas.current?.screenOf(link.source.id);
       const b = canvas.current?.screenOf(link.target.id);
-      setLinkHover(a && b ? { link, at: placeCard({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, size, 130) } : null);
+      return a && b ? placeCard({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, size, height) : null;
     },
     [size],
+  );
+  const onLinkHover = useCallback(
+    (link: VizLink | null) => {
+      // Without named relations only cause-and-effect links have a card.
+      if (!link || (!link.linkType && !features.relations)) return setLinkHover(null);
+      const at = cardAt(link, 130);
+      setLinkHover(at ? { link, at } : null);
+    },
+    [cardAt, features.relations],
+  );
+  /**
+   * Choose a link (a tap in the drawing, or its relation in the list): its
+   * card stays open with the relation, polarity and confidence. Phase A3
+   * hangs "Why is this here?" on this selection (see `linkActions`).
+   */
+  const selectLink = useCallback(
+    (link: VizLink | null) => {
+      setLinkHover(null);
+      setHover(null);
+      useGraphState.getState().selectLink(link?.id ?? null);
+      const at = link && mode === "graph" ? cardAt(link, 170) : null;
+      setLinkAt(link && at ? { id: link.id, at } : null);
+    },
+    [cardAt, mode],
   );
   const onSettled = useCallback(() => {
     if (!graph) return;
@@ -186,6 +222,10 @@ export default function GraphView() {
   }, [graph]);
 
   const focusNode = (node: VizNode) => useGraphState.getState().pin(node.id);
+  // Phase A3 (part 2): the actions under a chosen link's card, e.g. "Why is this here?"
+  // for linkTarget(selectedLink) (graph-data.ts). Nothing yet.
+  const linkActions = null;
+  const linkCardAt = selectedLink && linkAt?.id === selectedLink.id ? linkAt.at : null;
   const showAround = (pick: SearchPick) => useGraphState.getState().showAround({ id: pick.id, name: pick.name }, 1);
 
   // Layout --------------------------------------------------------------------------
@@ -226,17 +266,26 @@ export default function GraphView() {
               litId={litId}
               onNodeClick={(node) => {
                 setHover(null);
+                if (selectedLinkId) selectLink(null);
                 nav.openNode(node);
               }}
               onNodeHover={onNodeHover}
               onLinkHover={onLinkHover}
-              onBackgroundClick={() => useGraphState.getState().pin(null)}
+              onLinkClick={features.relations ? (link) => selectLink(link) : undefined}
+              linksInteractive={features.relations}
+              selectedLinkId={selectedLink?.id ?? null}
+              onBackgroundClick={() => {
+                useGraphState.getState().pin(null);
+                if (selectedLinkId) selectLink(null);
+              }}
               onSettled={onSettled}
               insets={insets}
               className="absolute inset-0"
             />
             {hover && <NodeHoverCard node={hover.node} at={hover.at} />}
-            {!hover && linkHover && <LinkHoverCard link={linkHover.link} at={linkHover.at} />}
+            {!hover && linkHover && linkHover.link.id !== selectedLink?.id && (
+              <LinkHoverCard link={linkHover.link} at={linkHover.at} index={relations} byId={graph.byId} />
+            )}
           </div>
         )}
       </div>
@@ -249,7 +298,7 @@ export default function GraphView() {
       )}
       {!loading && !failed && (noTypes || empty) && (
         <CenterCard>
-          <NothingToShow noTypes={noTypes} local={local} />
+          <NothingToShow noTypes={noTypes} local={local} minConfidence={minConfidence} />
         </CenterCard>
       )}
 
@@ -262,7 +311,7 @@ export default function GraphView() {
         <div className="relative z-10 flex w-full flex-wrap items-center gap-1.5 rounded-xl border border-line bg-glass p-1.5 shadow-panel backdrop-blur-xl sm:w-auto">
           <GraphSearch graph={graph} onFocus={focusNode} onShowAround={showAround} className="min-w-0 flex-1 sm:w-64 sm:flex-none" />
           <FiltersButton local={local} />
-          <ViewToggle />
+          <ViewToggle schema={features.schemaMap} />
           {scope.kind === "local" ? <ScopeBar name={scope.name} depth={scope.depth} /> : <WindowSwitch />}
         </div>
         {graph && !empty && (
@@ -276,8 +325,28 @@ export default function GraphView() {
           className="absolute inset-0 overflow-y-auto px-3 pt-36 pb-16 sm:pt-32"
           style={{ paddingTop: toolbar.height ? toolbar.height + 24 : undefined, paddingRight: rightInset || undefined }}
         >
-          <GraphList graph={graph} onOpen={nav.openNode} className="mx-auto max-w-3xl" />
+          <GraphList
+            graph={graph}
+            onOpen={nav.openNode}
+            relations={relations}
+            onSelectLink={features.relations ? (link) => selectLink(link.id === selectedLinkId ? null : link) : undefined}
+            selectedLinkId={selectedLinkId}
+            className="mx-auto max-w-3xl"
+          />
         </div>
+      )}
+
+      {/* The chosen link's card: by the link in the drawing, docked at the bottom in the list. */}
+      {graph && !empty && selectedLink && (mode === "list" || linkCardAt) && (
+        <LinkHoverCard
+          link={selectedLink}
+          at={mode === "list" || !linkCardAt ? "docked" : linkCardAt}
+          index={relations}
+          byId={graph.byId}
+          selected
+          onClose={() => selectLink(null)}
+          actions={linkActions}
+        />
       )}
 
       {/* Bottom controls, clear of the app's status pill (bottom left). */}
@@ -287,6 +356,8 @@ export default function GraphView() {
             key="desktop"
             types={graph.types}
             linkTypes={graph.linkTypes}
+            minConfidence={minConfidence}
+            relations={features.relations}
             defaultOpen
             className="absolute left-3 z-10 w-72"
             style={{ bottom: STATUS_SPACE }}
@@ -328,6 +399,8 @@ export default function GraphView() {
                 key="phone"
                 types={graph.types}
                 linkTypes={graph.linkTypes}
+                minConfidence={minConfidence}
+                relations={features.relations}
                 defaultOpen={false}
                 className="pointer-events-auto max-w-[calc(100%-180px)] min-w-0"
               />
@@ -406,18 +479,22 @@ function ScopeBar({ name, depth }: { name: string; depth: 1 | 2 | 3 }) {
   );
 }
 
-function ViewToggle() {
-  const listView = useGraphState((s) => s.listView);
-  const setListView = useGraphState((s) => s.setListView);
+function ViewToggle({ schema }: { schema: boolean }) {
+  const mode = useGraphState((s) => s.mode);
+  const setMode = useGraphState((s) => s.setMode);
+  const options: { value: GraphMode; label: React.ReactNode; icon: typeof Network; ariaLabel: string }[] = [
+    { value: "graph", label: <span className="sr-only sm:not-sr-only">Graph</span>, icon: Network, ariaLabel: "Graph" },
+    { value: "list", label: <span className="sr-only sm:not-sr-only">List</span>, icon: List, ariaLabel: "List" },
+  ];
+  if (schema) {
+    options.push({ value: "schema", label: <span className="sr-only sm:not-sr-only">Schema</span>, icon: Shapes, ariaLabel: "Schema" });
+  }
   return (
-    <Segmented<"graph" | "list">
+    <Segmented<GraphMode>
       aria-label="Show as"
-      value={listView ? "list" : "graph"}
-      onValueChange={(v) => setListView(v === "list")}
-      options={[
-        { value: "graph", label: <span className="sr-only sm:not-sr-only">Graph</span>, icon: Network, ariaLabel: "Graph" },
-        { value: "list", label: <span className="sr-only sm:not-sr-only">List</span>, icon: List, ariaLabel: "List" },
-      ]}
+      value={schema || mode !== "schema" ? mode : "graph"}
+      onValueChange={setMode}
+      options={options}
     />
   );
 }
@@ -425,8 +502,9 @@ function ViewToggle() {
 function FiltersButton({ local }: { local: boolean }) {
   const filters = useGraphState((s) => s.filters);
   const sectors = useNav((s) => s.sectors);
+  const minConfidence = useNav((s) => s.minConfidence);
   const phone = !useIsDesktop();
-  const count = activeFilterCount(filters, phone) + (local ? 0 : sectors.length);
+  const count = activeFilterCount(filters, phone, { minConfidence, local }) + (local ? 0 : sectors.length);
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -534,7 +612,7 @@ function CenterCard({ children }: { children: React.ReactNode }) {
   );
 }
 
-function NothingToShow({ noTypes, local }: { noTypes: boolean; local: boolean }) {
+function NothingToShow({ noTypes, local, minConfidence }: { noTypes: boolean; local: boolean; minConfidence: number }) {
   const setTypes = useGraphState((s) => s.setTypes);
   const resetFilters = useGraphState((s) => s.resetFilters);
   const setAllTime = useGraphState((s) => s.setAllTime);
@@ -555,7 +633,9 @@ function NothingToShow({ noTypes, local }: { noTypes: boolean; local: boolean })
     <EmptyState
       icon={SearchX}
       title="Nothing matches these filters"
-      description={local ? "Try more steps away or fewer filters." : "Try a longer time window or fewer filters."}
+      description={`${local ? "Try more steps away or fewer filters." : "Try a longer time window or fewer filters."}${
+        minConfidence > 0 ? ` ${LOWER_CONFIDENCE_HINT}` : ""
+      }`}
       action={
         !local && !allTime
           ? { label: "Show all time", onClick: () => setAllTime(true) }

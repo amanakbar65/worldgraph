@@ -35,7 +35,8 @@ const NAV = { window: "7d" as const, sectors: [] };
 
 describe("buildGraphArgs", () => {
   it("sends only what differs from the defaults", () => {
-    expect(buildGraphArgs(DEFAULT_FILTERS, NAV, undefined)).toEqual({ window: "7d", limit: 250 });
+    // The shared minimum confidence starts at 50 %, so the graph asks for it.
+    expect(buildGraphArgs(DEFAULT_FILTERS, NAV, undefined)).toEqual({ window: "7d", limit: 250, min_confidence: 0.5 });
   });
 
   it("uses the shared window, or all time", () => {
@@ -59,13 +60,16 @@ describe("buildGraphArgs", () => {
       types: ["story", "region"],
       sectors: ["energy", "tech"],
       regions: ["region:in", "region:us"],
+      min_confidence: 0.5,
       sample: false,
     });
   });
 
-  it("rounds the confidence floor and leaves it out at zero", () => {
-    expect(buildGraphArgs({ ...DEFAULT_FILTERS, minConfidence: 0.333333 }, NAV, undefined).min_confidence).toBe(0.33);
-    expect(buildGraphArgs({ ...DEFAULT_FILTERS, minConfidence: 0 }, NAV, undefined).min_confidence).toBeUndefined();
+  it("sends the shared minimum confidence, rounded, and leaves it out at zero", () => {
+    expect(buildGraphArgs(DEFAULT_FILTERS, { ...NAV, minConfidence: 0.333333 }, undefined).min_confidence).toBe(0.33);
+    expect(buildGraphArgs(DEFAULT_FILTERS, { ...NAV, minConfidence: 0 }, undefined).min_confidence).toBeUndefined();
+    // Exactly the default (50 %) is sent as is: links of exactly 0.5 still show (the api keeps >=).
+    expect(buildGraphArgs(DEFAULT_FILTERS, { ...NAV, minConfidence: 0.5 }, undefined).min_confidence).toBe(0.5);
   });
 
   it("passes the node limit", () => {
@@ -94,9 +98,8 @@ describe("activeFilterCount", () => {
         ...DEFAULT_FILTERS,
         types: ["story"],
         regions: [{ id: "region:in", name: "India" }],
-        minConfidence: 0.5,
         limit: 500,
-      }),
+      }, false, { minConfidence: 0.7 }),
     ).toBe(4);
   });
 });

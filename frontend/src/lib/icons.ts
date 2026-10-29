@@ -10,16 +10,19 @@
 import {
   Activity,
   ArrowLeftRight,
+  ArrowRight,
   Briefcase,
   BriefcaseBusiness,
   Building,
   Building2,
+  CalendarDays,
   ChartColumn,
   ChartLine,
   CircleAlert,
   CircleDot,
   ClipboardList,
   CloudLightning,
+  Cog,
   Coins,
   Construction,
   Container,
@@ -27,24 +30,37 @@ import {
   Factory,
   Gauge,
   Gavel,
+  GitFork,
+  Globe,
   HardHat,
+  Hash,
   HeartPulse,
+  KeyRound,
   Landmark,
   Layers,
+  Link,
+  ListTree,
   MapPin,
   Megaphone,
   Minus,
   Newspaper,
   Package,
+  PackageOpen,
+  Plug,
+  Scale,
   ScrollText,
   ShieldAlert,
   Ship,
   ShoppingBag,
   Sparkles,
   Sprout,
+  Swords,
+  Tag,
+  Target,
   Telescope,
   Thermometer,
   Truck,
+  Type,
   TrendingUpDown,
   UserRound,
   Users,
@@ -54,7 +70,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import type { EntityType, Impact, SectorId } from "@/api/contract";
+import type { EntityType, Impact, PropertyKind, SectorId } from "@/api/contract";
 
 /** An icon plus its lucide name (kebab case, as stored in the database). */
 export interface IconInfo {
@@ -187,6 +203,83 @@ export const FORECAST_ICON: IconInfo = { icon: Users, name: "users" };
 export const FORECAST_ICON_LABEL = "crowd";
 
 // ---------------------------------------------------------------------------
+// Relations and properties (the graph schema, Phase A)
+// ---------------------------------------------------------------------------
+
+/**
+ * One icon per named relation, as `types.yaml` names them (api.schema sends
+ * the same names). The offline fallback when the schema hasn't loaded.
+ */
+export const RELATION_ICONS: Record<string, IconInfo> = {
+  located_in: { icon: MapPin, name: "map-pin" },
+  part_of: { icon: ListTree, name: "list-tree" },
+  owns: { icon: KeyRound, name: "key-round" },
+  subsidiary_of: { icon: GitFork, name: "git-fork" },
+  produces: { icon: Factory, name: "factory" },
+  exports_to: { icon: Ship, name: "ship" },
+  imports_from: { icon: PackageOpen, name: "package-open" },
+  depends_on: { icon: Plug, name: "plug" },
+  member_of: { icon: Users, name: "users" },
+  competes_with: { icon: Swords, name: "swords" },
+  in_sector: { icon: Tag, name: "tag" },
+  mentions: { icon: Newspaper, name: "newspaper" },
+  about: { icon: Target, name: "target" },
+  relates_to: { icon: Link, name: "link" },
+  supplies: { icon: Truck, name: "truck" },
+  operates: { icon: Cog, name: "cog" },
+  regulates: { icon: Scale, name: "scale" },
+  drives: { icon: ArrowRight, name: "arrow-right" },
+};
+
+/** For relations not in RELATION_ICONS. In JSX: `(RELATION_ICONS[key] ?? DEFAULT_RELATION_ICON).icon`. */
+export const DEFAULT_RELATION_ICON: IconInfo = { icon: Link, name: "link" };
+
+/** The icon for a relation (non-JSX code): the schema's icon name when known, else by key, else a plain link. */
+export function relationIcon(key: string | null | undefined, iconName?: string | null): LucideIcon {
+  return (iconName && BY_NAME[iconName]) || (key && RELATION_ICONS[key]?.icon) || Link;
+}
+
+/** One icon per kind of property value (entity and place values show their node's type icon instead). */
+export const PROPERTY_KIND_ICONS: Record<PropertyKind, IconInfo> = {
+  text: { icon: Type, name: "type" },
+  number: { icon: Hash, name: "hash" },
+  date: { icon: CalendarDays, name: "calendar-days" },
+  choice: { icon: Tag, name: "tag" },
+  url: { icon: Globe, name: "globe" },
+  place: { icon: MapPin, name: "map-pin" },
+  entity: { icon: Link, name: "link" },
+};
+
+/** Properties whose meaning has a better icon than their kind's. */
+const PROPERTY_KEY_ICONS: Record<string, LucideIcon> = {
+  sector: Layers,
+  sectors: Layers,
+  headquarters: MapPin,
+  size: Users,
+  founded: CalendarDays,
+  website: Globe,
+  ticker: ChartLine,
+  unit: Hash,
+  benchmark: ChartLine,
+  hs_code: Hash,
+  issuer: Landmark,
+  status: Activity,
+  scope: MapPin,
+  kind: Tag,
+  capacity: Gauge,
+  operator: Cog,
+  frequency: CalendarDays,
+  source: Newspaper,
+  role: Briefcase,
+  organization: Building,
+};
+
+/** The icon of a property chip: by its key when it has its own, else by kind. */
+export function propertyIcon(key: string, kind: PropertyKind): LucideIcon {
+  return PROPERTY_KEY_ICONS[key] ?? PROPERTY_KIND_ICONS[kind]?.icon ?? CircleDot;
+}
+
+// ---------------------------------------------------------------------------
 // By name (for icons named in the database, e.g. api.meta sectors)
 // ---------------------------------------------------------------------------
 
@@ -196,6 +289,8 @@ const BY_NAME: Record<string, LucideIcon> = Object.fromEntries(
     ...Object.values(ENTITY_TYPE_ICONS),
     ...Object.values(EVENT_TYPE_ICONS),
     ...Object.values(IMPACT_ICONS),
+    ...Object.values(RELATION_ICONS),
+    ...Object.values(PROPERTY_KIND_ICONS),
     FORECAST_ICON,
     DEFAULT_EVENT_ICON,
   ].map((info) => [info.name, info.icon]),

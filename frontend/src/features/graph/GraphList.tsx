@@ -1,17 +1,37 @@
 import { useMemo, useState } from "react";
 
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
+import { DelayedMark, PolarityMark } from "@/components/LinkMarks";
 import { SampleBadge } from "@/components/SampleBadge";
 import { Button } from "@/components/ui/button";
-import { ENTITY_TYPE_ICONS, IMPACT_ICONS } from "@/lib/icons";
-import { entityTypeTone, impactTone } from "@/lib/meaning";
+import { WeakMark } from "@/components/WeakMark";
+import { DEFAULT_RELATION_ICON, ENTITY_TYPE_ICONS, IMPACT_ICONS, RELATION_ICONS } from "@/lib/icons";
+import { entityTypeTone, impactTone, isWeak, WEAK_LINK_LABEL } from "@/lib/meaning";
 import { cn } from "@/lib/utils";
 
-import { topConnections, TYPE_NAMES, type Connection, type VizGraph, type VizNode } from "./graph-data";
+import {
+  topConnections,
+  TYPE_NAMES,
+  type Connection,
+  type RelationIndex,
+  type VizGraph,
+  type VizLink,
+  type VizNode,
+} from "./graph-data";
 
 export interface GraphListProps {
   graph: VizGraph;
   onOpen: (node: VizNode) => void;
+  /** Named relations (kg.relations): label links by relation, from each end's side. */
+  relations?: RelationIndex | null;
+  /**
+   * Choose a link (its card opens with the relation and, in Phase A3, "Why
+   * is this here?"). Given, each connection's relation becomes a button, so
+   * every link is reachable by keyboard.
+   */
+  onSelectLink?: (link: VizLink) => void;
+  /** The chosen link (VizLink id). */
+  selectedLinkId?: string | null;
   className?: string;
 }
 
@@ -20,9 +40,9 @@ export interface GraphListProps {
  * prefers reading): the best-connected nodes first, each with its main
  * connections. Cause-and-effect links say how they are known and how sure.
  */
-export function GraphList({ graph, onOpen, className }: GraphListProps) {
+export function GraphList({ graph, onOpen, relations = null, onSelectLink, selectedLinkId = null, className }: GraphListProps) {
   const [count, setCount] = useState(40);
-  const entries = useMemo(() => topConnections(graph, count, 6), [graph, count]);
+  const entries = useMemo(() => topConnections(graph, count, 6, relations), [graph, count, relations]);
   return (
     <div className={cn("flex flex-col gap-3", className)}>
       <ul aria-label="Nodes, most connected first" className="flex flex-col gap-2">
@@ -32,7 +52,15 @@ export function GraphList({ graph, onOpen, className }: GraphListProps) {
             {entry.connections.length > 0 && (
               <ul aria-label={`Connections of ${entry.node.name}`} className="mt-1 flex flex-col pl-11">
                 {entry.connections.map((c) => (
-                  <ConnectionRow key={c.link.id} connection={c} onOpen={onOpen} />
+                  <ConnectionRow
+                    key={c.link.id}
+                    from={entry.node}
+                    connection={c}
+                    onOpen={onOpen}
+                    onSelectLink={onSelectLink}
+                    selected={c.link.id === selectedLinkId}
+                    named={relations !== null}
+                  />
                 ))}
                 {entry.more > 0 && (
                   <li className="px-2 py-1 text-label text-fg-subtle">and {entry.more} more</li>
@@ -92,22 +120,66 @@ function NodeButton({ node, onOpen }: { node: VizNode; onOpen: (n: VizNode) => v
   );
 }
 
-function ConnectionRow({ connection, onOpen }: { connection: Connection; onOpen: (n: VizNode) => void }) {
+function ConnectionRow({
+  from,
+  connection,
+  onOpen,
+  onSelectLink,
+  selected,
+  named,
+}: {
+  from: VizNode;
+  connection: Connection;
+  onOpen: (n: VizNode) => void;
+  onSelectLink?: (link: VizLink) => void;
+  selected: boolean;
+  /** Relations are named (kg.relations): show the relation's icon. */
+  named: boolean;
+}) {
   const { node, link, relation } = connection;
   const { tone, Icon } = nodeMark(node);
+  const RelationIcon = (RELATION_ICONS[link.relation] ?? DEFAULT_RELATION_ICON).icon;
+  const causal = link.linkType !== null;
+  const outgoing = link.sourceId === from.id;
   return (
     <li className="flex flex-wrap items-center gap-x-2">
+      {onSelectLink ? (
+        // The relation is the link: choosing it opens the link's card.
+        <button
+          type="button"
+          onClick={() => onSelectLink(link)}
+          aria-pressed={selected}
+          aria-label={`Link details: ${from.name}, ${relation.toLowerCase()}, ${node.name}`}
+          className={cn(
+            "relative flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-full border px-2 text-label text-fg-muted before:absolute before:inset-x-0 before:top-1/2 before:h-10 before:-translate-y-1/2 before:content-[''] hover:border-line-strong hover:text-fg",
+            selected ? "border-fg/60 bg-fg/15 text-fg" : "border-line",
+          )}
+        >
+          {named && <RelationIcon aria-hidden className="size-3.5" />}
+          {relation}
+        </button>
+      ) : null}
       <button
         type="button"
         onClick={() => onOpen(node)}
         className="flex min-h-10 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-left hover:bg-surface-2"
       >
-        <span className="shrink-0 text-label text-fg-subtle">{relation}</span>
+        {onSelectLink ? (
+          <span className="sr-only">{relation}: </span>
+        ) : (
+          <span className="shrink-0 text-label text-fg-subtle">{relation}</span>
+        )}
         <Icon aria-hidden className={cn("size-3.5 shrink-0", tone.text)} />
         <span className="truncate text-body text-fg-muted">{node.name}</span>
       </button>
-      {link.linkType && link.confidence !== null && (
-        <ConfidenceMeter confidence={link.confidence} linkType={link.linkType} className="pl-2" />
+      {causal && (
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 pl-2 text-label">
+          {/* Polarity reads from the cause, so it is said on the cause's row. */}
+          {named && outgoing && <PolarityMark polarity={link.polarity} />}
+          {named && <DelayedMark delayed={link.delayed} />}
+          {link.confidence !== null && <ConfidenceMeter confidence={link.confidence} linkType={link.linkType!} />}
+          {isWeak(link.confidence) && <WeakMark label={WEAK_LINK_LABEL} />}
+        </span>
       )}
     </li>
   );

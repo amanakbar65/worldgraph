@@ -4,7 +4,24 @@
  * model (sizes, colours, label priority), neighbours for hover focus, the
  * time-lapse order, search inside the graph and the accessible list.
  */
-import type { EntityType, GraphData, GraphLink, GraphNode, Impact, LinkType, RpcArgs, SectorId, TimeWindow } from "@/api/contract";
+import type {
+  EntityType,
+  GraphData,
+  GraphLink,
+  GraphNode,
+  Impact,
+  LinkType,
+  Polarity,
+  PropertyDef,
+  PropertyFilter,
+  RelationDirection,
+  RpcArgs,
+  SchemaResponse,
+  SectorId,
+  TimeWindow,
+} from "@/api/contract";
+import { isWeak, polarityInfo, WEAK_LINK_LABEL } from "@/lib/meaning";
+import { MIN_CONFIDENCE } from "@/state/nav";
 
 import { nodeColorVar } from "./graph-colors";
 
@@ -53,6 +70,22 @@ export interface RegionPick {
   name: string;
 }
 
+/**
+ * One property condition as the filter controls hold it: chips for a
+ * choice, a min–max range for a number or a date (in whole years), a
+ * "contains" box for text.
+ */
+export type PropCondition =
+  | { kind: "choice"; values: string[] }
+  | { kind: "number" | "date"; min: number | null; max: number | null }
+  | { kind: "text"; text: string };
+
+/** Property conditions; they apply only while exactly this one type is selected. */
+export interface PropertyConditions {
+  type: EntityType;
+  byKey: Record<string, PropCondition>;
+}
+
 export interface GraphFilters {
   /** Kinds to show; empty shows nothing. */
   types: EntityType[];
@@ -60,18 +93,93 @@ export interface GraphFilters {
   regions: RegionPick[];
   /** Ignore the shared window and show all time. */
   allTime: boolean;
-  /** Hide cause-and-effect links below this confidence (0..1). */
-  minConfidence: number;
   limit: NodeLimit;
+  /** Only links of these relations (relation keys; empty = every relation). kg.relations. */
+  relations: string[];
+  /** Around one node: links leaving it, arriving at it, or both. kg.relations. */
+  direction: RelationDirection;
+  /** Property conditions for the one selected type. kg.properties. */
+  props: PropertyConditions | null;
 }
 
 export const DEFAULT_FILTERS: GraphFilters = {
   types: [...DEFAULT_TYPES],
   regions: [],
   allTime: false,
-  minConfidence: 0,
   limit: DEFAULT_LIMIT,
+  relations: [],
+  direction: "both",
+  props: null,
 };
+
+/** Which flagged filters are switched on (lib/flags.ts); off sends what the graph sent before. */
+export interface GraphFeatures {
+  /** kg.relations: the relation filter and the direction toggle. */
+  relations: boolean;
+  /** kg.properties: property conditions. */
+  properties: boolean;
+}
+
+export const NO_FEATURES: GraphFeatures = { relations: false, properties: false };
+
+/** At most this many property conditions (api.graph's limit). */
+const MAX_WHERE = 10;
+
+/**
+ * The `where` conditions for the filters: only while exactly one type is
+ * selected and the conditions belong to it. Sorted by property, so equal
+ * filters share one cache entry. Date ranges are whole years: from the
+ * start of the first to the end of the last.
+ */
+export function whereArgs(filters: Pick<GraphFilters, "types" | "props">): PropertyFilter[] {
+  const props = filters.props;
+  if (!props || filters.types.length !== 1 || filters.types[0] !== props.type) return [];
+  const out: PropertyFilter[] = [];
+  const finite = (v: number | null): v is number => typeof v === "number" && Number.isFinite(v);
+  for (const prop of Object.keys(props.byKey).sort()) {
+    const c = props.byKey[prop];
+    if (c.kind === "choice") {
+      const values = [...new Set(c.values)].sort();
+      if (values.length) out.push({ prop, op: "in", value: values });
+    } else if (c.kind === "text") {
+      const text = c.text.trim();
+      if (text) out.push({ prop, op: "contains", value: text });
+    } else {
+      const date = c.kind === "date";
+      if (finite(c.min)) out.push({ prop, op: "gte", value: date ? String(Math.round(c.min)) : c.min });
+      if (finite(c.max)) out.push({ prop, op: "lte", value: date ? `${Math.round(c.max)}-12-31` : c.max });
+    }
+  }
+  return out.slice(0, MAX_WHERE);
+}
+
+/** A condition that asks for nothing (empty chips, open range, blank text). */
+export function isEmptyCondition(c: PropCondition | undefined): boolean {
+  if (!c) return true;
+  if (c.kind === "choice") return c.values.length === 0;
+  if (c.kind === "text") return c.text.trim() === "";
+  return c.min === null && c.max === null;
+}
+
+/** The kind of control a property gets in the filters; null when it gets none. */
+export type PropertyControl = "choice" | "number" | "date" | "text";
+
+/**
+ * The properties of a type the filters offer, in the type's order: choices
+ * as chips, numbers and dates as ranges, text as "contains". Places,
+ * entities and links are left out (the graph's links already show them), as
+ * are properties that only hold another's unit.
+ */
+export function filterableProperties(defs: readonly PropertyDef[]): (PropertyDef & { control: PropertyControl })[] {
+  const units = new Set(defs.map((d) => d.unit_key).filter((k): k is string => !!k));
+  const out: (PropertyDef & { control: PropertyControl })[] = [];
+  for (const def of defs) {
+    if (units.has(def.key)) continue;
+    if (def.kind === "choice" && def.choices?.length) out.push({ ...def, control: "choice" });
+    else if (def.kind === "number" || def.kind === "date" || def.kind === "text") out.push({ ...def, control: def.kind });
+  }
+  return out;
+}
 
 const typeOrder = (t: EntityType) => {
   const i = GRAPH_TYPES.indexOf(t);
@@ -96,8 +204,9 @@ function sameTypes(a: readonly EntityType[], b: readonly EntityType[]): boolean 
  */
 export function buildGraphArgs(
   filters: GraphFilters,
-  nav: { window: TimeWindow; sectors: readonly SectorId[] },
+  nav: { window: TimeWindow; sectors: readonly SectorId[]; minConfidence?: number },
   sample: boolean | undefined,
+  features: GraphFeatures = NO_FEATURES,
 ): RpcArgs["graph"] {
   const args: RpcArgs["graph"] = {
     window: filters.allTime ? "all" : nav.window,
@@ -106,18 +215,66 @@ export function buildGraphArgs(
   if (!sameTypes(filters.types, DEFAULT_TYPES)) args.types = orderTypes(filters.types);
   if (nav.sectors.length) args.sectors = [...new Set(nav.sectors)].sort();
   if (filters.regions.length) args.regions = [...new Set(filters.regions.map((r) => r.id))].sort();
-  if (filters.minConfidence > 0) args.min_confidence = Math.round(Math.min(1, filters.minConfidence) * 100) / 100;
+  const floor = confidenceFloor(nav.minConfidence);
+  if (floor > 0) args.min_confidence = floor;
+  if (features.relations && filters.relations.length) args.relations = [...new Set(filters.relations)].sort();
+  if (features.properties) {
+    const where = whereArgs(filters);
+    if (where.length) args.where = where;
+  }
   if (sample !== undefined) args.sample = sample;
   return args;
 }
 
-/** How many filters differ from the defaults (for the Filters button badge). Sectors count via the lens. */
-export function activeFilterCount(filters: GraphFilters, phone = false): number {
+/** The shared minimum confidence (useNav), rounded to whole percent; missing means the default. */
+export function confidenceFloor(minConfidence: number | undefined): number {
+  const v = typeof minConfidence === "number" && Number.isFinite(minConfidence) ? minConfidence : MIN_CONFIDENCE.default;
+  return Math.round(Math.min(1, Math.max(0, v)) * 100) / 100;
+}
+
+/**
+ * The api.local_graph arguments around one node. Kinds and confidence are
+ * filtered here in the browser (one cached answer serves every choice);
+ * relations, direction and property conditions are asked of the api.
+ */
+export function buildLocalArgs(
+  scope: { id: string; depth: 1 | 2 | 3 },
+  filters: GraphFilters,
+  features: GraphFeatures = NO_FEATURES,
+): RpcArgs["local_graph"] {
+  const args: RpcArgs["local_graph"] = { id: scope.id, depth: scope.depth, limit: 300 };
+  if (features.relations) {
+    if (filters.relations.length) args.relations = [...new Set(filters.relations)].sort();
+    if (filters.direction !== "both") args.direction = filters.direction;
+  }
+  if (features.properties) {
+    const where = whereArgs(filters);
+    if (where.length) {
+      args.types = [filters.types[0]];
+      args.where = where;
+    }
+  }
+  return args;
+}
+
+/**
+ * How many filters differ from the defaults (for the Filters button badge).
+ * Sectors count via the lens; the shared minimum confidence counts when it
+ * isn't the app's default; the direction only around one node.
+ */
+export function activeFilterCount(
+  filters: GraphFilters,
+  phone = false,
+  options: { minConfidence?: number; local?: boolean } = {},
+): number {
   let n = 0;
   if (!sameTypes(filters.types, DEFAULT_TYPES)) n += 1;
   if (filters.regions.length) n += 1;
-  if (filters.minConfidence > 0) n += 1;
+  if (confidenceFloor(options.minConfidence) !== MIN_CONFIDENCE.default) n += 1;
   if (filters.limit !== defaultLimit(phone)) n += 1;
+  if (filters.relations.length) n += 1;
+  if (whereArgs(filters).length) n += 1;
+  if (options.local && filters.direction !== "both") n += 1;
   return n;
 }
 
@@ -193,6 +350,26 @@ export interface VizLink {
   linkType: LinkType | null;
   confidence: number | null;
   createdAt: number | null;
+  /** Relation key (schema.relations[].key): the edge type, or "drives" for cause and effect. */
+  relation: string;
+  /** Cause and effect: ▲ the effect moves the same way (+1), ▼ the other way (−1); null when unknown. */
+  polarity: Polarity | null;
+  /** Cause and effect: how strongly (0–1); null means "use confidence". */
+  strength: number | null;
+  /** Cause and effect: the effect shows after a delay. */
+  delayed: boolean | null;
+  /** The api's id: the edge id, or the causal_link id for cause and effect (for "Why is this here?"). */
+  apiId: number | null;
+}
+
+/**
+ * What a link is in the api's terms, for provenance (api.provenance
+ * {target, id}, Phase A3): an edge, or a causal link. Null when the api sent
+ * no id (an older database).
+ */
+export function linkTarget(link: Pick<VizLink, "linkType" | "apiId">): { target: "edge" | "link"; id: number } | null {
+  if (link.apiId === null) return null;
+  return { target: link.linkType !== null ? "link" : "edge", id: link.apiId };
 }
 
 export interface VizGraph {
@@ -294,6 +471,11 @@ export function shapeGraph(data: GraphData, options: { focusId?: string | null }
       linkType: causal ? (l.type as LinkType) : null,
       confidence: l.confidence,
       createdAt: parseTime(l.created_at),
+      relation: l.relation ?? (causal ? "drives" : l.type),
+      polarity: causal ? (l.polarity ?? null) : null,
+      strength: causal ? (l.strength ?? null) : null,
+      delayed: causal ? (l.delayed ?? null) : null,
+      apiId: l.id ?? null,
     });
     neighbours.get(l.source)!.add(l.target);
     neighbours.get(l.target)!.add(l.source);
@@ -486,13 +668,117 @@ const RELATIONS: Record<string, [string, string]> = {
   conditional: ["May lead to", "May follow from"],
 };
 
-/** How `fromId` relates to the other end of a link, in a few words. */
-export function relationLabel(link: Pick<VizLink, "type" | "sourceId">, fromId: string): string {
-  const words = RELATIONS[link.type];
+/** A named relation in words, both ways (api.schema relations). */
+export interface RelationWords {
+  key: string;
+  /** Read from the source: "Owns". */
+  label: string;
+  /** Read from the target: "Owned by". */
+  inverse: string;
+  /** Lucide icon name, when the schema sent one. */
+  icon: string | null;
+  symmetric: boolean;
+  causal: boolean;
+}
+
+export type RelationIndex = ReadonlyMap<string, RelationWords>;
+
+/**
+ * The named relations as types.yaml has them: the offline fallback until
+ * api.schema answers (and where it isn't available, e.g. the snapshot).
+ */
+const RELATION_FALLBACK: [key: string, label: string, inverse: string, symmetric?: boolean][] = [
+  ["located_in", "Located in", "Home to"],
+  ["part_of", "Part of", "Includes"],
+  ["owns", "Owns", "Owned by"],
+  ["subsidiary_of", "Subsidiary of", "Parent of"],
+  ["produces", "Produces", "Produced by"],
+  ["exports_to", "Exports to", "Imports from"],
+  ["imports_from", "Imports from", "Exports to"],
+  ["depends_on", "Depends on", "Needed by"],
+  ["member_of", "Member of", "Has member"],
+  ["competes_with", "Competes with", "Competes with", true],
+  ["in_sector", "In sector", "Includes"],
+  ["mentions", "Mentions", "In the news"],
+  ["about", "About", "Covered by"],
+  ["relates_to", "Related to", "Related to", true],
+  ["supplies", "Supplies", "Supplied by"],
+  ["operates", "Operates", "Operated by"],
+  ["regulates", "Regulates", "Regulated by"],
+  ["drives", "Drives", "Driven by"],
+];
+
+/** Relation words by key: from api.schema when given, else the built-in copy of types.yaml. */
+export function relationIndex(relations?: SchemaResponse["relations"] | null): RelationIndex {
+  const out = new Map<string, RelationWords>();
+  for (const [key, label, inverse, symmetric = false] of RELATION_FALLBACK) {
+    out.set(key, { key, label, inverse, icon: null, symmetric, causal: key === "drives" });
+  }
+  for (const r of relations ?? []) {
+    out.set(r.key, {
+      key: r.key,
+      label: r.label,
+      inverse: r.inverse_label,
+      icon: r.icon,
+      symmetric: r.symmetric,
+      causal: r.causal,
+    });
+  }
+  return out;
+}
+
+/**
+ * How `fromId` relates to the other end of a link, in a few words. With
+ * named relations (an index), it reads from that end's side: "Owns" from
+ * the owner, "Owned by" from what is owned; without, the older wording by
+ * edge or link type.
+ */
+export function relationLabel(
+  link: Pick<VizLink, "type" | "sourceId"> & { relation?: string },
+  fromId: string,
+  index?: RelationIndex | null,
+): string {
   const outgoing = link.sourceId === fromId;
+  const named = index && link.relation ? index.get(link.relation) : undefined;
+  if (named) return outgoing || named.symmetric ? named.label : named.inverse;
+  const words = RELATIONS[link.type];
   if (words) return outgoing ? words[0] : words[1];
   const readable = link.type.replace(/_/g, " ");
   return readable.charAt(0).toUpperCase() + readable.slice(1);
+}
+
+/** A link's relation read from its source ("Owns"), as link cards name it. */
+export function linkRelationName(link: Pick<VizLink, "type" | "sourceId" | "relation">, index: RelationIndex): string {
+  return relationLabel(link, link.sourceId, index);
+}
+
+/** A link's two ends as nodes (force-graph swaps them in; before it draws, look them up). */
+export function linkEnds(link: VizLink, byId?: ReadonlyMap<string, VizNode>): [VizNode, VizNode] | null {
+  const s = typeof link.source === "object" ? link.source : byId?.get(link.sourceId);
+  const t = typeof link.target === "object" ? link.target : byId?.get(link.targetId);
+  return s && t ? [s, t] : null;
+}
+
+/**
+ * One line for screen readers: "Located in: Mundra Port to India." or
+ * "Drives, raises, delayed: A to B. Inferred, confidence 62%. Weak link…".
+ */
+export function describeLink(link: VizLink, index: RelationIndex | null, byId?: ReadonlyMap<string, VizNode>): string {
+  const ends = linkEnds(link, byId);
+  const from = ends ? ends[0].name : link.sourceId;
+  const to = ends ? ends[1].name : link.targetId;
+  const name = index ? linkRelationName(link, index) : link.linkType ? "Leads to" : link.type.replace(/_/g, " ");
+  const parts = [name];
+  const polarity = index ? polarityInfo(link.polarity) : null;
+  if (polarity) parts.push(polarity.word);
+  if (index && link.delayed) parts.push("delayed");
+  let text = `${parts.join(", ")}: ${from} to ${to}.`;
+  if (link.linkType) {
+    text += ` ${link.linkType.charAt(0).toUpperCase()}${link.linkType.slice(1)}`;
+    text += link.confidence !== null ? `, confidence ${Math.round(link.confidence * 100)}%.` : ", confidence unknown.";
+    if (isWeak(link.confidence)) text += ` ${WEAK_LINK_LABEL}.`;
+  }
+  return text;
 }
 
 export interface Connection {
@@ -512,14 +798,14 @@ export interface ListEntry {
  * The accessible list: the best-connected nodes, each with its strongest
  * connections (cause and effect first, then the best-connected neighbours).
  */
-export function topConnections(graph: VizGraph, count = 40, perNode = 6): ListEntry[] {
+export function topConnections(graph: VizGraph, count = 40, perNode = 6, index?: RelationIndex | null): ListEntry[] {
   const byNode = new Map<string, Connection[]>();
   for (const link of graph.links) {
     const a = graph.byId.get(link.sourceId);
     const b = graph.byId.get(link.targetId);
     if (!a || !b) continue;
-    (byNode.get(a.id) ?? byNode.set(a.id, []).get(a.id)!).push({ node: b, link, relation: relationLabel(link, a.id) });
-    (byNode.get(b.id) ?? byNode.set(b.id, []).get(b.id)!).push({ node: a, link, relation: relationLabel(link, b.id) });
+    (byNode.get(a.id) ?? byNode.set(a.id, []).get(a.id)!).push({ node: b, link, relation: relationLabel(link, a.id, index) });
+    (byNode.get(b.id) ?? byNode.set(b.id, []).get(b.id)!).push({ node: a, link, relation: relationLabel(link, b.id, index) });
   }
   return [...graph.nodes]
     .sort((a, b) => a.rank - b.rank)

@@ -3,6 +3,7 @@ import { useId, useState } from "react";
 
 import type { EntityType, LinkType } from "@/api/contract";
 import { LinkTypeLabel } from "@/components/ConfidenceMeter";
+import { TrustLegendItems } from "@/components/LinkMarks";
 import { ENTITY_TYPE_ICONS, IMPACT_ICONS } from "@/lib/icons";
 import { entityTypeTone, impactTone } from "@/lib/meaning";
 import { cn } from "@/lib/utils";
@@ -14,12 +15,24 @@ export interface GraphLegendProps {
   linkTypes: readonly LinkType[];
   /** Start open (desktop) or closed (phones). */
   defaultOpen?: boolean;
+  /** The shared minimum confidence, said with the trust key when it hides links. */
+  minConfidence?: number;
+  /** Named relations are on (kg.relations): explain ▲ raises / ▼ lowers and tappable links. */
+  relations?: boolean;
   className?: string;
   style?: React.CSSProperties;
 }
 
 /** What the colours, shapes and lines mean. Opens and closes; drawn the way the graph draws them. */
-export function GraphLegend({ types, linkTypes, defaultOpen = true, className, style }: GraphLegendProps) {
+export function GraphLegend({
+  types,
+  linkTypes,
+  defaultOpen = true,
+  minConfidence,
+  relations = false,
+  className,
+  style,
+}: GraphLegendProps) {
   const [open, setOpen] = useState(defaultOpen);
   const id = useId();
   return (
@@ -52,9 +65,14 @@ export function GraphLegend({ types, linkTypes, defaultOpen = true, className, s
             <svg aria-hidden viewBox="0 0 24 4" className="h-1 w-6 shrink-0">
               <line x1="1" x2="23" y1="2" y2="2" className="stroke-fg-subtle" strokeWidth={1} strokeOpacity={0.6} />
             </svg>
-            Other links (located in, mentions…)
+            {relations ? "Other links: tap one for its relation" : "Other links (located in, mentions…)"}
           </li>
         </ul>
+        {linkTypes.length > 0 && (
+          <ul aria-label="How sure a link is" className="mt-3 flex flex-col gap-1.5 border-t border-line pt-3">
+            <TrustLegendItems minConfidence={minConfidence} polarity={relations} />
+          </ul>
+        )}
         <p className="mt-3 border-t border-line pt-3 text-label text-fg-muted">Bigger means more connections.</p>
       </div>
     </div>

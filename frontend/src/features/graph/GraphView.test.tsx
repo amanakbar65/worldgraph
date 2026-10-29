@@ -76,7 +76,7 @@ beforeEach(() => {
   stubMatchMedia(() => mocks.desktop);
   stubElementSize();
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
-  useNav.setState({ view: "graph", panels: [], window: "7d", sectors: [], focus: null });
+  useNav.setState({ view: "graph", panels: [], window: "7d", sectors: [], minConfidence: 0.5, focus: null });
   useGraphState.setState(initialGraphState, true);
   useSettings.setState({ sample: "auto", calm: false });
 });
@@ -90,7 +90,7 @@ describe("GraphView", () => {
   it("asks for the graph in the shared window and sector lens", () => {
     useNav.setState({ window: "30d", sectors: ["energy", "consumer"] });
     render(<GraphView />);
-    expect(lastGraphArgs()).toEqual({ window: "30d", limit: 250, sectors: ["consumer", "energy"] });
+    expect(lastGraphArgs()).toEqual({ window: "30d", limit: 250, sectors: ["consumer", "energy"], min_confidence: 0.5 });
   });
 
   it("draws the graph, says how big it is and labels sample data", () => {
@@ -203,7 +203,28 @@ describe("GraphView", () => {
     act(() => vi.advanceTimersByTime(400));
     vi.useRealTimers();
     expect(lastGraphArgs()).toMatchObject({ min_confidence: 0.6 });
+    // The graph's slider is the one shared setting: the cascade and the globe read it too.
+    expect(useNav.getState().minConfidence).toBe(0.6);
     expect(screen.getByRole("button", { name: "Filters, 3 on" })).toBeTruthy();
+  });
+
+  it("follows the shared minimum confidence set elsewhere, and filters the neighbourhood by it", () => {
+    useNav.setState({ minConfidence: 0.7 });
+    render(<GraphView />);
+    expect(lastGraphArgs()).toMatchObject({ min_confidence: 0.7 });
+    cleanup();
+    useGraphState.getState().showAround({ id: "commodity:crude-oil", name: "Crude oil" }, 1);
+    render(<GraphView />);
+    // The 62 % cause-and-effect link is under 70 %: hidden here too.
+    expect(mocks.drawn.at(-1)).toEqual({ nodes: 6, links: 7 });
+    act(() => useNav.getState().setMinConfidence(0.6));
+    expect(mocks.drawn.at(-1)).toEqual({ nodes: 6, links: 8 });
+  });
+
+  it("explains that the confidence filter may hide links when nothing matches", () => {
+    mocks.responses.graph = { nodes: [], links: [], truncated: false };
+    render(<GraphView />);
+    expect(screen.getByText(/Lower the confidence filter to see weaker links\./)).toBeTruthy();
   });
 
   it("suggests a longer window when nothing matches", () => {
