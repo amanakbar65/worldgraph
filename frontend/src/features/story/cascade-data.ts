@@ -315,6 +315,59 @@ export function shapeCascade(
 }
 
 // ---------------------------------------------------------------------------
+// The shared minimum confidence (useNav)
+// ---------------------------------------------------------------------------
+
+/**
+ * The cascade as the shared minimum confidence leaves it: links less sure
+ * than `minConfidence` go (a link of exactly the minimum stays), then any
+ * story no longer joined to the focus by the links left, and its branch
+ * entries. `hidden` counts the links that went, so the view can say why.
+ */
+export function filterCascade(
+  response: CascadeResponse,
+  minConfidence: number,
+): { response: CascadeResponse; hidden: number } {
+  const floor = Number.isFinite(minConfidence) ? Math.max(0, minConfidence) : 0;
+  if (floor <= 0) return { response, hidden: 0 };
+  const links = response.links.filter((l) => l.confidence >= floor - 1e-9);
+  const hidden = response.links.length - links.length;
+  if (hidden === 0) return { response, hidden: 0 };
+
+  // Stories still joined to the focus, walking the remaining links both ways.
+  const adjacent = new Map<string, string[]>();
+  for (const l of links) {
+    (adjacent.get(l.src) ?? adjacent.set(l.src, []).get(l.src)!).push(l.dst);
+    (adjacent.get(l.dst) ?? adjacent.set(l.dst, []).get(l.dst)!).push(l.src);
+  }
+  const kept = new Set([response.focus]);
+  const queue = [response.focus];
+  while (queue.length) {
+    const id = queue.shift()!;
+    for (const next of adjacent.get(id) ?? []) {
+      if (!kept.has(next)) {
+        kept.add(next);
+        queue.push(next);
+      }
+    }
+  }
+  return {
+    hidden,
+    response: {
+      ...response,
+      nodes: response.nodes.filter((n) => kept.has(n.id)),
+      links: links.filter((l) => kept.has(l.src) && kept.has(l.dst)),
+      branches: response.branches
+        .map((b) => ({
+          ...b,
+          outcomes: b.outcomes.map((o) => ({ ...o, story_ids: o.story_ids.filter((id) => kept.has(id)) })),
+        }))
+        .filter((b) => b.outcomes.some((o) => o.story_ids.length > 0)),
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Direct causes and effects (story panel)
 // ---------------------------------------------------------------------------
 

@@ -14,6 +14,8 @@ export interface CascadeUi {
   hotEdge: string | null;
   /** The link whose evidence is open. */
   selectedEdge: string | null;
+  /** Named relations are on (kg.relations): links say ▲ raises / ▼ lowers. */
+  showPolarity: boolean;
   /** Some cards are sample data and some aren't: mark the sample ones. */
   mixedSample: boolean;
   /** Id of the hidden "arrow keys move between stories" hint. */

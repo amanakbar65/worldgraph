@@ -6,11 +6,13 @@ import { ChevronRight, Hourglass, Telescope, Users } from "lucide-react";
 
 import type { CascadeLink, Impact, StorySummary } from "@/api/contract";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
+import { DelayedMark, PolarityMark } from "@/components/LinkMarks";
 import { SampleBadge } from "@/components/SampleBadge";
 import { TimeAgo } from "@/components/TimeAgo";
 import { Chip } from "@/components/ui/chip";
+import { WeakMark } from "@/components/WeakMark";
 import { IMPACT_ICONS } from "@/lib/icons";
-import { DIRECTION_ARROWS, DIRECTION_WORDS, impactTone } from "@/lib/meaning";
+import { DIRECTION_ARROWS, DIRECTION_WORDS, impactTone, isWeak, WEAK_LINK_LABEL } from "@/lib/meaning";
 import { cn } from "@/lib/utils";
 
 import { branchLabel, type BranchInfo } from "./cascade-data";
@@ -135,22 +137,31 @@ export function StoryMeta({
   );
 }
 
-/** How a link reads in a list: mechanism, then type and confidence (and the branch). */
+/**
+ * How a link reads in a list: mechanism, then type and confidence (and the
+ * branch), with "?" when it is weak; with `showPolarity` (kg.relations),
+ * ▲ raises / ▼ lowers and a clock when the effect is delayed.
+ */
 export function LinkLine({
   link,
   branch,
   ai = false,
+  showPolarity = false,
   className,
 }: {
-  link: Pick<CascadeLink, "mechanism" | "link_type" | "confidence">;
+  link: Pick<CascadeLink, "mechanism" | "link_type" | "confidence"> & Partial<Pick<CascadeLink, "polarity" | "delayed">>;
   branch?: BranchInfo | null;
   ai?: boolean;
+  showPolarity?: boolean;
   className?: string;
 }) {
   return (
     <span className={cn("flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1", className)}>
       <span className="text-label font-medium text-fg">{capitalise(link.mechanism)}</span>
+      {showPolarity && <PolarityMark polarity={link.polarity} className="text-label" />}
+      {showPolarity && <DelayedMark delayed={link.delayed} />}
       <ConfidenceMeter confidence={link.confidence} linkType={link.link_type} />
+      {isWeak(link.confidence) && <WeakMark label={WEAK_LINK_LABEL} />}
       {branch && <BranchBadge branch={branch} />}
       {ai && <span className="text-label text-fg-muted">AI projection</span>}
     </span>

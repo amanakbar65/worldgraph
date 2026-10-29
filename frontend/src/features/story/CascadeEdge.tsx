@@ -7,8 +7,10 @@
 import { BaseEdge, EdgeLabelRenderer, type Edge, type EdgeProps } from "@xyflow/react";
 import { Users } from "lucide-react";
 
+import { PolarityMark } from "@/components/LinkMarks";
+import { WeakMark } from "@/components/WeakMark";
 import { formatProbability } from "@/lib/format";
-import { LINK_TYPES } from "@/lib/meaning";
+import { isWeak, LINK_TYPES, polarityInfo, WEAK_LINK_LABEL } from "@/lib/meaning";
 import { cn } from "@/lib/utils";
 
 import { useCascadeUi } from "./cascade-context";
@@ -27,7 +29,9 @@ export function CascadeEdgeView({ id, sourceX, sourceY, targetX, targetY, data }
   const target = { x: targetX, y: targetY };
   const path = flowPath(source, target, laid.points, direction);
   const at = laid.label ?? midpoint(source, target, laid.points);
-  const look = edgeLook(link.link_type, link.confidence);
+  const look = edgeLook(link.link_type, link.confidence, link.strength);
+  const weak = isWeak(link.confidence);
+  const polarity = ui.showPolarity ? polarityInfo(link.polarity) : null;
 
   const touchesHotNode = ui.hotNode !== null && (link.src === ui.hotNode || link.dst === ui.hotNode);
   const hot = ui.hotEdge === id || ui.selectedEdge === id || touchesHotNode;
@@ -57,7 +61,9 @@ export function CascadeEdgeView({ id, sourceX, sourceY, targetX, targetY, data }
           onMouseLeave={() => ui.setHotEdge(null)}
           onFocus={() => ui.setHotEdge(id)}
           onBlur={() => ui.setHotEdge(null)}
-          aria-label={`${linkSummary(link, branch, edge.ai)} Show the evidence.`}
+          aria-label={`${linkSummary(link, branch, edge.ai)}${polarity ? ` ${capitalise(polarity.word)} what follows.` : ""}${
+            weak ? ` ${WEAK_LINK_LABEL}.` : ""
+          } Show the evidence.`}
           aria-pressed={ui.selectedEdge === id}
           style={{ transform: `translate(-50%, -50%) translate(${at.x}px, ${at.y}px)`, zIndex: hot ? 5 : 3 }}
           className={cn(
@@ -73,9 +79,14 @@ export function CascadeEdgeView({ id, sourceX, sourceY, targetX, targetY, data }
               {branchLabel(branch.outcome, branch.probability)}
             </span>
           )}
-          <span className="leading-tight text-fg">{capitalise(link.mechanism)}</span>
+          <span className="inline-flex items-center gap-1 leading-tight text-fg">
+            {polarity && <span aria-hidden>{polarity.glyph}</span>}
+            {capitalise(link.mechanism)}
+            {weak && <WeakMark />}
+          </span>
           {hot && (
-            <span className="whitespace-nowrap text-fg-muted tabular-nums">
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-fg-muted tabular-nums">
+              {polarity && <PolarityMark polarity={link.polarity} className="text-fg-muted" />}
               {typeLabel} · {formatProbability(link.confidence)}
             </span>
           )}

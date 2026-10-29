@@ -23,6 +23,7 @@ import { Maximize, Minus, Plus, Sparkles, Users } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { LinkTypeLabel } from "@/components/ConfidenceMeter";
+import { TrustLegendItems } from "@/components/LinkMarks";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useCalm } from "@/state/settings";
@@ -51,6 +52,10 @@ export interface CascadeFlowProps {
   model: CascadeModel;
   layout: CascadeLayout;
   selectedEdge: string | null;
+  /** The shared minimum confidence, said in the legend when it hides links. */
+  minConfidence?: number;
+  /** Named relations are on (kg.relations): links say ▲ raises / ▼ lowers. */
+  showPolarity?: boolean;
   onOpenNode: (node: CascadeNode) => void;
   onOpenEvidence: (edgeId: string) => void;
   onOpenForecast: (id: string) => void;
@@ -65,7 +70,17 @@ export function CascadeFlow(props: CascadeFlowProps) {
   );
 }
 
-function FlowCanvas({ model, layout, selectedEdge, onOpenNode, onOpenEvidence, onOpenForecast, className }: CascadeFlowProps) {
+function FlowCanvas({
+  model,
+  layout,
+  selectedEdge,
+  minConfidence,
+  showPolarity = false,
+  onOpenNode,
+  onOpenEvidence,
+  onOpenForecast,
+  className,
+}: CascadeFlowProps) {
   const flow = useReactFlow();
   const calm = useCalm();
   const hintId = useId();
@@ -193,6 +208,7 @@ function FlowCanvas({ model, layout, selectedEdge, onOpenNode, onOpenEvidence, o
       hotNode,
       hotEdge,
       selectedEdge,
+      showPolarity,
       hintId,
       setActiveNode,
       setHotNode,
@@ -209,6 +225,7 @@ function FlowCanvas({ model, layout, selectedEdge, onOpenNode, onOpenEvidence, o
       hotNode,
       hotEdge,
       selectedEdge,
+      showPolarity,
       hintId,
       onOpenNode,
       onOpenEvidence,
@@ -289,7 +306,12 @@ function FlowCanvas({ model, layout, selectedEdge, onOpenNode, onOpenEvidence, o
             </div>
           </Panel>
           <Panel position="bottom-left" className="!m-3">
-            <Legend hasBranches={model.groups.some((g) => g.kind === "branch")} hasAi={model.nodes.some((n) => n.ai)} />
+            <Legend
+              hasBranches={model.groups.some((g) => g.kind === "branch")}
+              hasAi={model.nodes.some((n) => n.ai)}
+              minConfidence={minConfidence}
+              showPolarity={showPolarity}
+            />
           </Panel>
         </ReactFlow>
       </div>
@@ -297,40 +319,61 @@ function FlowCanvas({ model, layout, selectedEdge, onOpenNode, onOpenEvidence, o
   );
 }
 
-/** What the line styles mean. */
-function Legend({ hasBranches, hasAi }: { hasBranches: boolean; hasAi: boolean }) {
+/** What the line styles mean, with the one trust key every view shares. */
+function Legend({
+  hasBranches,
+  hasAi,
+  minConfidence,
+  showPolarity,
+}: {
+  hasBranches: boolean;
+  hasAi: boolean;
+  minConfidence?: number;
+  showPolarity: boolean;
+}) {
+  const item = "inline-flex items-center gap-1.5 text-label whitespace-nowrap text-fg-muted";
   return (
     <div
       role="note"
       aria-label="Legend"
-      className="flex max-w-[calc(100vw-48px)] flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-line bg-glass px-3 py-2 shadow-panel backdrop-blur"
+      className="max-w-[calc(100vw-48px)] rounded-lg border border-line bg-glass px-3 py-2 shadow-panel backdrop-blur"
     >
-      <LinkTypeLabel linkType="reported" />
-      <LinkTypeLabel linkType="inferred" />
-      <LinkTypeLabel linkType="projected" />
-      {hasBranches && (
-        <span className="inline-flex items-center gap-1.5 text-label whitespace-nowrap text-fg-muted">
-          <Users aria-hidden className="size-3.5 text-forecast" />
-          If YES / If NO: crowd forecast
-        </span>
-      )}
-      {hasAi && (
-        <span className="inline-flex items-center gap-1.5 text-label whitespace-nowrap text-fg-muted">
-          <Sparkles aria-hidden className="size-3.5" />
-          AI projection
-        </span>
-      )}
-      <span className="text-label whitespace-nowrap text-fg-subtle">Thicker line = surer link</span>
-      {/* React Flow's credit (its authors ask for one), in the legend's quiet style
-          instead of a stray library name in the canvas corner. */}
-      <a
-        href="https://reactflow.dev"
-        target="_blank"
-        rel="noreferrer noopener"
-        className="relative text-label whitespace-nowrap text-fg-subtle underline-offset-2 before:absolute before:-inset-x-1 before:-inset-y-3 before:content-[''] hover:text-fg-muted hover:underline"
-      >
-        Diagram: React Flow
-      </a>
+      <ul className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <li className={item}>
+          <LinkTypeLabel linkType="reported" />
+        </li>
+        <li className={item}>
+          <LinkTypeLabel linkType="inferred" />
+        </li>
+        <li className={item}>
+          <LinkTypeLabel linkType="projected" />
+        </li>
+        {hasBranches && (
+          <li className={item}>
+            <Users aria-hidden className="size-3.5 text-forecast" />
+            If YES / If NO: crowd forecast
+          </li>
+        )}
+        {hasAi && (
+          <li className={item}>
+            <Sparkles aria-hidden className="size-3.5" />
+            AI projection
+          </li>
+        )}
+        <TrustLegendItems minConfidence={minConfidence} polarity={showPolarity} className="whitespace-nowrap" />
+        <li className={item}>
+          {/* React Flow's credit (its authors ask for one), in the legend's quiet style
+              instead of a stray library name in the canvas corner. */}
+          <a
+            href="https://reactflow.dev"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="relative text-fg-subtle underline-offset-2 before:absolute before:-inset-x-1 before:-inset-y-3 before:content-[''] hover:text-fg-muted hover:underline"
+          >
+            Diagram: React Flow
+          </a>
+        </li>
+      </ul>
     </div>
   );
 }

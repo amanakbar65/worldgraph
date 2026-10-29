@@ -18,13 +18,15 @@ import { ImpactTile, LinkLine, StoryMeta } from "./story-parts";
 
 interface CascadeListProps {
   model: CascadeModel;
+  /** Named relations are on (kg.relations): links say ▲ raises / ▼ lowers. */
+  showPolarity?: boolean;
   stories: ReadonlyMap<string, StorySummary>;
   onOpenNode: (node: CascadeNode) => void;
   onOpenStory: (id: string) => void;
   onOpenForecast: (id: string) => void;
 }
 
-export function CascadeList({ model, stories, onOpenNode, onOpenStory, onOpenForecast }: CascadeListProps) {
+export function CascadeList({ model, showPolarity = false, stories, onOpenNode, onOpenStory, onOpenForecast }: CascadeListProps) {
   const sections = listSections(model);
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-4 pb-10">
@@ -35,6 +37,7 @@ export function CascadeList({ model, stories, onOpenNode, onOpenStory, onOpenFor
           kind={section.kind}
           items={section.items}
           focusId={model.focus}
+          showPolarity={showPolarity}
           stories={stories}
           onOpenNode={onOpenNode}
           onOpenStory={onOpenStory}
@@ -79,6 +82,7 @@ function Section({
 function Item({
   item,
   focusId,
+  showPolarity,
   stories,
   onOpenNode,
   onOpenStory,
@@ -140,6 +144,7 @@ function Item({
                 // Links to and from the story itself need no "after" line.
                 other={otherId === focusId ? undefined : stories.get(otherId)}
                 towards={node.role === "cause"}
+                showPolarity={showPolarity}
                 stories={stories}
                 onOpenStory={onOpenStory}
                 onOpenForecast={onOpenForecast}
@@ -154,6 +159,7 @@ function LinkRow({
   edge,
   other,
   towards,
+  showPolarity,
   stories,
   onOpenStory,
   onOpenForecast,
@@ -162,6 +168,7 @@ function LinkRow({
   other: StorySummary | undefined;
   /** True for a cause (the link leads to `other`), false for an effect (it comes from `other`). */
   towards: boolean;
+  showPolarity?: boolean;
   stories: ReadonlyMap<string, StorySummary>;
   onOpenStory: (id: string) => void;
   onOpenForecast: (id: string) => void;
@@ -179,7 +186,7 @@ function LinkRow({
               {other.headline}
             </span>
           )}
-          <LinkLine link={edge.link} branch={edge.branch} />
+          <LinkLine link={edge.link} branch={edge.branch} showPolarity={showPolarity} />
         </div>
         <Button
           variant="ghost"

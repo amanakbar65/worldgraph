@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { confidenceWords, edgeLook, lagText, linkSummary, linkTypeExplanation } from "./cascade-style";
+import { TRUST_WIDTH, trustVisual } from "@/lib/meaning";
+
+import { CASCADE_WIDTH_SCALE, confidenceWords, edgeLook, lagText, linkSummary, linkTypeExplanation } from "./cascade-style";
 import { FORECAST } from "./fixtures";
 
 describe("edgeLook", () => {
@@ -25,14 +27,25 @@ describe("edgeLook", () => {
     expect(edgeLook("reported", 0.5)).toMatchObject({ tone: "muted", strokeClass: "stroke-fg-muted" });
   });
 
-  it("makes surer links thicker and stronger", () => {
+  it("uses the shared trust look: surer is stronger, a stronger effect is thicker", () => {
     const low = edgeLook("reported", 0.2);
     const high = edgeLook("reported", 0.9);
     expect(high.width).toBeGreaterThan(low.width);
     expect(high.opacity).toBeGreaterThan(low.opacity);
-    expect(edgeLook("reported", 0).width).toBe(1.25);
-    expect(edgeLook("reported", 1).width).toBe(3.25);
-    expect(edgeLook("reported", 5).opacity).toBeLessThanOrEqual(0.95);
+    // The same mapping as every other view (trustVisual), drawn a little heavier in the flow.
+    const shared = trustVisual({ confidence: 0.7, linkType: "inferred" });
+    expect(edgeLook("inferred", 0.7).opacity).toBe(shared.opacity);
+    expect(edgeLook("inferred", 0.7).width).toBeCloseTo(shared.width * CASCADE_WIDTH_SCALE, 2);
+    expect(edgeLook("reported", 0).width).toBeCloseTo(TRUST_WIDTH.min * CASCADE_WIDTH_SCALE, 2);
+    expect(edgeLook("reported", 1).width).toBeCloseTo(TRUST_WIDTH.max * CASCADE_WIDTH_SCALE, 2);
+    expect(edgeLook("reported", 5).opacity).toBeLessThanOrEqual(1);
+  });
+
+  it("takes width from strength and opacity from confidence when both are known", () => {
+    const strongButUnsure = edgeLook("reported", 0.3, 1);
+    const weakButSure = edgeLook("reported", 0.9, 0.1);
+    expect(strongButUnsure.width).toBeGreaterThan(weakButSure.width);
+    expect(strongButUnsure.opacity).toBeLessThan(weakButSure.opacity);
   });
 
   it("scales the dash pattern with the line", () => {

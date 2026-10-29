@@ -1,22 +1,27 @@
 import { keepPreviousData } from "@tanstack/react-query";
-import { ArrowLeft, Info, List, RotateCw, Sparkles, Square, Workflow, X } from "lucide-react";
+import { ArrowLeft, Info, List, RotateCw, SlidersHorizontal, Sparkles, Square, Workflow, X } from "lucide-react";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 
 import type { StorySummary } from "@/api/contract";
 import { useRpc } from "@/api/client";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
+import { MinConfidenceSlider } from "@/components/MinConfidenceSlider";
 import { SampleBadge } from "@/components/SampleBadge";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Segmented } from "@/components/ui/segmented";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useFlag } from "@/lib/flags";
 import { useIsDesktop } from "@/lib/hooks";
+import { minConfidenceWords } from "@/lib/meaning";
 import { cn } from "@/lib/utils";
-import type { Panel } from "@/state/nav";
+import { useNav, type Panel } from "@/state/nav";
 
 import {
   DEFAULT_CASCADE_DEPTH,
+  filterCascade,
   projectionElements,
   projectionInput,
   projectionRegions,
@@ -63,13 +68,24 @@ function CascadeView({ id }: { id: string }) {
 
   const query = useRpc("cascade", { id, depth }, { placeholderData: keepPreviousData });
   const { engine, status, run: runProjection, stop: stopProjection, clear: clearProjection } = useProjection();
+  // The one minimum confidence (shared with the graph and the globe). AI
+  // projections the viewer asked for are never hidden by it.
+  const minConfidence = useNav((s) => s.minConfidence);
+  const setMinConfidence = useNav((s) => s.setMinConfidence);
+  const relations = useFlag("kg.relations");
+  const filtered = useMemo(
+    () => (query.data ? filterCascade(query.data, minConfidence) : null),
+    [query.data, minConfidence],
+  );
 
   const model = useMemo<CascadeModel | null>(() => {
-    if (!query.data) return null;
+    if (!filtered) return null;
+    const { response } = filtered;
     const projected =
-      status.phase === "done" ? projectionElements(query.data.focus, status.effects, status.regions) : null;
-    return shapeCascade(query.data, projected);
-  }, [query.data, status]);
+      status.phase === "done" ? projectionElements(response.focus, status.effects, status.regions) : null;
+    return shapeCascade(response, projected);
+  }, [filtered, status]);
+  const hidden = filtered?.hidden ?? 0;
 
   const layout = useMemo(
     () => (model && view === "flow" ? layoutCascade(model, direction) : null),
@@ -147,6 +163,14 @@ function CascadeView({ id }: { id: string }) {
                 {model.causes + model.effects} linked {model.causes + model.effects === 1 ? "story" : "stories"} within{" "}
                 {depth} {depth === 1 ? "step" : "steps"}
               </span>
+              {hidden > 0 && (
+                <>
+                  <span aria-hidden>·</span>
+                  <span className="tabular-nums">
+                    {hidden} weaker {hidden === 1 ? "link" : "links"} hidden
+                  </span>
+                </>
+              )}
               {focus && !focus.analysed && <DraftLabel className="ml-1" />}
               {model.hasSample && <SampleBadge className="ml-1" />}
             </p>
@@ -176,6 +200,7 @@ function CascadeView({ id }: { id: string }) {
               { value: "list", label: "List", icon: List, ariaLabel: "View as list" },
             ]}
           />
+          <ConfidenceControl hidden={hidden} />
           <ProjectControl
             engine={engine}
             status={status}
@@ -197,16 +222,20 @@ function CascadeView({ id }: { id: string }) {
           <div className="flex h-full items-center justify-center overflow-y-auto">
             <EmptyState
               icon={Workflow}
-              title="No causes or effects yet"
+              title={hidden > 0 ? "No links this sure" : "No causes or effects yet"}
               description={
-                canProject
-                  ? "Links appear as related news is analysed. You can ask the AI for possible next effects."
-                  : "Links appear as related news is analysed."
+                hidden > 0
+                  ? `${hidden} weaker ${hidden === 1 ? "link is" : "links are"} hidden. Lower the confidence filter to see weaker links.`
+                  : canProject
+                    ? "Links appear as related news is analysed. You can ask the AI for possible next effects."
+                    : "Links appear as related news is analysed."
               }
               action={
-                canProject && engine?.kind !== "none" && status.phase !== "running"
-                  ? { label: "Project next effects", onClick: project, icon: Sparkles }
-                  : undefined
+                hidden > 0
+                  ? { label: "Show weaker links", onClick: () => setMinConfidence(0), icon: SlidersHorizontal }
+                  : canProject && engine?.kind !== "none" && status.phase !== "running"
+                    ? { label: "Project next effects", onClick: project, icon: Sparkles }
+                    : undefined
               }
               secondaryAction={{ label: "Back to the story", onClick: () => nav.replaceWithStory(id), icon: ArrowLeft }}
             />
@@ -215,6 +244,8 @@ function CascadeView({ id }: { id: string }) {
           <CascadeFlow
             model={model}
             layout={layout}
+            minConfidence={minConfidence}
+            showPolarity={relations}
             selectedEdge={selection?.kind === "edge" ? selection.id : null}
             onOpenNode={openNode}
             onOpenEvidence={openEvidence}
@@ -224,6 +255,7 @@ function CascadeView({ id }: { id: string }) {
           <div className="h-full overflow-y-auto overscroll-contain">
             <CascadeList
               model={model}
+              showPolarity={relations}
               stories={stories}
               onOpenNode={openNode}
               onOpenStory={nav.replaceWithStory}
@@ -243,6 +275,34 @@ function CascadeView({ id }: { id: string }) {
         )}
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Minimum confidence (shared with the graph and the globe)
+// ---------------------------------------------------------------------------
+
+/** A compact button for the shared minimum confidence; the slider opens under it. */
+function ConfidenceControl({ hidden }: { hidden: number }) {
+  const value = useNav((s) => s.minConfidence);
+  const percent = Math.round(value * 100);
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="px-3" aria-label={`Lowest confidence shown: ${minConfidenceWords(percent)}`}>
+          <SlidersHorizontal aria-hidden />
+          <span className="tabular-nums">{percent <= 0 ? "Any" : `${percent}%+`}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="flex w-80 max-w-[calc(100vw-24px)] flex-col gap-2 p-4">
+        <p className="text-label font-medium text-fg-muted">Cause-and-effect links</p>
+        <MinConfidenceSlider />
+        <p className="text-label text-fg-subtle">
+          {hidden > 0 ? `${hidden} weaker ${hidden === 1 ? "link" : "links"} hidden here. ` : ""}The same setting applies to
+          the graph and the globe.
+        </p>
+      </PopoverContent>
+    </Popover>
   );
 }
 

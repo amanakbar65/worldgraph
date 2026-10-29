@@ -69,7 +69,8 @@ beforeEach(() => {
   mocks.desktop = false;
   mocks.engine = { kind: "artifact", label: "Your Claude account" };
   mocks.runAi.mockReset();
-  useNav.setState({ panels: [{ kind: "story", id: FOCUS_ID }, { kind: "cascade", id: FOCUS_ID }] });
+  // The full cascade: the shared minimum confidence (0.5 by default) has its own tests below.
+  useNav.setState({ panels: [{ kind: "story", id: FOCUS_ID }, { kind: "cascade", id: FOCUS_ID }], minConfidence: 0 });
 });
 afterEach(cleanup);
 
@@ -219,5 +220,66 @@ describe("Project next effects (AI)", () => {
     await renderPanel();
     expect(screen.queryByRole("button", { name: "Project next effects" })).toBeNull();
     expect(screen.getByLabelText("AI projection unavailable. AI isn't available here.")).toBeTruthy();
+  });
+});
+
+describe("the shared minimum confidence in the cascade", () => {
+  beforeEach(() => {
+    useNav.setState({ minConfidence: 0.5 });
+  });
+
+  it("hides links under it but keeps a link of exactly 0.5, and says how many are hidden", async () => {
+    await renderPanel();
+    expect(screen.getByText("Frees up ship capacity")).toBeTruthy(); // 0.5: kept
+    expect(screen.getByText("Keeps routes long")).toBeTruthy(); // 0.55
+    expect(screen.queryByText("Adds bunker fuel costs")).toBeNull(); // 0.45: hidden
+    expect(screen.queryByText("Delays inbound cargo")).toBeNull(); // 0.4: hidden, and its story with it
+    expect(screen.queryByText(/European retailers may face restock delays/)).toBeNull();
+    expect(screen.getByText("3 weaker links hidden")).toBeTruthy();
+  });
+
+  it("has a compact control bound to the one shared setting", async () => {
+    await renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: "Lowest confidence shown: At least 50%" }));
+    const slider = await screen.findByRole("slider", { name: "Lowest confidence to show" });
+    fireEvent.change(slider, { target: { value: "40" } });
+    // Written once the slider rests.
+    await waitFor(() => expect(useNav.getState().minConfidence).toBe(0.4));
+    expect(screen.getByText("Adds bunker fuel costs")).toBeTruthy();
+  });
+
+  it("explains an empty cascade by the filter, and can show weaker links", async () => {
+    useNav.setState({ minConfidence: 0.95 });
+    await renderPanel();
+    expect(screen.getByText("No links this sure")).toBeTruthy();
+    expect(screen.getByText(/Lower the confidence filter to see weaker links\./)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Show weaker links" }));
+    expect(useNav.getState().minConfidence).toBe(0);
+    expect(screen.getByText("Lengthens voyage times")).toBeTruthy();
+  });
+
+  it("marks weak links with ? and, with named relations, says ▲ raises", async () => {
+    useNav.setState({ minConfidence: 0 });
+    mocks.responses = {
+      cascade: {
+        ...CASCADE,
+        links: CASCADE.links.map((l) => (l.id === 174 ? { ...l, relation: "drives", polarity: 1, strength: 0.9, delayed: true } : l)),
+      },
+      meta: { flags: { "kg.relations": true } },
+    };
+    await renderPanel();
+    expect(screen.getAllByRole("img", { name: "Weak link: under 50% sure, or no source" }).length).toBeGreaterThan(0);
+    const red = screen.getByRole("button", { name: /^Cause, 1 step back: Red Sea attacks/ }).closest("li")!;
+    expect(within(red).getByText("raises")).toBeTruthy();
+    expect(within(red).getByRole("img", { name: "The effect shows after a delay" })).toBeTruthy();
+  });
+
+  it("uses the one trust legend in the flow", async () => {
+    mocks.desktop = true;
+    await renderPanel();
+    const legend = screen.getByRole("note", { name: "Legend" });
+    expect(within(legend).getByText("Thicker line: stronger effect")).toBeTruthy();
+    expect(within(legend).getByText("Fainter line: less certain")).toBeTruthy();
+    expect(within(legend).getByText("Under 50% sure, or no source")).toBeTruthy();
   });
 });

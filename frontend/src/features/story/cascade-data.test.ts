@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ProjectedEffect } from "@/ai/schemas";
 
 import {
+  filterCascade,
   branchLabel,
   countryName,
   directLinks,
@@ -194,5 +195,32 @@ describe("projection input", () => {
   it("names countries without the network", () => {
     expect(countryName("region:in")).toBe("India");
     expect(countryName("region:in-gj")).toBeNull();
+  });
+});
+
+describe("filterCascade (the shared minimum confidence)", () => {
+  it("keeps everything at 0", () => {
+    expect(filterCascade(CASCADE, 0)).toEqual({ response: CASCADE, hidden: 0 });
+  });
+
+  it("drops links under the floor (keeping exactly the floor) and stories cut off from the focus", () => {
+    const { response, hidden } = filterCascade(CASCADE, 0.5);
+    expect(hidden).toBe(3);
+    expect(response.links.every((l) => l.confidence >= 0.5)).toBe(true);
+    expect(response.links.some((l) => l.confidence === 0.5)).toBe(true);
+    const ids = response.nodes.map((n) => n.id);
+    expect(ids).toContain(FOCUS_ID);
+    expect(ids).not.toContain("story:brent-multi-month-high");
+    expect(ids).not.toContain("story:europe-retail-restock-delays");
+    // Still reached through the 55 % If NO link.
+    expect(ids).toContain("story:surcharges-persist");
+  });
+
+  it("keeps branch entries only for stories still in view", () => {
+    const { response } = filterCascade(CASCADE, 0.52);
+    const outcomes = response.branches.flatMap((b) => b.outcomes);
+    expect(outcomes.find((o) => o.outcome === "YES")?.story_ids).toEqual([]);
+    expect(outcomes.find((o) => o.outcome === "NO")?.story_ids).toEqual(["story:surcharges-persist"]);
+    expect(filterCascade(CASCADE, 0.9).response.branches).toEqual([]);
   });
 });

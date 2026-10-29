@@ -6,7 +6,7 @@
  */
 import type { CascadeLink, LinkType } from "@/api/contract";
 import { formatProbability } from "@/lib/format";
-import { DIRECTION_WORDS, IMPACT_TONES, LINK_TYPES } from "@/lib/meaning";
+import { DIRECTION_WORDS, IMPACT_TONES, LINK_TYPES, trustVisual } from "@/lib/meaning";
 import { relativeTime } from "@/lib/time";
 
 import { branchLabel, type BranchInfo, type CascadeNode } from "./cascade-data";
@@ -16,9 +16,9 @@ export interface EdgeLook {
   line: "solid" | "dashed" | "dotted";
   /** SVG stroke-dasharray, scaled to the stroke width (undefined = solid). */
   dasharray: string | undefined;
-  /** Stroke width in px: 1.25 (unsure) … 3.25 (certain). */
+  /** Stroke width in px: the shared trust width (0.75 weak … 2.75 strong) × CASCADE_WIDTH_SCALE. */
   width: number;
-  /** Stroke opacity: 0.4 (unsure) … 0.95 (certain). */
+  /** Stroke opacity from confidence: 0.3 (unsure) … 1 (certain), as everywhere. */
   opacity: number;
   /** Colour token: conditional links take the forecast violet (they always carry the crowd badge). */
   tone: "muted" | "forecast";
@@ -28,11 +28,21 @@ export interface EdgeLook {
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, Number.isFinite(v) ? v : 0));
 
-/** The line for a link: pattern by type, weight and opacity by confidence. */
-export function edgeLook(linkType: LinkType, confidence: number): EdgeLook {
-  const c = clamp01(confidence);
-  const width = Math.round((1.25 + c * 2) * 100) / 100;
-  const opacity = Math.round((0.4 + c * 0.55) * 100) / 100;
+/**
+ * The flow draws its lines this much heavier than the shared trust widths
+ * (lib/meaning.ts TRUST_WIDTH), keeping the ratio between weak and strong.
+ */
+export const CASCADE_WIDTH_SCALE = 1.25;
+
+/**
+ * The line for a link: the shared trust look (trustVisual: width from
+ * strength, or confidence when there is none; transparency from
+ * confidence), scaled for the flow, and the pattern by link type.
+ */
+export function edgeLook(linkType: LinkType, confidence: number, strength?: number | null): EdgeLook {
+  const trust = trustVisual({ confidence: clamp01(confidence), strength, linkType });
+  const width = Math.round(trust.width * CASCADE_WIDTH_SCALE * 100) / 100;
+  const opacity = trust.opacity;
   const line = LINK_TYPES[linkType]?.line ?? "solid";
   // Dots are round caps on near-zero dashes, so their size follows the width.
   // Conditional puts a short dash between the dots, so it reads apart from
