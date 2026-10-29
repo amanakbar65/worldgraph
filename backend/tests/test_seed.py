@@ -181,3 +181,86 @@ def test_sample_forecast_moves_are_varied_not_canned():
     assert 1 <= len(big) <= 4, sorted(moves)
     assert sum(1 for m in moves if m <= -0.02) >= 3  # some fall
     assert len({round(m * 100) for m in moves if abs(m) >= 0.03}) >= 6  # not all the same size
+
+
+# ---------------------------------------------------------------------------
+# The graph schema (schema/types.yaml)
+# ---------------------------------------------------------------------------
+
+
+def test_sample_properties_fit_their_types_and_edges_their_relations():
+    from worldgraph.schema import load_schema, property_problems
+
+    bundle = build_bundle(now=FIXED_NOW)
+    schema = load_schema()
+    types = {n["id"]: n["type"] for n in bundle.nodes}
+    for n in bundle.nodes:
+        assert property_problems(schema, n["type"], n["properties"], types.get) == [], n["id"]
+    for e in bundle.edges:
+        relation = schema.relation(e["type"])
+        assert relation is not None and relation.allows(types[e["src"]], types[e["dst"]]), e
+
+
+def test_sample_properties_come_from_true_background_facts():
+    nodes = {n["id"]: n for n in build_bundle(now=FIXED_NOW).nodes}
+    assert nodes["org:dp-world"]["properties"] == {
+        "sector": ["sector:logistics-trade"],
+        "headquarters": "region:ae-du.dubai",  # "Dubai-based" (summary)
+    }
+    assert nodes["org:maersk"]["properties"]["headquarters"] == "region:dk"  # from located_in
+    assert nodes["infra:jebel-ali-port"]["properties"] == {
+        "kind": "port",
+        "place": "region:ae",
+        "operator": "org:dp-world",
+    }
+    assert nodes["commodity:crude-oil"]["properties"] == {"hs_code": "2709", "benchmark": "Brent, WTI"}
+    assert nodes["policy:opec-plus-quotas"]["properties"] == {
+        "scope": ["region:sa", "region:ru"],
+        "issuer": "org:opec",
+    }
+    indicator = next(n for n in nodes.values() if n["type"] == "indicator")
+    assert set(indicator["properties"]) == {"unit", "frequency", "source"}
+    # No invented facts: nothing the files don't state.
+    real = [n for n in nodes.values() if n["type"] == "organization" and not n["is_sample"]]
+    assert {k for n in real for k in n["properties"]} <= {"sector", "headquarters"}
+
+
+def test_nodes_are_ordered_so_references_exist_first():
+    nodes = build_bundle(now=FIXED_NOW).nodes
+    position = {n["id"]: i for i, n in enumerate(nodes)}
+    assert position["org:dp-world"] < position["infra:jebel-ali-port"]
+    assert position["sector:energy"] < position["org:saudi-aramco"]
+    assert position["org:opec"] < position["policy:opec-plus-quotas"]
+
+
+def test_seed_check_refuses_bad_properties_and_relation_breaks(tmp_path):
+    seed = tmp_path / "seed"
+    shutil.copytree(SEED_DIR, seed, ignore=shutil.ignore_patterns("__pycache__", "*.py"))
+    path = seed / "entities" / "organizations.yaml"
+    text = path.read_text(encoding="utf-8")
+    bad = text.replace("properties: {headquarters: region:ae-du.dubai}", "properties: {size: huge}", 1)
+    path.write_text(bad, encoding="utf-8")
+    with pytest.raises(SeedError, match="org:dp-world: properties don't fit type organization: size"):
+        build_bundle(now=FIXED_NOW, seed_dir=seed)
+    path.write_text(
+        text.replace("operates: [infra:jebel-ali-port]", "operates: [region:ae]", 1), encoding="utf-8"
+    )
+    with pytest.raises(SeedError, match="operates doesn't connect organization to region"):
+        build_bundle(now=FIXED_NOW, seed_dir=seed)
+
+
+def test_loading_writes_properties_and_keeps_other_writers_values(sdb):
+    from worldgraph.seed.load import load_bundle
+
+    sdb.execute(
+        """update node set properties = properties || '{"ticker": "DFM: DPW"}' where id = 'org:dp-world'"""
+    )
+    load_bundle(sdb, build_bundle(now=FIXED_NOW))
+    row = sdb.execute("select properties from node where id = 'org:dp-world'").fetchone()
+    assert row == {
+        "properties": {
+            "sector": ["sector:logistics-trade"],
+            "headquarters": "region:ae-du.dubai",
+            "ticker": "DFM: DPW",
+        }
+    }

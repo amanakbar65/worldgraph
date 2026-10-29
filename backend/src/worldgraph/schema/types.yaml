@@ -1,0 +1,194 @@
+# The knowledge graph's schema: node types with their properties, and the
+# named relations between them. This file is the single source:
+#
+# - `uv run wg schema sql` prints the upserts that put it in the database
+#   (paste them into a new migration whenever this file changes; never edit
+#   an applied migration);
+# - `uv run wg seed check` validates the sample entities' properties against it;
+# - tests/test_schema.py checks that the database holds exactly this.
+#
+# Node types
+#   key, label, plural, icon (a lucide name), tone (a CSS token in
+#   frontend/src/styles/tokens.css: colour = var(--<tone>)), description and
+#   properties.
+#
+# Properties (all optional for now unless `required: true`)
+#   key          stored in node.properties under this key
+#   label        shown on chips and table headers
+#   kind         text | number | date | choice | url | place | entity
+#                  text    a string (optional `pattern`, a regular expression)
+#                  number  a JSON number (optional `min`, `max`)
+#                  date    "YYYY", "YYYY-MM" or "YYYY-MM-DD"
+#                  choice  one of `choices` (by key)
+#                  url     an http(s) link
+#                  place   a region id (region:in-gj)
+#                  entity  a node id, of one of `entity_types` when given
+#   multiple     the value is a list of these (sectors, places)
+#   unit         a fixed unit shown after numbers ("%")
+#   unit_key     the property that holds the unit (capacity → capacity_unit)
+#   derived      read-only: worked out from a side table (region, story,
+#                forecast…), never stored in node.properties
+#
+# Relation types
+#   key (edge.type), label (read from the source), inverse_label (read from
+#   the target), icon, causal (cause-and-effect: carries polarity and
+#   strength), symmetric (reads the same both ways), src_types / dst_types
+#   (allowed node types at each end; empty means any) and description.
+
+node_types:
+  - key: region
+    label: Place
+    plural: Places
+    icon: map-pin
+    tone: type-region
+    description: A country, state or province, city, or a group of countries.
+    properties:
+      - {key: level, label: Level, kind: choice, derived: true, choices: [{key: bloc, label: Group of countries}, {key: country, label: Country}, {key: state, label: State or province}, {key: city, label: City}]}
+      - {key: iso_code, label: ISO code, kind: text, derived: true}
+      - {key: parent, label: Part of, kind: place, derived: true}
+      - {key: country, label: Country, kind: place, derived: true}
+      - {key: population, label: Population, kind: number, derived: true}
+      - {key: continent, label: Continent, kind: text, derived: true}
+      - {key: subregion, label: Subregion, kind: text, derived: true}
+
+  - key: organization
+    label: Organisation
+    plural: Organisations
+    icon: building
+    tone: type-organization
+    description: A company, public body, central bank or international organisation.
+    properties:
+      - {key: sector, label: Sector, kind: entity, entity_types: [sector], multiple: true}
+      - {key: headquarters, label: Headquarters, kind: place}
+      - {key: size, label: Size, kind: choice, description: "By staff (EU definition): micro under 10, small under 50, medium under 250, large 250 or more.", choices: [{key: micro, label: Micro}, {key: small, label: Small}, {key: medium, label: Medium}, {key: large, label: Large}]}
+      - {key: founded, label: Founded, kind: date}
+      - {key: website, label: Website, kind: url}
+      - {key: ticker, label: Ticker, kind: text, description: "Main listing, for example NYSE: XOM."}
+
+  - key: person
+    label: Person
+    plural: People
+    icon: user-round
+    tone: type-person
+    description: A public figure in a public role (never a private individual).
+    properties:
+      - {key: role, label: Role, kind: text}
+      - {key: organization, label: Organisation, kind: entity, entity_types: [organization]}
+
+  - key: commodity
+    label: Commodity
+    plural: Commodities
+    icon: package
+    tone: type-commodity
+    description: A traded good or product, such as crude oil, wheat or chips.
+    properties:
+      - {key: unit, label: Unit, kind: text, description: "Trading unit, for example barrel, tonne or MMBtu."}
+      - {key: benchmark, label: Benchmark, kind: text, description: "Main price benchmark, for example Brent."}
+      - {key: hs_code, label: HS code, kind: text, pattern: "^[0-9]{2,10}$", description: Harmonized System heading.}
+
+  - key: sector
+    label: Sector
+    plural: Sectors
+    icon: layers
+    tone: type-sector
+    description: One of the nine business sectors used as lenses.
+    properties:
+      - {key: entity_count, label: Linked entities, kind: number, derived: true}
+
+  - key: infrastructure
+    label: Infrastructure
+    plural: Infrastructure
+    icon: utility-pole
+    tone: type-infrastructure
+    description: A port, canal, strait, terminal, mine, plant or industrial zone.
+    properties:
+      - {key: kind, label: Kind, kind: choice, choices: [{key: port, label: Port}, {key: terminal, label: Terminal}, {key: canal, label: Canal}, {key: strait, label: Strait}, {key: chokepoint, label: Chokepoint}, {key: sea-route, label: Sea route}, {key: pipeline, label: Pipeline}, {key: plant, label: Plant}, {key: mine, label: Mine}, {key: industrial-zone, label: Industrial zone}, {key: data-centre, label: Data centre}]}
+      - {key: capacity, label: Capacity, kind: number, min: 0, unit_key: capacity_unit}
+      - {key: capacity_unit, label: Capacity unit, kind: text, description: "For example TEU a year, barrels a day or MW."}
+      - {key: operator, label: Operator, kind: entity, entity_types: [organization]}
+      - {key: place, label: Place, kind: place}
+
+  - key: policy
+    label: Policy
+    plural: Policies
+    icon: scroll-text
+    tone: type-policy
+    description: A law, regulation, tariff, subsidy or agreement.
+    properties:
+      - {key: issuer, label: Issuer, kind: entity, entity_types: [organization, region]}
+      - {key: effective_date, label: In force from, kind: date}
+      - {key: status, label: Status, kind: choice, choices: [{key: proposed, label: Proposed}, {key: in_force, label: In force}, {key: expired, label: Expired}]}
+      - {key: scope, label: Applies to, kind: place, multiple: true}
+
+  - key: indicator
+    label: Indicator
+    plural: Indicators
+    icon: gauge
+    tone: type-indicator
+    description: A KPI time series, such as inflation or a fuel price.
+    properties:
+      - {key: unit, label: Unit, kind: text}
+      - {key: frequency, label: Frequency, kind: choice, choices: [{key: daily, label: Daily}, {key: weekly, label: Weekly}, {key: monthly, label: Monthly}, {key: quarterly, label: Quarterly}, {key: annual, label: Annual}]}
+      - {key: source, label: Source, kind: text}
+
+  - key: story
+    label: Story
+    plural: Stories
+    icon: newspaper
+    tone: neutral
+    description: A real-world event from the news, or a possible future impact.
+    properties:
+      - {key: kind, label: Kind, kind: choice, derived: true, choices: [{key: event, label: Event}, {key: projected, label: Possible impact}]}
+      - {key: event_type, label: Event type, kind: text, derived: true}
+      - {key: impact, label: Impact, kind: choice, derived: true, choices: [{key: risk, label: Risk}, {key: opportunity, label: Opportunity}, {key: neutral, label: Neutral}]}
+      - {key: direction, label: Direction, kind: choice, derived: true, choices: [{key: up, label: Up}, {key: down, label: Down}]}
+      - {key: magnitude, label: Magnitude, kind: number, derived: true, min: 1, max: 5}
+      - {key: horizon, label: Horizon, kind: choice, derived: true, choices: [{key: now, label: Now}, {key: weeks, label: Within weeks}, {key: months, label: Within months}]}
+      - {key: confidence, label: Confidence, kind: number, derived: true, unit: "%", min: 0, max: 100}
+      - {key: importance, label: Importance, kind: number, derived: true, min: 0, max: 100}
+      - {key: first_seen, label: First seen, kind: date, derived: true}
+      - {key: sectors, label: Sectors, kind: entity, derived: true, entity_types: [sector], multiple: true}
+      - {key: region, label: Region, kind: place, derived: true}
+
+  - key: forecast
+    label: Crowd forecast
+    plural: Crowd forecasts
+    icon: users
+    tone: forecast
+    description: A crowd forecast question with its probability over time.
+    properties:
+      - {key: provider, label: Provider, kind: text, derived: true}
+      - {key: category, label: Category, kind: choice, derived: true, choices: [{key: economy, label: Economy}, {key: finance, label: Finance}, {key: policy, label: Policy}, {key: politics, label: Politics}, {key: geopolitics, label: Geopolitics}, {key: trade, label: Trade}, {key: tech, label: Tech}, {key: commodities, label: Commodities}, {key: energy, label: Energy}]}
+      - {key: probability, label: Chance of yes, kind: number, derived: true, unit: "%", min: 0, max: 100}
+      - {key: end_date, label: Closes, kind: date, derived: true}
+      - {key: status, label: Status, kind: choice, derived: true, choices: [{key: open, label: Open}, {key: closed, label: Closed}, {key: resolved, label: Resolved}]}
+      - {key: volume, label: Volume, kind: number, derived: true, min: 0, unit_key: volume_unit}
+      - {key: volume_unit, label: Volume unit, kind: text, derived: true}
+
+  - key: user_entity
+    label: Your business
+    plural: Your business
+    icon: briefcase-business
+    tone: type-user
+    description: The viewer's own business (kept in per-viewer storage, not the world graph).
+    properties: []
+
+relation_types:
+  - {key: located_in, label: Located in, inverse_label: Home to, icon: map-pin, src_types: [organization, person, infrastructure], dst_types: [region], description: Where something is based or sits.}
+  - {key: part_of, label: Part of, inverse_label: Includes, icon: list-tree, src_types: [region, infrastructure], dst_types: [region, infrastructure], description: "A smaller place inside a larger one (city → state → country)."}
+  - {key: owns, label: Owns, inverse_label: Owned by, icon: key-round, src_types: [organization, person, region], dst_types: [organization, infrastructure], description: Ownership of a company or an asset.}
+  - {key: subsidiary_of, label: Subsidiary of, inverse_label: Parent of, icon: git-fork, src_types: [organization], dst_types: [organization], description: A company controlled by a parent company.}
+  - {key: produces, label: Produces, inverse_label: Produced by, icon: factory, src_types: [region, organization, infrastructure], dst_types: [commodity], description: A leading producer of a commodity.}
+  - {key: exports_to, label: Exports to, inverse_label: Imports from, icon: ship, src_types: [region, organization], dst_types: [region, organization], description: Sells goods abroad to.}
+  - {key: imports_from, label: Imports from, inverse_label: Exports to, icon: package-open, src_types: [region, organization], dst_types: [region, organization], description: Buys goods from abroad.}
+  - {key: depends_on, label: Depends on, inverse_label: Needed by, icon: plug, src_types: [organization, region, infrastructure, commodity, sector], dst_types: [organization, region, infrastructure, commodity, sector, policy], description: Relies on something to keep working.}
+  - {key: member_of, label: Member of, inverse_label: Has member, icon: users, src_types: [region, organization], dst_types: [region, organization], description: Membership of a bloc or an organisation.}
+  - {key: competes_with, label: Competes with, inverse_label: Competes with, icon: swords, symmetric: true, src_types: [organization], dst_types: [organization], description: Rivals in the same market.}
+  - {key: in_sector, label: In sector, inverse_label: Includes, icon: tag, src_types: [organization, person, commodity, infrastructure, policy, indicator], dst_types: [sector], description: Belongs to one of the nine sectors.}
+  - {key: mentions, label: Mentions, inverse_label: In the news, icon: newspaper, src_types: [story], dst_types: [region, organization, person, commodity, sector, infrastructure, policy], description: A story is about this.}
+  - {key: about, label: About, inverse_label: Covered by, icon: target, src_types: [forecast, indicator, policy], dst_types: [region, organization, person, commodity, sector, infrastructure, policy, story], description: "A forecast, indicator or policy concerns this."}
+  - {key: relates_to, label: Related to, inverse_label: Related to, icon: link, symmetric: true, src_types: [], dst_types: [], description: "A generic link, used when no better relation fits (listed for review)."}
+  - {key: supplies, label: Supplies, inverse_label: Supplied by, icon: truck, src_types: [organization, region, infrastructure], dst_types: [organization, region, infrastructure], description: Provides goods or services to.}
+  - {key: operates, label: Operates, inverse_label: Operated by, icon: cog, src_types: [organization], dst_types: [infrastructure], description: "Runs a port, canal, mine, plant or terminal."}
+  - {key: regulates, label: Regulates, inverse_label: Regulated by, icon: scale, src_types: [organization, region, policy], dst_types: [organization, sector, commodity, infrastructure], description: Sets the rules for.}
+  - {key: drives, label: Drives, inverse_label: Driven by, icon: arrow-right, causal: true, src_types: [story, region, organization, commodity, sector, infrastructure, policy, indicator], dst_types: [story, region, organization, commodity, sector, infrastructure, policy, indicator], description: "Cause and effect: a change in one moves the other (polarity ▲ same way, ▼ opposite way)."}

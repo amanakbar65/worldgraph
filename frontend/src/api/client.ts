@@ -144,6 +144,7 @@ const SAMPLE_ARG: ReadonlySet<RpcName> = new Set<RpcName>([
   "compare",
   "brief",
   "ask_context",
+  "schema",
 ]);
 /** Functions that name or place regions differently in India's view. */
 const WORLDVIEW_ARG: ReadonlySet<RpcName> = new Set<RpcName>(["search", "region"]);

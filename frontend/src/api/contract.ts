@@ -185,6 +185,10 @@ export const GraphNode = z.object({
 });
 export type GraphNode = z.infer<typeof GraphNode>;
 
+/** +1: the effect moves the same way as the cause (▲ same way); −1: the opposite way (▼). */
+export const Polarity = z.union([z.literal(1), z.literal(-1)]);
+export type Polarity = z.infer<typeof Polarity>;
+
 export const GraphLink = z.object({
   source: Id,
   target: Id,
@@ -192,6 +196,14 @@ export const GraphLink = z.object({
   causal: z.boolean(),
   confidence: Prob.nullable(),
   created_at: Iso.nullable(),
+  // Since 0022 (api.graph, api.local_graph and the graphs in api.entity
+  // always send these; api.region's own graph doesn't yet, and an older
+  // database doesn't either, so they are optional here):
+  id: z.number().int().optional(), // edge id, or causal_link id when `causal`
+  relation: z.string().optional(), // relation key (schema.relations[].key): the edge type, or "drives"
+  polarity: Polarity.nullable().optional(), // causal links; null when unknown or not causal
+  strength: Prob.nullable().optional(), // causal links: own strength, else confidence; null otherwise
+  delayed: z.boolean().nullable().optional(), // causal links: lag_days > 0; null when unknown
 });
 export type GraphLink = z.infer<typeof GraphLink>;
 
@@ -219,6 +231,11 @@ export const CascadeLink = z.object({
   forecast_id: Id.nullable(), // conditional links only
   outcome: z.string().nullable(), // "YES" | "NO" for conditional links
   evidence: z.array(Evidence),
+  // Since 0022 (api.cascade sends them; api.ask_context doesn't yet):
+  relation: z.string().optional(), // "drives"
+  polarity: Polarity.nullable().optional(),
+  strength: Prob.optional(), // own strength, else confidence
+  delayed: z.boolean().nullable().optional(), // lag_days > 0
 });
 export type CascadeLink = z.infer<typeof CascadeLink>;
 
@@ -229,6 +246,96 @@ export const SourceRef = z.object({
   published_at: Iso.nullable(),
 });
 export type SourceRef = z.infer<typeof SourceRef>;
+
+// ---------------------------------------------------------------------------
+// Knowledge graph schema (migrations 0021–0022). The single source is
+// backend/src/worldgraph/schema/types.yaml: node types with their typed
+// properties, and named relations with readable labels both ways.
+// ---------------------------------------------------------------------------
+
+export const PROPERTY_KINDS = ["text", "number", "date", "choice", "url", "place", "entity"] as const;
+export const PropertyKind = z.enum(PROPERTY_KINDS);
+export type PropertyKind = z.infer<typeof PropertyKind>;
+
+/**
+ * One property of a node type (api.schema). Values: text and url are
+ * strings; number a number; date "YYYY", "YYYY-MM" or "YYYY-MM-DD"; choice
+ * one of `choices` by key; place a region id; entity a node id (of
+ * `entity_types` when given). `multiple`: a list of these.
+ */
+export const PropertyDef = z.object({
+  key: z.string(),
+  label: z.string(),
+  kind: PropertyKind,
+  required: z.boolean(),
+  derived: z.boolean(), // read-only: worked out from a side table (regions, sectors, stories, forecasts)
+  multiple: z.boolean(),
+  choices: z.array(z.object({ key: z.string(), label: z.string() })).nullable(), // choice only
+  unit: z.string().nullable(), // a fixed unit, e.g. "%"
+  unit_key: z.string().nullable(), // the property holding the unit (capacity → capacity_unit)
+  entity_types: z.array(EntityType).nullable(), // entity only; null = any type
+  pattern: z.string().nullable(), // text only: a regular expression
+  min: z.number().nullable(),
+  max: z.number().nullable(),
+  description: z.string().nullable(),
+});
+export type PropertyDef = z.infer<typeof PropertyDef>;
+
+const PropertyScalar = z.union([z.string(), z.number()]);
+export const PropertyRaw = z.union([PropertyScalar, z.array(PropertyScalar)]);
+export type PropertyRaw = z.infer<typeof PropertyRaw>;
+
+/** A node a place or entity property names (a tappable chip). */
+export const EntityLink = z.object({ id: Id, name: z.string(), type: EntityType });
+export type EntityLink = z.infer<typeof EntityLink>;
+
+/** A property with its value, ready to show as a key-fact chip (api.entity). */
+export const PropertyValue = z.object({
+  key: z.string(),
+  label: z.string(),
+  kind: PropertyKind,
+  value: PropertyRaw, // as stored (a list when the property is multiple)
+  display: z.string(), // "Dubai", "1,200,000 TEU", "Mar 2024", "Logistics and Trade, Energy"
+  unit: z.string().nullable(), // numbers only
+  derived: z.boolean(), // read-only, worked out from a side table
+  entity: EntityLink.nullable(), // single place or entity values: the node it names
+  entities: z.array(EntityLink).nullable(), // multiple place or entity values
+});
+export type PropertyValue = z.infer<typeof PropertyValue>;
+
+/** Direction of a connection, from the entity's side; "both" for symmetric relations. */
+export const RelationDirection = z.enum(["out", "in", "both"]);
+export type RelationDirection = z.infer<typeof RelationDirection>;
+
+/** An entity's links of one relation, read from its side: "Owned by", "Supplies"… */
+export const ConnectionGroup = z.object({
+  relation: z.string(), // relation key
+  label: z.string(), // label for out (and both), inverse_label for in
+  direction: RelationDirection,
+  causal: z.boolean(),
+  count: z.number().int().min(0), // the whole group; items holds at most 12
+  items: z.array(
+    z.object({
+      id: Id,
+      name: z.string(), // headline for stories
+      type: EntityType,
+      subtype: z.string().nullable(),
+      is_sample: z.boolean(),
+      confidence: Prob.nullable(), // when the link has one
+    }),
+  ), // newest stories first, then the most populous places, then by name
+});
+export type ConnectionGroup = z.infer<typeof ConnectionGroup>;
+
+/** A property filter for api.graph and api.local_graph (exactly one type selected). */
+export const PropertyFilter = z.object({
+  prop: z.string(),
+  // eq: equals (text ignores case; lists: any item); in: one of a list;
+  // gte / lte: numbers and dates; contains: text substring, or a list item.
+  op: z.enum(["eq", "in", "gte", "lte", "contains"]),
+  value: PropertyRaw,
+});
+export type PropertyFilter = z.infer<typeof PropertyFilter>;
 
 // ---------------------------------------------------------------------------
 // Per-function responses
@@ -255,6 +362,9 @@ export const MetaResponse = z.object({
     }),
   ),
   viewer_country: z.string().nullable().optional(), // website only: set by the RPC endpoint from the host's geo data
+  // Feature flags {key: on} since 0021 (lib/flags.ts useFlag; a missing key is off).
+  // Optional: the committed snapshot and older databases don't have them.
+  flags: z.record(z.string(), z.boolean()).optional(),
 });
 export type MetaResponse = z.infer<typeof MetaResponse>;
 
@@ -416,7 +526,13 @@ export const EntityResponse = z.object({
     lat: Lat.nullable(),
     is_sample: z.boolean(),
   }),
+  // Since 0022 (optional here so an older database still parses):
+  // typed properties in the type's order, only those with a value (empty while kg.properties is off) …
+  properties: z.array(PropertyValue).optional(),
+  // … and every link grouped by relation, biggest group first (empty while kg.relations is off).
+  connections: z.array(ConnectionGroup).optional(),
   timeline: z.array(StorySummary), // newest first, ≤ 20
+  /** @deprecated Use `connections` (kept for one release). */
   backlinks: z.array(
     z.object({
       id: Id,
@@ -431,11 +547,23 @@ export const EntityResponse = z.object({
 });
 export type EntityResponse = z.infer<typeof EntityResponse>;
 
-/** api.graph({types?, sectors?, regions?, window?, min_confidence?, limit?, sample?}) */
+/**
+ * api.graph({types?, sectors?, regions?, window?, min_confidence?, limit?,
+ *            where?, relations?, direction?, sample?})
+ * `where` needs exactly one type in `types` (else the error "where needs
+ * one type"); `relations` keeps only those links. `direction` needs a
+ * focus, so here it is only checked (see local_graph).
+ */
 export const GraphResponse = GraphData.extend({ truncated: z.boolean() });
 export type GraphResponse = z.infer<typeof GraphResponse>;
 
-/** api.local_graph({id, depth: 1..3, limit?}) */
+/**
+ * api.local_graph({id, depth: 1..3, limit?, types?, where?, relations?, direction?, sample?})
+ * `relations` and `direction` (relative to the focus: out = links leaving
+ * it, in = links arriving; symmetric relations count both ways) limit the
+ * links the neighbourhood follows. `types` and `where` (one type) keep only
+ * matching nodes, plus the focus.
+ */
 export const LocalGraphResponse = GraphData.extend({ focus: Id, truncated: z.boolean() });
 export type LocalGraphResponse = z.infer<typeof LocalGraphResponse>;
 
@@ -593,6 +721,44 @@ export const SaveAnalysisResponse = z.object({
 });
 export type SaveAnalysisResponse = z.infer<typeof SaveAnalysisResponse>;
 
+/**
+ * api.schema({sample?}) — both registries with live counts (0022). The
+ * schema map (kg.schema_map) uses by_pair; property definitions are empty
+ * while kg.properties is off.
+ */
+export const SchemaResponse = z.object({
+  types: z.array(
+    z.object({
+      key: EntityType,
+      label: z.string(), // "Organisation"
+      plural: z.string(), // "Organisations"
+      icon: z.string(), // a lucide icon name
+      tone: z.string(), // a CSS token in styles/tokens.css: colour = var(--<tone>)
+      description: z.string(),
+      count: z.number().int().min(0), // nodes of this type (sample ones only with sample data on)
+      properties: z.array(PropertyDef), // in display order
+    }),
+  ), // in display order
+  relations: z.array(
+    z.object({
+      key: z.string(), // edge.type; "drives" is the causal relation
+      label: z.string(), // read from the source: "Owns"
+      inverse_label: z.string(), // read from the target: "Owned by"
+      icon: z.string(), // a lucide icon name
+      causal: z.boolean(), // carries polarity and strength
+      symmetric: z.boolean(), // reads the same both ways
+      src_types: z.array(EntityType), // allowed source types ([] = any)
+      dst_types: z.array(EntityType), // allowed target types ([] = any)
+      description: z.string(),
+      count: z.number().int().min(0), // links (edges, plus causal links for drives)
+      by_pair: z.array(
+        z.object({ src_type: EntityType, dst_type: EntityType, count: z.number().int().min(0) }),
+      ), // biggest first; [] while kg.schema_map is off
+    }),
+  ),
+});
+export type SchemaResponse = z.infer<typeof SchemaResponse>;
+
 // ---------------------------------------------------------------------------
 // The function table
 // ---------------------------------------------------------------------------
@@ -617,6 +783,7 @@ export const RESPONSES = {
   ask_context: AskContextResponse,
   pending_analysis: PendingAnalysisResponse,
   save_analysis: SaveAnalysisResponse,
+  schema: SchemaResponse,
 } as const;
 
 export type RpcName = keyof typeof RESPONSES;
@@ -656,9 +823,28 @@ export interface RpcArgs {
     window?: TimeWindow | "all";
     min_confidence?: number;
     limit?: number;
+    /** Property conditions, all of which must hold; needs exactly one type in `types`. */
+    where?: PropertyFilter[];
+    /** Relation keys: only these links. */
+    relations?: string[];
+    /** Needs a focus: accepted, but only local_graph uses it. */
+    direction?: RelationDirection;
     sample?: boolean;
   };
-  local_graph: { id: string; depth: 1 | 2 | 3; limit?: number; sample?: boolean };
+  local_graph: {
+    id: string;
+    depth: 1 | 2 | 3;
+    limit?: number;
+    /** Keep only nodes of these types (and the focus). */
+    types?: EntityType[];
+    /** Property conditions; needs exactly one type in `types`. */
+    where?: PropertyFilter[];
+    /** Relation keys: follow only these links. */
+    relations?: string[];
+    /** Relative to the focus: out = links leaving it, in = links arriving. */
+    direction?: RelationDirection;
+    sample?: boolean;
+  };
   forecasts: {
     sectors?: SectorId[];
     regions?: string[];
@@ -682,6 +868,7 @@ export interface RpcArgs {
   brief: { profile?: Profile; sample?: boolean };
   ask_context: { q: string; limit?: number; sample?: boolean };
   pending_analysis: { limit?: number };
+  schema: { sample?: boolean };
   save_analysis: {
     engine: "artifact" | "api";
     model: string;

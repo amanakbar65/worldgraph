@@ -543,7 +543,7 @@ def test_entity_facts(sdb):
     assert port["Type"] == "Infrastructure · Port"
     assert port["Located in"] == "Gujarat"
     assert port["Country"] == "India"
-    assert port["Owner"] == "Adani Ports and SEZ"
+    assert port["Operator"] == "Adani Ports and SEZ"  # operates since 0022 (it was owns)
     assert facts(sdb, "org:rbi")["Type"] == "Organization · Central bank"
     assert facts(sdb, "org:opec")["Members"] == "12"
     assert facts(sdb, "policy:eu-cbam")["Applies to"] == "European Union"

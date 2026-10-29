@@ -12,9 +12,15 @@ app = typer.Typer(
 db_app = typer.Typer(help="Database: migrations and status.", no_args_is_help=True)
 seed_app = typer.Typer(help="Sample data: check and load.", no_args_is_help=True)
 geo_app = typer.Typer(help="Geography: the Natural Earth gazetteer and map layers.", no_args_is_help=True)
+schema_app = typer.Typer(
+    help="The graph schema (schema/types.yaml): node types and relations.", no_args_is_help=True
+)
+kg_app = typer.Typer(help="Knowledge graph upkeep: the owner's review list.", no_args_is_help=True)
 app.add_typer(db_app, name="db")
 app.add_typer(seed_app, name="seed")
 app.add_typer(geo_app, name="geo")
+app.add_typer(schema_app, name="schema")
+app.add_typer(kg_app, name="kg")
 
 
 def _pipeline_app() -> typer.Typer:
@@ -53,6 +59,58 @@ def db_status() -> None:
     for m in list_migrations():
         mark = "applied" if m.version in done else "PENDING"
         typer.echo(f"  {m.version}_{m.name}: {mark}")
+
+
+@db_app.command("down")
+def db_down(
+    version: str = typer.Argument(..., help="Undo this migration and every later one (e.g. 0021)."),
+    yes: bool = typer.Option(False, "--yes", help="Don't ask for confirmation."),
+) -> None:
+    """Undo migrations with their down files (newest first). Data in what they added is lost."""
+    from worldgraph.db import connect
+    from worldgraph.db.migrate import applied_versions, rollback
+
+    with connect() as conn:
+        targets = sorted((v for v in applied_versions(conn) if v >= version), reverse=True)
+        if not targets:
+            typer.echo("Nothing to undo.")
+            return
+        if not yes:
+            typer.confirm(f"Undo {', '.join(targets)}? Their data is dropped.", abort=True)
+        for m in rollback(conn, version):
+            typer.secho(f"  undid {m.version}_{m.name}", fg=typer.colors.YELLOW)
+
+
+@schema_app.command("sql")
+def schema_sql(
+    only: str = typer.Option(None, help="node_types or relation_types (default: both)."),
+) -> None:
+    """Print the upserts that put schema/types.yaml in the database (paste into a new migration)."""
+    from worldgraph.schema import registry_sql
+
+    typer.echo(registry_sql(only=only), nl=False)
+
+
+@kg_app.command("review")
+def kg_review(
+    out: str = typer.Option("../docs/kg-review.md", help="Where to write the review list (Markdown)."),
+    source: str = typer.Option(
+        "the database in DATABASE_URL", help="How to name the database in the header."
+    ),
+) -> None:
+    """Write the owner's review list: leftover facts, unknown keys, rule breaks, relates_to links."""
+    from pathlib import Path
+
+    from worldgraph.db import connect
+    from worldgraph.schema.review import collect, render
+
+    with connect() as conn:
+        data = collect(conn)
+    path = Path(out)
+    path.write_text(render(data, source), encoding="utf-8")
+    typer.secho(f"Wrote {path}", fg=typer.colors.GREEN)
+    for label, value in data["summary"].items():
+        typer.echo(f"  {label}: {value}")
 
 
 @seed_app.command("check")

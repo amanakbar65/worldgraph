@@ -18,6 +18,12 @@ See `CHECKPOINT.md` for the live state and resume steps.
 
 ## Log
 
+### 28 Oct 2026: Phase A, part 1 (A0–A2 database, pipeline and API)
+- Migrations 0021 (feature flags, `node_type`, `node.properties` with a validating trigger and backfill) and 0022 (`relation_type`, edge endpoint rules, causal polarity, strength and delay, and the api: properties, connections, `where`, `relations`, `direction`, `api.schema`). Each has a down file; `wg db down` undoes them.
+- One schema source, `backend/src/worldgraph/schema/types.yaml`: `wg schema sql` prints the registry upserts, `wg seed check` validates the sample data against it, tests check the database matches it, and `wg kg review` writes `docs/kg-review.md`.
+- Checked on a database built with main's code (0020, sample data, pipeline news, a forecast, AI analysis, 4,600 extra stories and 35,000 links): both migrations apply in under a second, the sample data reloads, the pipeline and `api.save_analysis` write again, and the api answers in 50–160 ms. `test_migrations_reversible` runs up, down and up with live-style writes at each head.
+- Next: the screens (property chips, grouped connections, property and relation filters, the schema map), then A3–A5.
+
 ### 22 Oct 2026: website live, QA round 4 fixed, test link v3
 - Website https://worldgraph-kuq2.netlify.app is live on real data (read-only wg_web login, verified TLS, noindex) and auto-deploys from main.
 - QA round 4: all 43 findings fixed (AI budget reserve-then-settle, allow-list gating, India-view names, sample labels everywhere, forecast facts, cascade framing, phone layout, read-only shared data on the test link). Migrations 0015-0020.
