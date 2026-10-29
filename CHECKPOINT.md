@@ -80,6 +80,7 @@ Then fix the remaining items with `worldgraph-qa-fix.js`: the shell agent did no
 | When | Run | Spent | Retained | Lost | Notes |
 | --- | --- | --- | --- | --- | --- |
 | 15 Oct 11:50 UTC limit | QA `wf_fe3c223c-34c` | 7.8 L | 45% | 55% | e2e 100% kept (1,167 lines of tests); correctness reviewer 0% kept (notes were in an ignored folder). Its 2 findings were rescued by hand from its transcript into `orchestration/qa-notes/`. The saver now keeps notes files. |
+| 29 Oct ~07:45 UTC limit | backend 2, screens 1, e2e (lifetime) | 96.7 L | 86% | 14% | screens 100%; backend 2 86% (0024 kept on disk and in wip); e2e 84% (final runs) |
 | 28 Oct 15:50 UTC limit | Phase A backend 2, screens 1, e2e (lifetime) | 68.2 L | 89% | 11% | screens 98%; e2e 94%; backend 2: 0% on GitHub (it was still reading; transcript intact, resumed) |
 | 23 Oct ~14:30 UTC limit | Phase A backend 1, globe A6/A7, e2e (lifetime totals) | 68.6 L | 78% | 22% | backend 97% (saved 14:17); globe 68% (code saved 14:02, later debugging scripts unsaved); e2e 77% (saved 13:47) |
 | 23 Oct 09:40 UTC limit | Phase A backend 1, globe A6/A7, e2e (Agent tool) | 38.6 L | 76% | 24% | backend 1: 0% on GitHub (transcript intact, resumed); globe 99%; e2e 78% |
