@@ -1,7 +1,7 @@
 import { List, Maximize2, Network, SearchX, Shapes, SlidersHorizontal, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { GraphData, RpcArgs, TimeWindow } from "@/api/contract";
+import type { EntityType, GraphData, RpcArgs, TimeWindow } from "@/api/contract";
 import { useRpc } from "@/api/client";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
@@ -25,6 +25,7 @@ import {
   filterGraph,
   GRAPH_TYPES,
   LIMIT_OPTIONS,
+  orderTypes,
   placeCard,
   revealTimes,
   shapeGraph,
@@ -41,6 +42,8 @@ import { GraphLegend } from "./GraphLegend";
 import { GraphList } from "./GraphList";
 import { GraphSearch, type SearchPick } from "./GraphSearch";
 import { GraphTimelapseBar } from "./GraphTimelapseBar";
+import type { SchemaEdge } from "./schema-data";
+import { SchemaView } from "./SchemaView";
 import { useGraphFeatures, useRelationIndex } from "./use-graph-schema";
 import { useElementSize, useGraphTheme } from "./use-graph-theme";
 import { useGraphNav } from "./use-graph-nav";
@@ -80,14 +83,17 @@ export default function GraphView() {
   const scope = useGraphState((s) => s.scope);
   const filters = useGraphState((s) => s.filters);
   const pinned = useGraphState((s) => s.pinned);
-  const mode = useGraphState((s) => s.mode);
+  const chosenMode = useGraphState((s) => s.mode);
   const selectedLinkId = useGraphState((s) => s.selectedLink);
   const navWindow = useNav((s) => s.window);
   const sectors = useNav((s) => s.sectors);
   const minConfidence = useNav((s) => s.minConfidence);
   const features = useGraphFeatures();
   const relations = useRelationIndex(features.relations);
+  // The schema view needs kg.schema_map; without it, the drawing.
+  const mode: GraphMode = chosenMode === "schema" && !features.schemaMap ? "graph" : chosenMode;
   const listView = mode === "list";
+  const schemaView = mode === "schema";
   const top = useNav(currentPanel);
   const sample = useSettings((s) => s.sample);
   const isDesktop = useIsDesktop();
@@ -222,6 +228,20 @@ export default function GraphView() {
   }, [graph]);
 
   const focusNode = (node: VizNode) => useGraphState.getState().pin(node.id);
+  // Schema map taps: a kind lists its things (the table lens after B3); a relation shows in the graph.
+  const openSchemaType = (type: EntityType) => {
+    const state = useGraphState.getState();
+    state.setScope({ kind: "global" });
+    state.setTypes([type]);
+    state.setMode("list");
+  };
+  const openSchemaRelation = (edge: SchemaEdge) => {
+    const state = useGraphState.getState();
+    state.setScope({ kind: "global" });
+    state.setRelations([edge.relation]);
+    state.setTypes(orderTypes([...state.filters.types, edge.src, edge.dst]));
+    state.setMode("graph");
+  };
   // Phase A3 (part 2): the actions under a chosen link's card, e.g. "Why is this here?"
   // for linkTarget(selectedLink) (graph-data.ts). Nothing yet.
   const linkActions = null;
@@ -241,7 +261,7 @@ export default function GraphView() {
 
       {/* The drawing (or the list) fills the screen; controls float over it. */}
       <div ref={boxRef} className="absolute inset-0">
-        {graph && !listView && !empty && (
+        {graph && mode === "graph" && !empty && (
           <div
             role="img"
             aria-label={`Knowledge graph${local && scope.kind === "local" ? ` around ${scope.name}` : ""}: ${description}. Use Find in graph or the list view to explore it with a keyboard.`}
@@ -290,13 +310,13 @@ export default function GraphView() {
         )}
       </div>
 
-      {loading && <GraphSkeleton />}
-      {failed && (
+      {loading && !schemaView && <GraphSkeleton />}
+      {failed && !schemaView && (
         <CenterCard>
           <ErrorState error={query.error!} onRetry={() => void query.refetch()} />
         </CenterCard>
       )}
-      {!loading && !failed && (noTypes || empty) && (
+      {!loading && !failed && !schemaView && (noTypes || empty) && (
         <CenterCard>
           <NothingToShow noTypes={noTypes} local={local} minConfidence={minConfidence} />
         </CenterCard>
@@ -314,7 +334,7 @@ export default function GraphView() {
           <ViewToggle schema={features.schemaMap} />
           {scope.kind === "local" ? <ScopeBar name={scope.name} depth={scope.depth} /> : <WindowSwitch />}
         </div>
-        {graph && !empty && (
+        {graph && !empty && !schemaView && (
           <Summary graph={graph} truncated={truncated} updating={query.isFetching && query.isPlaceholderData} />
         )}
       </div>
@@ -337,7 +357,16 @@ export default function GraphView() {
       )}
 
       {/* The chosen link's card: by the link in the drawing, docked at the bottom in the list. */}
-      {graph && !empty && selectedLink && (mode === "list" || linkCardAt) && (
+      {schemaView && (
+        <SchemaView
+          insetTop={toolbar.height ? toolbar.height + 16 : 72}
+          insetRight={rightInset}
+          onOpenType={openSchemaType}
+          onOpenRelation={openSchemaRelation}
+        />
+      )}
+
+      {graph && !empty && selectedLink && (mode === "list" || (mode === "graph" && linkCardAt)) && (
         <LinkHoverCard
           link={selectedLink}
           at={mode === "list" || !linkCardAt ? "docked" : linkCardAt}
@@ -350,7 +379,7 @@ export default function GraphView() {
       )}
 
       {/* Bottom controls, clear of the app's status pill (bottom left). */}
-      {graph && !empty && !listView && isDesktop && (
+      {graph && !empty && mode === "graph" && isDesktop && (
         <>
           <GraphLegend
             key="desktop"
@@ -383,7 +412,7 @@ export default function GraphView() {
           />
         </>
       )}
-      {graph && !empty && !listView && !isDesktop && (
+      {graph && !empty && mode === "graph" && !isDesktop && (
         <div className="pointer-events-none absolute inset-x-3 z-10 flex items-end gap-2" style={{ bottom: PHONE_STATUS_SPACE }}>
           {timelapse.active ? (
             <GraphTimelapseBar

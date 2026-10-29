@@ -281,6 +281,96 @@ describe("GraphView with named relations and properties", () => {
   });
 });
 
+const PAIRS: SchemaResponse = {
+  ...SCHEMA,
+  relations: SCHEMA.relations.map((r) =>
+    r.key === "located_in"
+      ? { ...r, by_pair: [{ src_type: "organization" as const, dst_type: "region" as const, count: 110 }] }
+      : r.key === "drives"
+        ? { ...r, by_pair: [{ src_type: "story" as const, dst_type: "story" as const, count: 236 }] }
+        : r,
+  ),
+  types: [
+    ...SCHEMA.types,
+    {
+      key: "region",
+      label: "Place",
+      plural: "Places",
+      icon: "map-pin",
+      tone: "type-region",
+      description: "Countries, states and cities.",
+      count: 5317,
+      properties: [],
+    },
+    {
+      key: "story",
+      label: "Story",
+      plural: "Stories",
+      icon: "newspaper",
+      tone: "neutral",
+      description: "News stories.",
+      count: 230,
+      properties: [],
+    },
+  ],
+};
+
+describe("the schema view (kg.schema_map)", () => {
+  beforeEach(() => {
+    mocks.responses.schema = PAIRS;
+  });
+
+  it("is a third view: kinds sized by count and relations labelled with counts, all reachable by keyboard", () => {
+    render(<GraphView />);
+    fireEvent.click(screen.getByRole("radio", { name: "Schema" }));
+    expect(screen.queryByTestId("force-graph")).toBeNull();
+    const map = screen.getByRole("group", { name: "Schema map: 3 kinds of thing and 2 kinds of link between them" });
+    expect(within(map).getByRole("button", { name: "Places: 5,317. List them" })).toBeTruthy();
+    expect(within(map).getByRole("button", { name: "Organisations located in places: 110 links. Show in the graph" })).toBeTruthy();
+    expect(within(map).getByRole("button", { name: "Stories drives stories: 236 links. Show in the graph" })).toBeTruthy();
+  });
+
+  it("opens a kind as a list filtered to it", () => {
+    render(<GraphView />);
+    fireEvent.click(screen.getByRole("radio", { name: "Schema" }));
+    fireEvent.click(screen.getByRole("button", { name: "Organisations: 110. List them" }));
+    expect(useGraphState.getState().mode).toBe("list");
+    expect(useGraphState.getState().filters.types).toEqual(["organization"]);
+    expect(lastArgs("graph")).toMatchObject({ types: ["organization"] });
+  });
+
+  it("opens a relation as the graph filtered to it", () => {
+    render(<GraphView />);
+    fireEvent.click(screen.getByRole("radio", { name: "Schema" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Organisations located in places/ }));
+    expect(useGraphState.getState().mode).toBe("graph");
+    expect(lastArgs("graph")).toMatchObject({ relations: ["located_in"] });
+    expect(screen.getByTestId("force-graph")).toBeTruthy();
+  });
+
+  it("reads as a list on request (and on phones)", () => {
+    render(<GraphView />);
+    fireEvent.click(screen.getByRole("radio", { name: "Schema" }));
+    fireEvent.click(screen.getByRole("button", { name: "Read as a list" }));
+    const kinds = screen.getByRole("region", { name: "Kinds of thing" });
+    expect(within(kinds).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual([
+      "Organisations: 110. List them",
+      "Places: 5,317. List them",
+      "Stories: 230. List them",
+    ]);
+    const links = screen.getByRole("region", { name: "How they link" });
+    expect(within(links).getAllByRole("button")).toHaveLength(2);
+  });
+
+  it("isn't offered while kg.schema_map is off", () => {
+    mocks.responses.meta = { flags: { "kg.relations": true } };
+    useGraphState.getState().setMode("schema");
+    render(<GraphView />);
+    expect(screen.queryByRole("radio", { name: "Schema" })).toBeNull();
+    expect(screen.getByTestId("force-graph")).toBeTruthy();
+  });
+});
+
 describe("trust at a glance in the graph", () => {
   it("marks weak cause-and-effect links with ? in the list", () => {
     mocks.responses.graph = {
