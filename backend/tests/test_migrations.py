@@ -154,6 +154,17 @@ def test_migrations_reversible(scratch_db_url):
         assert _one(conn, "select to_regclass('public.node_type') is null")
         assert _one(conn, "select to_regclass('public.relation_type') is null")
         assert _one(conn, "select to_regclass('public.app_flag') is null")
+        assert _one(conn, "select to_regnamespace('history') is null")
+        assert (
+            _one(
+                conn,
+                """select count(*) from information_schema.columns
+               where table_schema = 'public' and column_name in ('source_id', 'created_by')""",
+            )
+            == 0
+        )
+        assert _one(conn, "select to_regclass('public.evidence_edge_idx') is null")
+        assert _one(conn, "select count(*) from source where id in ('curated', 'crowd-forecasts')") == 0
         assert (
             _one(
                 conn,
@@ -224,6 +235,44 @@ def test_migrations_reversible(scratch_db_url):
         )
         assert wrong == 0
         assert _one(conn, "select polarity from causal_link where dst_story = %s", first["effect"]) == 1
+        # 0023's backfill on rows written before it: sources and creators.
+        assert conn.execute(
+            "select source_id, created_by from node where id = %s", (first["cause"],)
+        ).fetchone() == {"source_id": "gdelt", "created_by": "pipeline:news"}
+        # (write_all saves the news and the AI analysis in one transaction, so
+        # every mention matches analysed_at; in production they are separate runs.)
+        assert {
+            r["created_by"]
+            for r in conn.execute(
+                "select distinct created_by from edge where src = %s and type = 'mentions'",
+                (first["effect"],),
+            ).fetchall()
+        } <= {"pipeline:news", "ai:test-model"}
+        assert (
+            _one(
+                conn,
+                """select created_by from edge
+                   where src = %s and type = 'mentions' and dst = 'commodity:crude-oil'""",
+                first["effect"],
+            )
+            == "ai:test-model"
+        )
+        assert _one(conn, "select created_by from causal_link where dst_story = %s", first["effect"]) == (
+            "ai:test-model"
+        )
+        assert conn.execute(
+            "select source_id, created_by from node where id = %s", (first["forecast"],)
+        ).fetchone() == {"source_id": "manifold", "created_by": "pipeline:forecasts"}
+        assert _one(conn, "select source_id from node where id = 'region:in-gj'") == "natural-earth"
+        assert _one(conn, "select source_id from node where id = 'org:dp-world'") == "curated"
+        # 0024's baseline: history starts now, with a snapshot of the live graph.
+        snapshots = _one(conn, "select count(*) from history.change_log where op = 'snapshot'")
+        assert snapshots == _one(conn, "select count(*) from node where not is_sample") + _one(
+            conn, "select count(*) from edge where not is_sample and type <> 'mentions'"
+        ) + _one(
+            conn, "select count(distinct src) from edge where not is_sample and type = 'mentions'"
+        ) + _one(conn, "select count(*) from causal_link where not is_sample")
+        mark = _one(conn, "select max(id) from history.change_log")
 
         # 4. The sample data loads again and the pipeline and AI analysis write again.
         load_bundle(conn, bundle)
@@ -244,3 +293,16 @@ def test_migrations_reversible(scratch_db_url):
         check("meta", _api(conn, "meta", {}))
         check("schema", _api(conn, "schema", {"sample": True}))
         check("cascade", _api(conn, "cascade", {"id": second["effect"]}))
+        # Provenance and history for what was written after the round trip.
+        check("provenance", _api(conn, "provenance", {"target": "node", "id": second["effect"]}))
+        actors = {
+            r["actor"]
+            for r in conn.execute(
+                "select distinct actor from history.change_log where id > %s", (mark,)
+            ).fetchall()
+        }
+        # the news write declares no actor (the pipeline sets one per job); AI analysis does
+        assert {"pipeline", "ai:test-model"} <= actors
+        at = _one(conn, "select clock_timestamp()::text")
+        as_of = check("graph_as_of", _api(conn, "graph_as_of", {"at": at, "sample": False, "window": "30d"}))
+        assert {second["cause"], second["effect"]} <= {n["id"] for n in as_of["nodes"]}

@@ -758,7 +758,21 @@ export const SchemaResponse = z.object({
       tone: z.string(), // a CSS token in styles/tokens.css: colour = var(--<tone>)
       description: z.string(),
       count: z.number().int().min(0), // nodes of this type (sample ones only with sample data on)
-      properties: z.array(PropertyDef), // in display order
+      // In display order. Since 0025 each also has `coverage` (kg.schema_map):
+      // the share of this type's nodes with a value (0–1; null for derived ones).
+      properties: z.array(PropertyDef.extend({ coverage: Prob.nullable().optional() })),
+      // Since 0025 (kg.schema_map; [] while off): the type's biggest relations,
+      // read from its side ("In sector", "Owned by"), at most 6, biggest first.
+      links: z
+        .array(
+          z.object({
+            relation: z.string(),
+            label: z.string(),
+            direction: RelationDirection,
+            count: z.number().int().min(0),
+          }),
+        )
+        .optional(),
     }),
   ), // in display order
   relations: z.array(
@@ -772,7 +786,7 @@ export const SchemaResponse = z.object({
       src_types: z.array(EntityType), // allowed source types ([] = any)
       dst_types: z.array(EntityType), // allowed target types ([] = any)
       description: z.string(),
-      count: z.number().int().min(0), // links (edges, plus causal links for drives)
+      count: z.number().int().min(0), // links (edges, plus causal links for drives); since 0025 only links shown in the graph (valid today, both ends visible)
       by_pair: z.array(
         z.object({ src_type: EntityType, dst_type: EntityType, count: z.number().int().min(0) }),
       ), // biggest first; [] while kg.schema_map is off

@@ -318,10 +318,13 @@ def bundle_statements(bundle: Bundle) -> list[str]:
 
 
 def load_bundle(conn: psycopg.Connection, bundle: Bundle) -> dict[str, int]:
-    """Replace the sample data in one transaction."""
+    """Replace the sample data in one transaction (the actor is 'seed' while it runs)."""
     with conn.transaction():
+        row = conn.execute("select coalesce(current_setting('wg.actor', true), '') as actor").fetchone()
+        previous = (row["actor"] if isinstance(row, dict) else row[0]) if row else ""
         for stmt in bundle_statements(bundle):
             conn.execute(stmt)
+        conn.execute("select set_config('wg.actor', %s, true)", (previous,))
     return bundle.summary()
 
 
