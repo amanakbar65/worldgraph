@@ -59,8 +59,8 @@ export function GraphFilters({ local }: { local: boolean }) {
     <div className="flex flex-col gap-4">
       {local && (
         <p className="rounded-lg bg-surface-2 px-3 py-2 text-label text-fg-muted">
-          Showing everything linked to this node, at any time. Kinds and confidence apply here; sectors, places and
-          the time window apply to the whole graph.
+          Showing everything linked to this node, at any time. Kinds{features.relations ? ", relations" : ""} and
+          confidence apply here; sectors, places and the time window apply to the whole graph.
         </p>
       )}
 
