@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type { EntityType } from "@/api/contract";
+import type { EntityType, RelationDirection } from "@/api/contract";
 import { useNav, type Panel } from "@/state/nav";
 
 import { useGraphState } from "./graph-state";
@@ -35,10 +35,27 @@ export function useGraphNav() {
         useGraphState.getState().showAround(node, depth);
         setView("graph");
       },
+      /**
+       * The graph around this node, showing only links of one relation in
+       * one direction (an entity page's "See all" for a connection group).
+       */
+      showRelationInGraph: (node: { id: string; name: string }, relation: string, direction: RelationDirection) => {
+        const graph = useGraphState.getState();
+        graph.setRelations([relation]);
+        graph.setDirection(direction);
+        graph.showAround(node, 1);
+        setView("graph");
+      },
       /** The globe, flown to this point. */
       showOnMap: (lon: number, lat: number) => {
         setView("globe");
         flyTo({ lon, lat, zoom: 4 });
+      },
+      /** The globe, flown to this place, with its panel open (a place-valued property). */
+      showPlaceOnMap: (regionId: string) => {
+        setView("globe");
+        open({ kind: "region", id: regionId });
+        flyTo({ regionId });
       },
       ask: (scope: string) => open({ kind: "ask", scope }),
       openBusiness: () => setView("business"),

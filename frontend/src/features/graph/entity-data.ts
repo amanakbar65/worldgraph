@@ -4,10 +4,19 @@
  * backlinks grouped by kind, an indicator's subject, and how an entity
  * touches the viewer's business profile.
  */
-import { Profile, type EntityResponse, type EntityType, type GraphData, type StorySummary } from "@/api/contract";
+import {
+  Profile,
+  type ConnectionGroup,
+  type EntityLink,
+  type EntityResponse,
+  type EntityType,
+  type GraphData,
+  type PropertyValue,
+  type StorySummary,
+} from "@/api/contract";
 import type { Panel } from "@/state/nav";
 
-import { orderTypes, TYPE_NAMES } from "./graph-data";
+import { orderTypes, relationIndex, TYPE_NAMES, type RelationIndex } from "./graph-data";
 
 // ---------------------------------------------------------------------------
 // Which panel
@@ -184,6 +193,119 @@ export function groupBacklinks(backlinks: readonly Backlink[], shownElsewhere: R
       items,
     };
   });
+}
+
+// ---------------------------------------------------------------------------
+// Typed properties (Phase A1, kg.properties)
+// ---------------------------------------------------------------------------
+
+/** A key-fact chip: what it is, its value in words, and the nodes it names (tappable). */
+export interface PropertyChip {
+  key: string;
+  label: string;
+  kind: PropertyValue["kind"];
+  /** The value as the api words it ("Port", "Dubai", "1,200,000 TEU"), with its unit. */
+  display: string;
+  derived: boolean;
+  /** Entity and place values: the nodes they name, one chip each. Null for plain values. */
+  targets: EntityLink[] | null;
+  /** Place values open the map; entity values open their page. */
+  opens: "map" | "page" | null;
+}
+
+/**
+ * The properties as key-fact chips, in the type's order. Numbers carry
+ * their unit (when the api's wording doesn't already); place and entity
+ * values become chips that open the map or the node's page.
+ */
+export function propertyChips(properties: readonly PropertyValue[] | undefined): PropertyChip[] {
+  return (properties ?? [])
+    .filter((p) => p.display.trim() !== "")
+    .map((p) => {
+      const targets = p.entities?.length ? p.entities : p.entity ? [p.entity] : null;
+      const unit = p.unit && p.kind === "number" && !p.display.includes(p.unit) ? p.unit : null;
+      return {
+        key: p.key,
+        label: p.label,
+        kind: p.kind,
+        display: unit ? (unit === "%" ? `${p.display}%` : `${p.display} ${unit}`) : p.display,
+        derived: p.derived,
+        targets: targets && (p.kind === "place" || p.kind === "entity") ? targets : null,
+        opens: targets ? (p.kind === "place" ? "map" : p.kind === "entity" ? "page" : null) : null,
+      };
+    });
+}
+
+/**
+ * The older free-text facts the properties don't already say (matched by
+ * label, ignoring case), so nothing shows twice.
+ */
+export function factsBeyondProperties<F extends { label: string }>(
+  facts: readonly F[],
+  properties: readonly Pick<PropertyValue, "label" | "key">[] | undefined,
+): F[] {
+  if (!properties?.length) return [...facts];
+  const said = new Set(properties.flatMap((p) => [p.label.toLowerCase(), readable(p.key).toLowerCase()]));
+  return facts.filter((f) => !said.has(f.label.trim().toLowerCase()));
+}
+
+// ---------------------------------------------------------------------------
+// Connections grouped by relation (Phase A2, kg.relations)
+// ---------------------------------------------------------------------------
+
+export type ConnectionItem = ConnectionGroup["items"][number];
+
+export interface ShapedConnections {
+  relation: string;
+  /** Read from this entity's side: "Owned by", "Supplies", "Competes with". */
+  label: string;
+  direction: ConnectionGroup["direction"];
+  causal: boolean;
+  /** Every link in the group, less those the page shows elsewhere. */
+  count: number;
+  items: ConnectionItem[];
+  /** Links the api didn't send (it sends at most 12 per group): reached through the graph. */
+  beyond: number;
+}
+
+/**
+ * The entity's links grouped by relation, read from its side, biggest
+ * group first (the api's order). Items the page already shows (its
+ * forecasts, key numbers and news) are left out, and a group with nothing
+ * left goes. A missing label is worded from the relation: its label going
+ * out (or both ways), its inverse coming in.
+ */
+export function shapeConnections(
+  groups: readonly ConnectionGroup[] | undefined,
+  shownElsewhere: ReadonlySet<string> = new Set(),
+  relations: RelationIndex = relationIndex(),
+): ShapedConnections[] {
+  const out: ShapedConnections[] = [];
+  for (const group of groups ?? []) {
+    const seen = new Set<string>();
+    const items = group.items.filter((item) => {
+      if (shownElsewhere.has(item.id) || seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+    const removed = group.items.length - items.length;
+    const count = Math.max(items.length, group.count - removed);
+    if (items.length === 0) continue;
+    const words = relations.get(group.relation);
+    const label =
+      group.label.trim() ||
+      (words ? (group.direction === "in" && !words.symmetric ? words.inverse : words.label) : readable(group.relation));
+    out.push({
+      relation: group.relation,
+      label,
+      direction: group.direction,
+      causal: group.causal,
+      count,
+      items,
+      beyond: Math.max(0, count - items.length),
+    });
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------

@@ -26,11 +26,24 @@ import { Sparkline } from "@/components/Sparkline";
 import { StoryCard } from "@/components/StoryCard";
 import { TimeAgo } from "@/components/TimeAgo";
 import { Button } from "@/components/ui/button";
-import { Chip } from "@/components/ui/chip";
+import { Chip, ChipButton } from "@/components/ui/chip";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
+import { WeakMark } from "@/components/WeakMark";
+import { useFlag } from "@/lib/flags";
 import { formatProbability } from "@/lib/format";
-import { DEFAULT_EVENT_ICON, ENTITY_TYPE_ICONS, EVENT_TYPE_ICONS, IMPACT_ICONS, eventTypeKey } from "@/lib/icons";
-import { entityTypeTone, impactTone } from "@/lib/meaning";
+import { useIsDesktop } from "@/lib/hooks";
+import {
+  DEFAULT_EVENT_ICON,
+  DEFAULT_RELATION_ICON,
+  ENTITY_TYPE_ICONS,
+  EVENT_TYPE_ICONS,
+  IMPACT_ICONS,
+  PROPERTY_KEY_ICONS,
+  PROPERTY_KIND_ICONS,
+  RELATION_ICONS,
+  eventTypeKey,
+} from "@/lib/icons";
+import { entityTypeTone, impactTone, isWeak, WEAK_LINK_LABEL } from "@/lib/meaning";
 import { formatDate } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { useUserValue } from "@/platform/storage";
@@ -38,14 +51,20 @@ import { useNav, type Panel } from "@/state/nav";
 
 import {
   countImpacts,
+  factsBeyondProperties,
   groupBacklinks,
   indicatorSubject,
   kindLine,
   profileRoles,
+  propertyChips,
   readProfile,
   redirectFor,
+  shapeConnections,
   shapeFacts,
+  type ConnectionItem,
   type FactLink,
+  type PropertyChip,
+  type ShapedConnections,
   type ShapedFact,
 } from "./entity-data";
 import { EntityLocalGraph } from "./EntityLocalGraph";
@@ -57,6 +76,8 @@ type Data = EntityResponse;
 const TIMELINE_LIMIT = 5;
 const FORECAST_LIMIT = 3;
 const GROUP_LIMIT = 8;
+/** Phones show fewer chips per relation before "more". */
+const PHONE_GROUP_LIMIT = 4;
 
 /**
  * An entity's page, like a note in a knowledge base: what it is, its key
@@ -102,17 +123,25 @@ export default function EntityPanel({ panel }: { panel: Extract<Panel, { kind: "
 function EntityBody({ data, nav }: { data: Data; nav: GraphNav }) {
   const headingId = useId();
   const { entity, graph } = data;
+  const propertiesOn = useFlag("kg.properties");
+  const relationsOn = useFlag("kg.relations");
   const subject = useMemo(() => indicatorSubject(entity, graph), [entity, graph]);
+  // Typed properties (kg.properties) as chips; the older facts only for what they don't say.
+  const chips = useMemo(() => (propertiesOn ? propertyChips(data.properties) : []), [propertiesOn, data.properties]);
   const facts = useMemo(() => {
-    const shaped = shapeFacts(entity.facts, graph, entity.id);
+    const shaped = shapeFacts(
+      chips.length ? factsBeyondProperties(entity.facts, data.properties) : entity.facts,
+      graph,
+      entity.id,
+    );
     return subject ? [{ label: "Measures", value: subject.name, links: [subject] }, ...shaped] : shaped;
-  }, [entity, graph, subject]);
+  }, [entity, graph, subject, chips.length, data.properties]);
 
   return (
     <article aria-labelledby={headingId} className="flex flex-col gap-6 p-4 pb-8">
       <EntityHeader data={data} nav={nav} headingId={headingId} />
       <ImpactOnYou data={data} nav={nav} />
-      <FactsSection facts={facts} nav={nav} />
+      <FactsSection facts={facts} chips={chips} nav={nav} />
       <NumbersSection data={data} subject={subject} nav={nav} />
       <TimelineSection data={data} nav={nav} />
       <ForecastsSection data={data} nav={nav} />
@@ -124,7 +153,7 @@ function EntityBody({ data, nav }: { data: Data; nav: GraphNav }) {
           onShowInGraph={(depth) => nav.showInGraph(entity, depth)}
         />
       </Section>
-      <LinkedFromSection data={data} nav={nav} />
+      {relationsOn ? <ConnectionsSection data={data} nav={nav} /> : <LinkedFromSection data={data} nav={nav} />}
       <Section icon={NotebookPen} title="Your note">
         <EntityNotes id={entity.id} name={entity.name} onOpen={nav.openNode} />
       </Section>
@@ -299,16 +328,76 @@ function ImpactCount({ impact, n }: { impact: "risk" | "opportunity" | "neutral"
 
 // Facts --------------------------------------------------------------------
 
-function FactsSection({ facts, nav }: { facts: ShapedFact[]; nav: GraphNav }) {
-  if (facts.length === 0) return null;
+function FactsSection({ facts, chips, nav }: { facts: ShapedFact[]; chips: PropertyChip[]; nav: GraphNav }) {
+  if (facts.length === 0 && chips.length === 0) return null;
   return (
     <Section icon={Info} title="Key facts">
-      <dl className="grid grid-cols-[minmax(6rem,auto)_1fr] items-baseline gap-x-4 gap-y-2.5 rounded-xl border border-line p-3">
-        {facts.map((fact) => (
-          <FactRow key={fact.label} fact={fact} onOpen={nav.openNode} />
-        ))}
-      </dl>
+      {chips.length > 0 && (
+        <ul aria-label="Properties" className="flex flex-wrap gap-1.5">
+          {chips.map((chip) => (
+            <PropertyChipView key={chip.key} chip={chip} nav={nav} />
+          ))}
+        </ul>
+      )}
+      {facts.length > 0 && (
+        <dl className="grid grid-cols-[minmax(6rem,auto)_1fr] items-baseline gap-x-4 gap-y-2.5 rounded-xl border border-line p-3">
+          {facts.map((fact) => (
+            <FactRow key={fact.label} fact={fact} onOpen={nav.openNode} />
+          ))}
+        </dl>
+      )}
     </Section>
+  );
+}
+
+/**
+ * One key fact as a chip: icon, label and value. A place opens the map
+ * (flown there, with its panel); an entity opens its page. Several places
+ * or entities: the label once, then a chip for each.
+ */
+function PropertyChipView({ chip, nav }: { chip: PropertyChip; nav: GraphNav }) {
+  const Icon = PROPERTY_KEY_ICONS[chip.key] ?? PROPERTY_KIND_ICONS[chip.kind].icon;
+  const look = "border-line bg-surface-2/70";
+  if (!chip.targets) {
+    return (
+      <li className="max-w-full">
+        <Chip size="md" className={look} title={`${chip.label}: ${chip.display}`}>
+          <Icon aria-hidden className="text-fg-muted" />
+          <span className="shrink-0 font-normal text-fg-muted">{chip.label}</span>
+          <span className="truncate text-fg">{chip.display}</span>
+        </Chip>
+      </li>
+    );
+  }
+  const open = (target: { id: string; type: EntityType }) =>
+    chip.opens === "map" ? nav.showPlaceOnMap(target.id) : nav.openNode(target);
+  const many = chip.targets.length > 1;
+  return (
+    <li className="flex max-w-full flex-wrap items-center gap-1.5">
+      {many && (
+        <span className="inline-flex items-center gap-1 px-1 text-label text-fg-muted">
+          <Icon aria-hidden className="size-3.5" />
+          {chip.label}
+        </span>
+      )}
+      {chip.targets.map((target) => {
+        const tone = entityTypeTone(target.type);
+        const TargetIcon = (ENTITY_TYPE_ICONS[target.type] ?? ENTITY_TYPE_ICONS.story).icon;
+        return (
+          <ChipButton
+            key={target.id}
+            size="md"
+            onClick={() => open(target)}
+            aria-label={`${chip.label}: ${target.name}. ${chip.opens === "map" ? "Show on the map" : `Open ${tone.label.toLowerCase()}`}`}
+            className={cn(look, tone.border, "hover:bg-surface-2")}
+          >
+            <TargetIcon aria-hidden className={tone.text} />
+            {!many && <span className="shrink-0 font-normal text-fg-muted">{chip.label}</span>}
+            <span className="truncate text-fg">{target.name}</span>
+          </ChipButton>
+        );
+      })}
+    </li>
   );
 }
 
@@ -513,6 +602,120 @@ function EntityForecast({
         </div>
       )}
     </div>
+  );
+}
+
+// Links, grouped by relation (kg.relations) -------------------------------------------
+
+/**
+ * Every link, one compact group per relation, read from this page's side
+ * ("Owned by", "Supplies", "Competes with"). What the page shows elsewhere
+ * (its forecasts, key numbers and news) is left out.
+ */
+function ConnectionsSection({ data, nav }: { data: Data; nav: GraphNav }) {
+  const shownElsewhere = useMemo(
+    () =>
+      new Set([
+        ...data.forecasts.map((f) => f.id),
+        ...data.indicators.map((k) => k.id),
+        ...data.timeline.map((s) => s.id),
+      ]),
+    [data.forecasts, data.indicators, data.timeline],
+  );
+  const groups = useMemo(() => shapeConnections(data.connections, shownElsewhere), [data.connections, shownElsewhere]);
+  if (groups.length === 0) return null;
+  return (
+    <Section icon={Link2} title="Links">
+      <div className="flex flex-col gap-3">
+        {groups.map((group) => (
+          <ConnectionGroupRow
+            key={`${group.relation}:${group.direction}`}
+            group={group}
+            entity={data.entity}
+            nav={nav}
+          />
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+function ConnectionGroupRow({
+  group,
+  entity,
+  nav,
+}: {
+  group: ShapedConnections;
+  entity: Data["entity"];
+  nav: GraphNav;
+}) {
+  const [all, setAll] = useState(false);
+  const id = useId();
+  const limit = useIsDesktop() ? GROUP_LIMIT : PHONE_GROUP_LIMIT;
+  const Icon = (RELATION_ICONS[group.relation] ?? DEFAULT_RELATION_ICON).icon;
+  const shown = all ? group.items : group.items.slice(0, limit);
+  const quiet =
+    "relative inline-flex h-6 cursor-pointer items-center rounded-full px-2 text-label font-medium text-fg-muted underline-offset-2 before:absolute before:inset-x-0 before:top-1/2 before:h-10 before:-translate-y-1/2 before:content-[''] hover:text-fg hover:underline";
+  return (
+    <div className="flex flex-col gap-1.5">
+      <h4 id={id} className="flex items-center gap-1.5 text-label text-fg-muted">
+        <Icon aria-hidden className="size-3.5" />
+        <span className="font-medium text-fg">{group.label}</span>
+        <span className="tabular-nums">{group.count}</span>
+      </h4>
+      <ul aria-labelledby={id} className="flex flex-wrap gap-1.5">
+        {shown.map((item) => (
+          <ConnectionChip
+            key={item.id}
+            item={item}
+            // Sample items are marked where the page itself isn't sample data.
+            markSample={item.is_sample && !entity.is_sample}
+            weak={group.causal && isWeak(item.confidence)}
+            onOpen={() => nav.openNode(item)}
+          />
+        ))}
+        {group.items.length > limit && (
+          <li>
+            <button type="button" onClick={() => setAll((v) => !v)} aria-expanded={all} className={quiet}>
+              {all ? "Show fewer" : `${group.items.length - limit} more`}
+            </button>
+          </li>
+        )}
+        {group.beyond > 0 && (all || group.items.length <= limit) && (
+          <li>
+            <button
+              type="button"
+              onClick={() =>
+                nav.showRelationInGraph(entity, group.relation, group.direction === "both" ? "both" : group.direction)
+              }
+              className={quiet}
+            >
+              See all {group.count} in the graph
+            </button>
+          </li>
+        )}
+      </ul>
+    </div>
+  );
+}
+
+function ConnectionChip({
+  item,
+  markSample,
+  weak,
+  onOpen,
+}: {
+  item: ConnectionItem;
+  markSample: boolean;
+  weak: boolean;
+  onOpen: () => void;
+}) {
+  return (
+    <li className="flex max-w-full items-center gap-1">
+      <EntityChip size="sm" entity={item} onClick={onOpen} />
+      {weak && <WeakMark label={WEAK_LINK_LABEL} />}
+      {markSample && <SampleBadge iconOnly />}
+    </li>
   );
 }
 

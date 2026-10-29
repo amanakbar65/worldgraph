@@ -250,8 +250,8 @@ export const PROPERTY_KIND_ICONS: Record<PropertyKind, IconInfo> = {
   entity: { icon: Link, name: "link" },
 };
 
-/** Properties whose meaning has a better icon than their kind's. */
-const PROPERTY_KEY_ICONS: Record<string, LucideIcon> = {
+/** Properties whose meaning has a better icon than their kind's. In JSX: `PROPERTY_KEY_ICONS[key] ?? PROPERTY_KIND_ICONS[kind].icon`. */
+export const PROPERTY_KEY_ICONS: Record<string, LucideIcon> = {
   sector: Layers,
   sectors: Layers,
   headquarters: MapPin,
