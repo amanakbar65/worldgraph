@@ -163,8 +163,8 @@ export function layoutSchema(shape: SchemaShape, box: { width: number; height: n
   const cy = box.height / 2;
   const ring = shape.bubbles.filter((b) => !b.hub);
   const maxR = Math.max(MIN_R, ...shape.bubbles.map((b) => b.r));
-  // Room for loops above and beside the ring (a loop reaches ~70 px past its bubble) and the labels below.
-  const radius = Math.max(80, Math.min(box.width / 2 - maxR - 80, box.height / 2 - maxR - 72));
+  // Room for loops above and beside the ring (two loops reach ~90 px past a big bubble) and the labels below.
+  const radius = Math.max(80, Math.min(box.width / 2 - maxR - 90, box.height / 2 - maxR - 92));
   const bubbles = shape.bubbles.map((b) => {
     if (b.hub) return { ...b, x: round(cx), y: round(cy) };
     const i = ring.indexOf(b);
