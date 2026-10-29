@@ -555,7 +555,7 @@ language sql stable set search_path = public, extensions as $$
                jsonb_agg(jsonb_build_object(
                    'id', id, 'name', name, 'type', type, 'subtype', subtype,
                    'is_sample', is_sample, 'confidence', confidence, 'edge_id', edge_id,
-                   'weak', confidence < 0.5 and api._flag('kg.provenance')) order by rn)
+                   'weak', coalesce(confidence < 0.5, false) and api._flag('kg.provenance')) order by rn)
                    filter (where rn <= p_per) as items
         from ranked
         group by relation, direction

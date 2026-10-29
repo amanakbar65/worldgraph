@@ -204,6 +204,9 @@ export const GraphLink = z.object({
   polarity: Polarity.nullable().optional(), // causal links; null when unknown or not causal
   strength: Prob.nullable().optional(), // causal links: own strength, else confidence; null otherwise
   delayed: z.boolean().nullable().optional(), // causal links: lag_days > 0; null when unknown
+  // Since 0023 (kg.provenance; false while it is off). Edge links also carry
+  // the edge's own confidence in `confidence` when it has one.
+  weak: z.boolean().optional(), // show the "?" badge: confidence < 0.5, or a causal link with no evidence
 });
 export type GraphLink = z.infer<typeof GraphLink>;
 
@@ -236,6 +239,7 @@ export const CascadeLink = z.object({
   polarity: Polarity.nullable().optional(),
   strength: Prob.optional(), // own strength, else confidence
   delayed: z.boolean().nullable().optional(), // lag_days > 0
+  weak: z.boolean().optional(), // since 0023: confidence < 0.5 or no evidence ("?" badge; kg.provenance)
 });
 export type CascadeLink = z.infer<typeof CascadeLink>;
 
@@ -322,6 +326,10 @@ export const ConnectionGroup = z.object({
       subtype: z.string().nullable(),
       is_sample: z.boolean(),
       confidence: Prob.nullable(), // when the link has one
+      // Since 0023: the edge behind this item (api.provenance target "edge"),
+      // and whether to show the "?" badge (confidence < 0.5; kg.provenance).
+      edge_id: z.number().int().optional(),
+      weak: z.boolean().optional(),
     }),
   ), // newest stories first, then the most populous places, then by name
 });
@@ -760,6 +768,55 @@ export const SchemaResponse = z.object({
 export type SchemaResponse = z.infer<typeof SchemaResponse>;
 
 // ---------------------------------------------------------------------------
+// Provenance (migration 0023, kg.provenance): "Why is this here?"
+// ---------------------------------------------------------------------------
+
+export const PROVENANCE_KINDS = [
+  "reported",
+  "inferred",
+  "projected",
+  "conditional",
+  "user",
+  "ai_suggested",
+] as const;
+export const ProvenanceKind = z.enum(PROVENANCE_KINDS);
+export type ProvenanceKind = z.infer<typeof ProvenanceKind>;
+
+/** One thing to cite: an article, an evidence snippet, a provider or the source dataset. */
+export const ProvenanceSource = z.object({
+  name: z.string(), // outlet, provider or dataset: "Reuters", "Natural Earth"
+  url: z.string().nullable(), // null for sample data and sources without a page
+  snippet: z.string().nullable(), // at most one sentence
+  published_at: Iso.nullable(),
+  title: z.string().nullable(), // the article headline (or forecast question), when there is one
+});
+export type ProvenanceSource = z.infer<typeof ProvenanceSource>;
+
+/**
+ * api.provenance({target, id}): where a node, an edge (graph link with
+ * causal false, or a connection's edge_id) or a causal link (causal true,
+ * cascade and globe arcs) comes from.
+ */
+export const ProvenanceResponse = z.object({
+  target: z.enum(["node", "edge", "link"]),
+  id: z.union([Id, z.number().int()]), // node id, or the edge / causal link id
+  title: z.string(), // "DP World operates Jebel Ali Port"; "Cause → effect" for causal links
+  sources: z.array(ProvenanceSource), // most specific first; [] means nothing to cite (weak)
+  source: z
+    .object({ id: z.string(), name: z.string(), url: z.string().nullable(), attribution: z.string() })
+    .nullable(), // the source row it came from (null for causal links: see sources)
+  confidence: Prob.nullable(),
+  kind: ProvenanceKind, // causal links: their link_type
+  added_by: z.string(), // plain words: "News pipeline · AI analysis · 22 Oct"
+  created_by: z.string(), // raw: "pipeline:news", "ai:<model>", "curated", "gazetteer", "sample"…
+  created_at: Iso,
+  updated_at: Iso,
+  is_sample: z.boolean(),
+  weak: z.boolean(), // confidence < 0.5, or nothing to cite: show the "?" badge
+});
+export type ProvenanceResponse = z.infer<typeof ProvenanceResponse>;
+
+// ---------------------------------------------------------------------------
 // The function table
 // ---------------------------------------------------------------------------
 
@@ -784,6 +841,7 @@ export const RESPONSES = {
   pending_analysis: PendingAnalysisResponse,
   save_analysis: SaveAnalysisResponse,
   schema: SchemaResponse,
+  provenance: ProvenanceResponse,
 } as const;
 
 export type RpcName = keyof typeof RESPONSES;
@@ -869,6 +927,8 @@ export interface RpcArgs {
   ask_context: { q: string; limit?: number; sample?: boolean };
   pending_analysis: { limit?: number };
   schema: { sample?: boolean };
+  /** "Why is this here?" (kg.provenance). id: a node id, or an edge / causal link id. */
+  provenance: { target: "node" | "edge" | "link"; id: string | number };
   save_analysis: {
     engine: "artifact" | "api";
     model: string;

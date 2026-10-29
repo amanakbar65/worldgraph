@@ -57,7 +57,9 @@ def migrated_db_url() -> Iterator[str]:
 # new rows get created_by and source_id (migration 0023 refuses rows
 # without them). The real writers name both per row; tests that check them
 # use a plain connection.
-TEST_SESSION_SQL = "select set_config('wg.actor', 'test', false), set_config('wg.source', 'news-feeds', false)"
+TEST_SESSION_SQL = (
+    "select set_config('wg.actor', 'test', false), set_config('wg.source', 'news-feeds', false)"
+)
 
 
 def declared_connect(url: str) -> psycopg.Connection:
