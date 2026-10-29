@@ -86,8 +86,10 @@ describe("EntityPanel key facts from typed properties", () => {
 
   it("gives each of several values its own chip, with the label once", () => {
     renderPanel("infra:jebel-ali-port");
-    expect(screen.getByRole("button", { name: "Sector: Energy. Open sector" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Sector: Logistics and Trade. Open sector" })).toBeTruthy();
+    const facts = screen.getByRole("list", { name: "Properties" });
+    const sectors = within(facts).getByText("Sector").closest("li")!;
+    expect(within(sectors).getByRole("button", { name: "Energy, sector" })).toBeTruthy();
+    expect(within(sectors).getByRole("button", { name: "Logistics and Trade, sector" })).toBeTruthy();
   });
 
   it("keeps the older facts list while kg.properties is off", () => {

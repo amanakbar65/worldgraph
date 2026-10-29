@@ -6,6 +6,7 @@
  */
 import { BaseEdge, EdgeLabelRenderer, type Edge, type EdgeProps } from "@xyflow/react";
 import { Users } from "lucide-react";
+import { useId } from "react";
 
 import { PolarityMark } from "@/components/LinkMarks";
 import { WeakMark } from "@/components/WeakMark";
@@ -22,6 +23,7 @@ export type CascadeFlowEdge = Edge<{ edge: CascadeEdge; laid: LaidOutEdge; direc
 
 export function CascadeEdgeView({ id, sourceX, sourceY, targetX, targetY, data }: EdgeProps<CascadeFlowEdge>) {
   const ui = useCascadeUi();
+  const noteId = useId();
   if (!data) return null;
   const { edge, laid, direction } = data;
   const { link, branch } = edge;
@@ -32,6 +34,9 @@ export function CascadeEdgeView({ id, sourceX, sourceY, targetX, targetY, data }
   const look = edgeLook(link.link_type, link.confidence, link.strength);
   const weak = isWeak(link.confidence);
   const polarity = ui.showPolarity ? polarityInfo(link.polarity) : null;
+  const note = [polarity ? `${capitalise(polarity.word)} what follows.` : "", weak ? `${WEAK_LINK_LABEL}.` : ""]
+    .filter(Boolean)
+    .join(" ");
 
   const touchesHotNode = ui.hotNode !== null && (link.src === ui.hotNode || link.dst === ui.hotNode);
   const hot = ui.hotEdge === id || ui.selectedEdge === id || touchesHotNode;
@@ -61,9 +66,9 @@ export function CascadeEdgeView({ id, sourceX, sourceY, targetX, targetY, data }
           onMouseLeave={() => ui.setHotEdge(null)}
           onFocus={() => ui.setHotEdge(id)}
           onBlur={() => ui.setHotEdge(null)}
-          aria-label={`${linkSummary(link, branch, edge.ai)}${polarity ? ` ${capitalise(polarity.word)} what follows.` : ""}${
-            weak ? ` ${WEAK_LINK_LABEL}.` : ""
-          } Show the evidence.`}
+          aria-label={`${linkSummary(link, branch, edge.ai)} Show the evidence.`}
+          // Polarity and the weak mark are said as the label's description, so its name stays the same.
+          aria-describedby={note ? noteId : undefined}
           aria-pressed={ui.selectedEdge === id}
           style={{ transform: `translate(-50%, -50%) translate(${at.x}px, ${at.y}px)`, zIndex: hot ? 5 : 3 }}
           className={cn(
@@ -77,6 +82,11 @@ export function CascadeEdgeView({ id, sourceX, sourceY, targetX, targetY, data }
             <span className="inline-flex items-center gap-1 rounded-full border border-forecast/40 bg-forecast/12 px-1.5 font-medium whitespace-nowrap text-forecast tabular-nums">
               <Users aria-hidden className="size-3" />
               {branchLabel(branch.outcome, branch.probability)}
+            </span>
+          )}
+          {note && (
+            <span id={noteId} className="sr-only">
+              {note}
             </span>
           )}
           <span className="inline-flex items-center gap-1 leading-tight text-fg">

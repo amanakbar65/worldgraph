@@ -330,6 +330,8 @@ export function openingViewport(
   focus: string,
   box: { width: number; height: number },
   margin = 24,
+  /** Px covered at the bottom (the flow's legend): the story stays clear of it. */
+  bottomInset = 0,
 ): { x: number; y: number; zoom: number } | null {
   if (box.width <= 0 || box.height <= 0) return null;
   const groups = new Map<string, Box>(layout.groups.map((g) => [g.id, g]));
@@ -356,7 +358,8 @@ export function openingViewport(
     const right = (story.x + story.width) * zoom + x;
     const bottom = (story.y + story.height) * zoom + y;
     if (right > box.width - margin) x -= right - (box.width - margin);
-    if (bottom > box.height - margin) y -= bottom - (box.height - margin);
+    const floor = box.height - margin - Math.max(0, bottomInset);
+    if (bottom > floor) y -= bottom - floor;
   }
   return { x, y, zoom };
 }

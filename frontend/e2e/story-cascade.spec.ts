@@ -52,7 +52,8 @@ test.describe("story and cascade", () => {
     page,
     isPhone,
   }, testInfo) => {
-    await openApp(page, `#story=${STORY}`);
+    // Every link, however weak: the shared minimum confidence (50 % by default) set to any (c=0).
+    await openApp(page, `#story=${STORY}&c=0`);
     const cascade = await rpc<Cascade>(page, "cascade", { id: STORY, depth: 2 });
     const story = await rpc<{ causes: number; effects: number }>(page, "story", { id: STORY });
 
@@ -63,7 +64,7 @@ test.describe("story and cascade", () => {
 
     await expect(panel.getByRole("heading", { level: 2, name: HEADLINE })).toBeVisible();
     await expect(panel.getByText(`${cascade.nodes.length - 1} linked stories within 2 steps`)).toBeVisible();
-    await expect.poll(() => currentHash(page)).toBe(`#cascade=${STORY}`);
+    await expect.poll(() => currentHash(page)).toBe(`#cascade=${STORY}&c=0`);
 
     const viewAs = panel.getByRole("radiogroup", { name: "Show the cascade as" });
     // Desktop starts with the flow, phones with the list.
@@ -141,13 +142,9 @@ test.describe("story and cascade", () => {
     isPhone,
   }, testInfo) => {
     test.skip(isPhone, "Phones open the list.");
-    // App bug: openingViewport (src/features/story/cascade-layout.ts) keeps the story a 24 px
-    // margin from the flow's bottom edge, but the diagram key sits over the bottom-left corner
-    // (about 46 px tall with its margin). When the story is pulled up into view there, its last
-    // line ("Risk ▲ · Yemen · 2 d ago") is hidden under the key. Remove test.fail() once the
-    // bottom margin clears the key.
-    test.fail();
-    await openApp(page, `#cascade=${STORY}`);
+    // openingViewport keeps the story clear of the key (CascadeFlow measures it). Every link
+    // shows (c=0), so the story is pulled up into view the way the fixed bug needed.
+    await openApp(page, `#cascade=${STORY}&c=0`);
     const flow = detailsPanel(page).locator(".react-flow");
     await expect(cascadeNodes(page).first()).toBeVisible();
     await page.waitForTimeout(1000);

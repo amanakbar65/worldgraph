@@ -59,7 +59,8 @@ test.describe("graph and entities", () => {
     await expect(card.getByRole("region", { name: /^Crowd forecasts/ })).toContainText(
       "Not facts; for information only.",
     );
-    await expect(card.getByRole("region", { name: "Linked from" })).toBeVisible();
+    // With kg.relations on (the test database), links are grouped by relation under "Links".
+    await expect(card.getByRole("region", { name: "Links" })).toBeVisible();
     await snap(page, testInfo, "entity");
 
     // A fact links to another page.

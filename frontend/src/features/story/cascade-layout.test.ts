@@ -290,3 +290,17 @@ describe("flowPath", () => {
     expect(midpoint({ x: 0, y: 0 }, { x: 100, y: 0 }, [{ x: 40, y: 10 }])).toEqual({ x: 40, y: 10 });
   });
 });
+
+describe("openingViewport and the legend", () => {
+  it("keeps the story clear of a legend over the bottom of the flow", () => {
+    const tall = layoutCascade(shapeCascade(CASCADE), "TB");
+    const box = { width: 390, height: 420 };
+    const plain = openingViewport(tall, null, FOCUS_ID, box);
+    const clear = openingViewport(tall, null, FOCUS_ID, box, 24, 80);
+    expect(plain && clear).toBeTruthy();
+    const story = tall.nodes.get(FOCUS_ID)!;
+    const bottom = (v: { y: number; zoom: number }) => (story.y + story.height) * v.zoom + v.y;
+    expect(bottom(clear!)).toBeLessThanOrEqual(box.height - 24 - 80 + 0.01);
+    expect(bottom(clear!)).toBeLessThanOrEqual(bottom(plain!));
+  });
+});

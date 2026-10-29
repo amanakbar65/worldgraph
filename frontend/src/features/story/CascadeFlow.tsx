@@ -20,7 +20,7 @@ import {
   type NodeTypes,
 } from "@xyflow/react";
 import { Maximize, Minus, Plus, Sparkles, Users } from "lucide-react";
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type Ref } from "react";
 
 import { LinkTypeLabel } from "@/components/ConfidenceMeter";
 import { TrustLegendItems } from "@/components/LinkMarks";
@@ -85,6 +85,7 @@ function FlowCanvas({
   const calm = useCalm();
   const hintId = useId();
   const container = useRef<HTMLDivElement>(null);
+  const legendRef = useRef<HTMLDivElement>(null);
   const [activeNode, setActiveNode] = useState(model.focus);
   const [hotNode, setHotNode] = useState<string | null>(null);
   const [hotEdge, setHotEdge] = useState<string | null>(null);
@@ -117,7 +118,9 @@ function FlowCanvas({
       const rect = container.current?.getBoundingClientRect();
       const box = { width: rect?.width ?? 0, height: rect?.height ?? 0 };
       const plan = fitPlan(model, layout, box, newAi);
-      const opening = openingViewport(layout, plan.ids, model.focus, box);
+      // The legend covers the bottom-left corner: keep the story clear of it.
+      const legend = legendRef.current?.getBoundingClientRect().height ?? 0;
+      const opening = openingViewport(layout, plan.ids, model.focus, box, 24, legend ? legend + 12 : 0);
       const animate = { duration: firstFit.current ? 0 : duration };
       if (opening) void flow.setViewport(opening, animate);
       else
@@ -307,6 +310,7 @@ function FlowCanvas({
           </Panel>
           <Panel position="bottom-left" className="!m-3">
             <Legend
+              ref={legendRef}
               hasBranches={model.groups.some((g) => g.kind === "branch")}
               hasAi={model.nodes.some((n) => n.ai)}
               minConfidence={minConfidence}
@@ -321,11 +325,13 @@ function FlowCanvas({
 
 /** What the line styles mean, with the one trust key every view shares. */
 function Legend({
+  ref,
   hasBranches,
   hasAi,
   minConfidence,
   showPolarity,
 }: {
+  ref?: Ref<HTMLDivElement>;
   hasBranches: boolean;
   hasAi: boolean;
   minConfidence?: number;
@@ -334,6 +340,7 @@ function Legend({
   const item = "inline-flex items-center gap-1.5 text-label whitespace-nowrap text-fg-muted";
   return (
     <div
+      ref={ref}
       role="note"
       aria-label="Legend"
       className="max-w-[calc(100vw-48px)] rounded-lg border border-line bg-glass px-3 py-2 shadow-panel backdrop-blur"

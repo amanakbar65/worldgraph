@@ -405,7 +405,12 @@ function PropertyChipView({ chip, nav }: { chip: PropertyChip; nav: GraphNav }) 
             key={target.id}
             size="md"
             onClick={() => open(target)}
-            aria-label={`${chip.label}: ${target.name}. ${chip.opens === "map" ? "Show on the map" : `Open ${tone.label.toLowerCase()}`}`}
+            aria-label={
+              many
+                ? // The label is said once before the chips; each reads like the app's entity chips.
+                  `${target.name}, ${tone.label.toLowerCase()}`
+                : `${chip.label}: ${target.name}. ${chip.opens === "map" ? "Show on the map" : `Open ${tone.label.toLowerCase()}`}`
+            }
             className={cn(look, tone.border, "hover:bg-surface-2")}
           >
             <TargetIcon aria-hidden className={tone.text} />
