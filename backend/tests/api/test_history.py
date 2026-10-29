@@ -129,7 +129,8 @@ def test_changes_are_logged_with_their_actor(sdb):
         ("edge", "update", "pipeline"),
         ("edge", "delete", "pipeline"),
     ]
-    assert rows[1]["after"]["confidence"] == 0.4 and "confidence" not in rows[1]["before"]
+    # an update's before keeps only what changed (here: no confidence before)
+    assert rows[1]["after"]["confidence"] == 0.4 and rows[1]["before"] == {"confidence": None}
     sdb.execute("delete from node where id = 'org:hist-a'")
     assert log(sdb, "org:hist-a")[-1]["op"] == "delete"
 
@@ -171,15 +172,20 @@ def test_stories_and_mentions_are_logged_per_story(sdb):
             (e["id"], e["dst"]) for e in edges
         ]
     cause, effect = by_time(sdb, stories)
-    # AI analysis: the story's fields change (one row) and its name (one row);
-    # mentions: the dropped sector guess and the new entities, one row each.
+    # AI analysis: the story's fields change (one row); mentions: the dropped
+    # sector guess and the new entities, one row each.
     mark = last_id(sdb)
     save_analysis(sdb, cause, effect)
     rows = log(sdb, effect, mark)
     assert {r["actor"] for r in rows} == {"ai:test-model"}
     node_rows = [r for r in rows if r["entity"] == "node"]
-    assert node_rows and node_rows[0]["after"]["story"]["headline"] == "Freight rates climb at Indian ports"
+    # one row: the story's fields (the node's name follows the headline, not logged again)
+    assert (
+        len(node_rows) == 1
+        and node_rows[0]["after"]["story"]["headline"] == "Freight rates climb at Indian ports"
+    )
     assert node_rows[0]["before"]["story"]["analysis_status"] == "pending"
+    assert "first_seen" not in node_rows[0]["before"]["story"]  # only what changed
     added = [i[1] for r in rows if r["entity"] == "mentions" and r["after"] for i in r["after"]["add"]]
     assert "commodity:crude-oil" in added
     link = one(sdb, "select id from causal_link where dst_story = %s", effect)

@@ -130,6 +130,43 @@ language sql immutable set search_path = pg_catalog as $$
               'props', nullif(p_props, '{}'::jsonb), 'kind', nullif(p_kind, 'reported'))) as x) e
 $$;
 
+-- An update's `before` keeps only what changed (old values; null for a key
+-- the update added), one level deep into a story's fields: the previous
+-- state is after || before. `after` is always the whole state.
+create or replace function history._changed(p_old jsonb, p_new jsonb) returns jsonb
+language plpgsql immutable set search_path = pg_catalog as $$
+declare
+    v_out jsonb;
+    v_story jsonb;
+begin
+    select coalesce(jsonb_object_agg(x.k, p_old -> x.k), '{}'::jsonb) into v_out
+    from (select jsonb_object_keys(p_old) as k union select jsonb_object_keys(p_new)) x
+    where x.k <> 'story' and (p_old -> x.k) is distinct from (p_new -> x.k);
+    if (p_old -> 'story') is distinct from (p_new -> 'story') then
+        if jsonb_typeof(p_old -> 'story') = 'object' and jsonb_typeof(p_new -> 'story') = 'object' then
+            select coalesce(jsonb_object_agg(x.k, p_old -> 'story' -> x.k), '{}'::jsonb) into v_story
+            from (select jsonb_object_keys(p_old -> 'story') as k
+                  union select jsonb_object_keys(p_new -> 'story')) x
+            where (p_old -> 'story' -> x.k) is distinct from (p_new -> 'story' -> x.k);
+        else
+            v_story := coalesce(p_old -> 'story', 'null'::jsonb);
+        end if;
+        v_out := v_out || jsonb_build_object('story', v_story);
+    end if;
+    return v_out;
+end
+$$;
+
+-- The state before an update: its after, with its before laid over.
+create or replace function history._previous(p_after jsonb, p_before jsonb) returns jsonb
+language sql immutable set search_path = pg_catalog as $$
+    select jsonb_strip_nulls(coalesce(p_after, '{}'::jsonb) || coalesce(p_before, '{}'::jsonb)
+           || case when p_after ? 'story' or p_before ? 'story'
+                   then jsonb_build_object('story', coalesce(p_after -> 'story', '{}'::jsonb)
+                                                    || coalesce(p_before -> 'story', '{}'::jsonb))
+                   else '{}'::jsonb end)
+$$;
+
 create or replace function history.log_node() returns trigger
 language plpgsql
 set search_path = public, extensions
@@ -139,8 +176,11 @@ begin
         insert into history.change_log (entity, entity_id, op, after)
         values ('node', new.id, 'insert', history._node_json(new));
     elsif tg_op = 'DELETE' then
+        -- (a deleted story can't be restored: its type and name are enough)
         insert into history.change_log (entity, entity_id, op, before)
-        values ('node', old.id, 'delete', jsonb_strip_nulls(to_jsonb(old) - 'updated_at'));
+        values ('node', old.id, 'delete',
+                case when old.type = 'story' then jsonb_build_object('type', old.type, 'name', old.name)
+                     else jsonb_strip_nulls(to_jsonb(old) - 'updated_at') end);
     elsif new.is_sample then
         -- became sample data: gone from the live graph
         insert into history.change_log (entity, entity_id, op, before)
@@ -148,9 +188,12 @@ begin
     elsif old.is_sample then
         insert into history.change_log (entity, entity_id, op, after)
         values ('node', new.id, 'insert', history._node_json(new));
-    elsif (to_jsonb(old) - 'updated_at') is distinct from (to_jsonb(new) - 'updated_at') then
+    -- (a story's name follows its headline, which the story's row logs)
+    elsif (to_jsonb(old) - 'updated_at' - case when new.type = 'story' then 'name' else '' end)
+          is distinct from (to_jsonb(new) - 'updated_at' - case when new.type = 'story' then 'name' else '' end) then
         insert into history.change_log (entity, entity_id, op, before, after)
-        values ('node', new.id, 'update', history._node_json(old), history._node_json(new));
+        select 'node', new.id, 'update', history._changed(o.j, n.j), n.j
+        from (select history._node_json(old) as j) o, (select history._node_json(new) as j) n;
     end if;
     return null;
 end;
@@ -187,10 +230,10 @@ begin
         values ('node', new.node_id, 'insert', history._node_json(v_node));
     elsif (history._story_json(old) - 'importance') is distinct from (history._story_json(new) - 'importance') then
         insert into history.change_log (entity, entity_id, op, before, after)
-        values ('node', new.node_id, 'update',
-                jsonb_strip_nulls(to_jsonb(v_node) - 'updated_at')
-                    || jsonb_build_object('story', history._story_json(old)),
-                history._node_json(v_node));
+        select 'node', new.node_id, 'update', history._changed(o.j, n.j), n.j
+        from (select jsonb_strip_nulls(to_jsonb(v_node) - 'updated_at')
+                     || jsonb_build_object('story', history._story_json(old)) as j) o,
+             (select history._node_json(v_node) as j) n;
     end if;
     return null;
 end;
@@ -231,7 +274,10 @@ begin
         insert into history.change_log (entity, entity_id, op, before, after)
         values ('edge', new.id::text,
                 case when not v_new_live then 'delete' when not v_old_live then 'insert' else 'update' end,
-                case when v_old_live then jsonb_strip_nulls(to_jsonb(old) - 'updated_at') end,
+                case when not v_old_live then null
+                     when not v_new_live then jsonb_strip_nulls(to_jsonb(old) - 'updated_at')
+                     else history._changed(jsonb_strip_nulls(to_jsonb(old) - 'updated_at'),
+                                           jsonb_strip_nulls(to_jsonb(new) - 'updated_at')) end,
                 case when v_new_live then jsonb_strip_nulls(to_jsonb(new) - 'updated_at') end);
     end if;
     return null;
@@ -266,10 +312,14 @@ begin
         where n.type = 'mentions' and not n.is_sample
         group by n.src;
     elsif tg_op = 'DELETE' then
+        -- When the story itself was deleted, only the ids (nothing to restore).
         insert into history.change_log (entity, entity_id, op, before)
         select 'mentions', o.src, 'delete',
-               jsonb_build_object('remove', jsonb_agg(history._mention_item(
-                   o.id, o.dst, o.created_at, o.confidence, o.valid_from, o.valid_to, o.props, o.kind) order by o.id))
+               jsonb_build_object('remove', case
+                   when exists (select 1 from node sn where sn.id = o.src)
+                   then jsonb_agg(history._mention_item(o.id, o.dst, o.created_at, o.confidence, o.valid_from,
+                                                        o.valid_to, o.props, o.kind) order by o.id)
+                   else jsonb_agg(jsonb_build_array(o.id) order by o.id) end)
         from old_rows o
         where o.type = 'mentions' and not o.is_sample
         group by o.src;
@@ -345,7 +395,9 @@ begin
         values ('causal_link', new.id::text, 'insert', jsonb_strip_nulls(to_jsonb(new) - 'updated_at'));
     elsif (to_jsonb(old) - 'updated_at') is distinct from (to_jsonb(new) - 'updated_at') then
         insert into history.change_log (entity, entity_id, op, before, after)
-        values ('causal_link', new.id::text, 'update', jsonb_strip_nulls(to_jsonb(old) - 'updated_at'),
+        values ('causal_link', new.id::text, 'update',
+                history._changed(jsonb_strip_nulls(to_jsonb(old) - 'updated_at'),
+                                 jsonb_strip_nulls(to_jsonb(new) - 'updated_at')),
                 jsonb_strip_nulls(to_jsonb(new) - 'updated_at'));
     end if;
     return null;
@@ -637,10 +689,10 @@ begin
                               summary = r.summary, qid = r.qid, props = coalesce(r.props, '{}'),
                               properties = coalesce(r.properties, '{}'), source_id = r.source_id,
                               confidence = r.confidence, kind = coalesce(r.kind, 'reported'), updated_at = now()
-            from jsonb_populate_record(null::public.node, c.before - 'story') r
+            from jsonb_populate_record(null::public.node, history._previous(c.after, c.before) - 'story') r
             where n.id = c.entity_id;
             get diagnostics v_count = row_count;
-            if (c.before -> 'story') is distinct from (c.after -> 'story') and c.before ? 'story' then
+            if c.before ? 'story' then
                 update story s set kind = r.kind, headline = r.headline, so_what = r.so_what,
                                    event_type = r.event_type, impact = r.impact, direction = r.direction,
                                    magnitude = r.magnitude, horizon = r.horizon, confidence = r.confidence,
@@ -648,7 +700,7 @@ begin
                                    country_id = r.country_id, admin1_id = r.admin1_id, first_seen = r.first_seen,
                                    analysis_status = r.analysis_status, analysis_engine = r.analysis_engine,
                                    analysis_model = r.analysis_model
-                from jsonb_populate_record(null::public.story, c.before -> 'story') r
+                from jsonb_populate_record(null::public.story, history._previous(c.after, c.before) -> 'story') r
                 where s.node_id = c.entity_id;
                 get diagnostics v_more = row_count;
                 v_count := v_count + v_more;
@@ -672,7 +724,7 @@ begin
             update edge e set src = r.src, dst = r.dst, type = r.type, props = coalesce(r.props, '{}'),
                               valid_from = r.valid_from, valid_to = r.valid_to, source_id = r.source_id,
                               confidence = r.confidence, kind = coalesce(r.kind, 'reported')
-            from jsonb_populate_record(null::public.edge, c.before) r
+            from jsonb_populate_record(null::public.edge, history._previous(c.after, c.before)) r
             where e.id = c.entity_id::bigint;
             get diagnostics v_count = row_count;
         end if;
@@ -697,7 +749,7 @@ begin
             update causal_link cl set link_type = r.link_type, mechanism = r.mechanism, direction = r.direction,
                                       lag_days = r.lag_days, confidence = r.confidence, relation = r.relation,
                                       polarity = r.polarity, strength = r.strength
-            from jsonb_populate_record(null::public.causal_link, c.before) r
+            from jsonb_populate_record(null::public.causal_link, history._previous(c.after, c.before)) r
             where cl.id = c.entity_id::bigint;
             get diagnostics v_count = row_count;
         end if;
