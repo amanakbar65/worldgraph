@@ -75,7 +75,8 @@ function AsOfForm({ requested, onDone }: { requested: string | null; onDone: () 
   };
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3">
+    // noValidate: a day outside history or in the future is pulled inside (clampDay), not refused.
+    <form onSubmit={submit} noValidate className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <p className="font-medium">Show the graph as it was</p>
         <p id={hintId} className="text-label text-fg-muted">
