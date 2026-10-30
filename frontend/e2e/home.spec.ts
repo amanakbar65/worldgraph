@@ -156,13 +156,8 @@ test.describe("the logo is Home", () => {
     });
 
     test("from another screen it lands on the globe turning", async ({ page }) => {
-      // App bug: from another screen the logo mounts the globe, and GlobeView asks for the home
-      // flight on its first animation frame, before the new map has loaded. GlobeMap gives the turn
-      // `allowed: !calm && loaded` (src/features/globe/GlobeMap.tsx), so IdleSpin.home()
-      // (src/features/globe/idle-spin.ts) sees allowed = false, sets mode "still" and the request
-      // is lost: the globe lands home but never turns. Remove test.fail() once a home request made
-      // before the map loads is kept until it does.
-      test.fail();
+      // From another screen the logo mounts the globe, and GlobeView asks for the home flight
+      // before the new map has loaded: the turn waits for the map (IdleSpin keeps the request).
       await openApp(page);
       await goToView(page, "brief");
       await expect(page.locator("main h1")).toHaveText("Daily brief");

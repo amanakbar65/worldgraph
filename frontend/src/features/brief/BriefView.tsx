@@ -132,7 +132,7 @@ export default function BriefView() {
           <ErrorState error={query.error} onRetry={() => void query.refetch()} />
         )}
         {!brief && !query.isError && (
-          <div aria-busy="true" aria-label="Loading the brief">
+          <div role="status" aria-busy="true" aria-label="Loading the brief">
             <BriefSkeleton />
           </div>
         )}

@@ -816,7 +816,7 @@ function BacklinkGroupRow({
 
 function EntitySkeleton() {
   return (
-    <div className="flex flex-col gap-6 p-4" aria-busy="true" aria-label="Loading">
+    <div role="status" className="flex flex-col gap-6 p-4" aria-busy="true" aria-label="Loading">
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
           <Skeleton className="size-10 rounded-xl" />

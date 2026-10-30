@@ -197,12 +197,8 @@ test.describe("Sample data at its default (a first-time viewer)", () => {
   });
 
   test("the status doesn't say sample data is showing", async ({ page }, testInfo) => {
-    // App bug: StatusBar (src/app/StatusBar.tsx) labels the data "Sample data" whenever api.meta
-    // says showing_sample, but meta answers for the "auto" setting (it takes no `sample`
-    // argument). With Sample data off and no live news yet, every screen is empty, as it should
-    // be, and the pill still says "Sample data". Remove test.fail() once the pill follows the
-    // viewer's setting (e.g. showing_sample only counts when Sample data isn't off).
-    test.fail();
+    // api.meta answers for the "auto" setting (it takes no `sample` argument), so its
+    // showing_sample counts only while Sample data isn't off (src/app/StatusBar.tsx).
     await openApp(page);
     await expect(page.locator("main").getByText("Nothing in the last 7 days")).toBeVisible();
     await snap(page, testInfo, "sample-default-status");

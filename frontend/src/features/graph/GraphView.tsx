@@ -737,7 +737,7 @@ function GraphSkeleton() {
     [44, 24, 20],
   ];
   return (
-    <div className="absolute inset-0" aria-busy="true" aria-label="Loading the graph">
+    <div role="status" className="absolute inset-0" aria-busy="true" aria-label="Loading the graph">
       {dots.map(([x, y, s], i) => (
         <Skeleton
           key={i}

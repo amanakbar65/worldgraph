@@ -5,6 +5,7 @@ import { Drawer } from "vaul";
 import { usePanelFocus } from "./panel-focus";
 import { openingSnap, SNAP_POINTS } from "./panel-snap";
 import { PANEL_COMPONENTS, WIDE_PANELS } from "./registry";
+import { leaveEscapeToApp } from "./use-escape";
 import { useIsDesktop } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { currentPanel, useNav, type Panel } from "@/state/nav";
@@ -20,7 +21,7 @@ function PanelContent({ panel }: { panel: Panel }) {
 
 export function PanelSkeleton() {
   return (
-    <div className="space-y-3 p-4" aria-busy="true" aria-label="Loading">
+    <div role="status" className="space-y-3 p-4" aria-busy="true" aria-label="Loading">
       <div className="h-6 w-2/3 animate-pulse rounded bg-surface-2" />
       <div className="h-4 w-full animate-pulse rounded bg-surface-2" />
       <div className="h-4 w-5/6 animate-pulse rounded bg-surface-2" />
@@ -94,6 +95,19 @@ export function PanelHost() {
     scroller.current?.scrollTo({ top: 0 });
   }, [panel]);
 
+  // Phones: the sheet isn't modal, but vaul's Radix dialog still turns
+  // pointer events off on <body> when the sheet opens from app state (vaul
+  // turns them back on only when it opens the sheet itself), so nothing
+  // outside the sheet would take a tap. Turn them back on once it is open.
+  const sheetOpen = !isDesktop && panel !== null;
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const frame = requestAnimationFrame(() => {
+      if (document.body.style.pointerEvents === "none") document.body.style.pointerEvents = "";
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [sheetOpen, panel]);
+
   // Phones: Ask and the cascade open at full height; other panels open at
   // half height and then keep whatever height the viewer dragged to.
   useEffect(() => {
@@ -141,6 +155,9 @@ export function PanelHost() {
           // usePanelFocus moves focus in and gives it back (Radix would drop it on <body>).
           onOpenAutoFocus={(e) => e.preventDefault()}
           onCloseAutoFocus={(e) => e.preventDefault()}
+          // Escape is the app's: useEscapeClosesPanel steps back one panel, and a
+          // drawer inside a panel (the cascade's evidence) closes only itself.
+          onEscapeKeyDown={leaveEscapeToApp}
           className="fixed inset-x-0 bottom-0 z-40 flex h-[94dvh] flex-col rounded-t-2xl border-t border-line bg-surface shadow-panel outline-none"
         >
           <Drawer.Title className="sr-only">Details</Drawer.Title>

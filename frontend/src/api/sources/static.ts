@@ -35,6 +35,12 @@ export class StaticSource implements DataSource {
     const snapshot = await loadSnapshot();
     return snapshot.data.size > 0 && snapshotAllowed(snapshot.kind, useSettings.getState().sample);
   }
+
+  /** Whether the snapshot holds a valid answer to this call. */
+  async has<N extends RpcName>(name: N, args: RpcArgs[N]): Promise<boolean> {
+    const snapshot = await loadSnapshot();
+    return snapshot.data.has(snapshotKey(name, args));
+  }
 }
 
 /**

@@ -108,7 +108,7 @@ function MoverRows({
 
 function Loading({ rows = 5 }: { rows?: number }) {
   return (
-    <div aria-busy="true" aria-label="Loading the top stories" className="flex flex-col gap-4 p-2">
+    <div role="status" aria-busy="true" aria-label="Loading the top stories" className="flex flex-col gap-4 p-2">
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex items-center gap-3">
           <Skeleton className="size-9 rounded-lg" />

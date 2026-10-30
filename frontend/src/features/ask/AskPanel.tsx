@@ -541,7 +541,7 @@ function Suggestions({
   const sectors: readonly SectorId[] = useProfileSectors();
   if (loading) {
     return (
-      <div className="flex flex-col gap-2" aria-busy="true" aria-label="Loading suggestions">
+      <div role="status" className="flex flex-col gap-2" aria-busy="true" aria-label="Loading suggestions">
         {[0, 1, 2].map((i) => (
           <Skeleton key={i} className="h-10 w-full rounded-lg" />
         ))}

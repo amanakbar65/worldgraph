@@ -162,7 +162,7 @@ function Movers({
         description={sectors.length > 0 ? "Within your sector lens." : "Where the crowd changed its mind most since yesterday."}
       />
       {movers === null ? (
-        <div aria-busy="true" aria-label="Loading the biggest moves" className="grid gap-3 @4xl:grid-cols-3">
+        <div role="status" aria-busy="true" aria-label="Loading the biggest moves" className="grid gap-3 @4xl:grid-cols-3">
           {[0, 1, 2].map((i) => (
             <div
               key={i}
@@ -512,7 +512,7 @@ function NoForecasts({ active, includeThin, onClear }: { active: boolean; includ
 
 function ListSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading forecasts" className="flex flex-col p-1.5">
+    <div role="status" aria-busy="true" aria-label="Loading forecasts" className="flex flex-col p-1.5">
       {Array.from({ length: 6 }, (_, i) => (
         <div key={i} className="flex items-center gap-4 px-3 py-3">
           <Skeleton className="size-11 shrink-0 rounded-full" />

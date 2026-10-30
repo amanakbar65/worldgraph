@@ -50,16 +50,19 @@ export function isConnectionFailure(error: unknown): error is DataError {
   );
 }
 
-/** A snapshot that can say whether this viewer may see it (StaticSource). */
+/** A snapshot that can say whether this viewer may see it, and what it holds (StaticSource). */
 export interface SnapshotSource extends DataSource {
   available(): Promise<boolean>;
+  /** Does it hold the answer to this call? */
+  has<N extends RpcName>(name: N, args: RpcArgs[N]): Promise<boolean>;
 }
 
 /**
  * Try the live source; when it can't run in this view, use the snapshot if
  * this viewer may see it (a sample one only with Sample data on). If not,
- * the call fails with the live source's own reason, so each screen says
- * what's wrong and offers its retry instead of showing invented stories.
+ * or the snapshot doesn't hold this call (a story, say), the call fails
+ * with the live source's own reason, so each screen says what's wrong and
+ * offers its fix and retry instead of showing invented stories.
  */
 export class LiveWithSnapshot implements DataSource {
   readonly kind = "connector" as const;
@@ -80,6 +83,7 @@ export class LiveWithSnapshot implements DataSource {
           throw error;
         }
         useConnection.getState().set({ status: "snapshot", reason: error });
+        if (!(await this.snapshot.has(name, args))) throw error;
         return this.snapshot.call(name, args, options);
       }
       if (isConnectionFailure(error)) useConnection.getState().set({ status: "error", reason: error });
