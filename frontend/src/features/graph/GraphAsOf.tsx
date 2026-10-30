@@ -1,4 +1,4 @@
-import { CalendarClock, History, Undo2 } from "lucide-react";
+import { CalendarClock, Undo2 } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 
 import { EmptyState } from "@/components/EmptyState";
@@ -86,7 +86,7 @@ function AsOfForm({ requested, onDone }: { requested: string | null; onDone: () 
       </div>
       <div className="flex items-center gap-2">
         <label htmlFor={inputId} className="sr-only">
-          Day
+          Day to show
         </label>
         <input
           id={inputId}
@@ -127,21 +127,38 @@ function AsOfForm({ requested, onDone }: { requested: string | null; onDone: () 
  * back to now. With sample data or a snapshot (a deep link from someone
  * else, say) it says the day can't be shown here and shows now instead.
  */
-export function AsOfBanner({ asOf, loading }: { asOf: AsOfState; loading: boolean }) {
+export function AsOfBanner({
+  asOf,
+  loading,
+  error = null,
+}: {
+  asOf: AsOfState;
+  /** The day's graph is on its way. */
+  loading: boolean;
+  /** The day's graph didn't come (the screen shows why). */
+  error?: Error | null;
+}) {
   const setAsOf = useNav((s) => s.setAsOf);
   const { requested, unavailable, waiting } = asOf;
   // Without kg.history (once api.meta has said so) there is no "as of" at all.
   if (!requested || (!asOf.enabled && !waiting)) return null;
   const day = formatDay(requested);
   const off = unavailable !== null;
-  loading ||= waiting;
+  const busy = loading || waiting;
+  const note = busy
+    ? "Loading…"
+    : error
+      ? historyStartFromError(error)
+        ? "before history starts"
+        : "couldn't load"
+      : "what WorldGraph knew then";
   return (
     <div
       data-testid="as-of-banner"
       className="flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-fg py-1 pr-1 pl-2.5 text-bg shadow-panel"
     >
-      <History aria-hidden className="size-4 shrink-0" />
-      <p className="min-w-0 text-label">
+      <CalendarClock aria-hidden className="size-4 shrink-0" />
+      <p className="min-w-0 flex-1 text-label">
         {off ? (
           <>
             <span className="font-semibold">Can't show {day}</span>
@@ -150,7 +167,8 @@ export function AsOfBanner({ asOf, loading }: { asOf: AsOfState; loading: boolea
         ) : (
           <>
             <span className="font-semibold">As of {day}</span>
-            <span className="opacity-80"> · {loading ? "Loading…" : "what WorldGraph knew then"}</span>
+            {/* On phones only what needs saying: loading, or why nothing shows. */}
+            <span className={cn("opacity-80", !busy && !error && "hidden sm:inline")}> · {note}</span>
           </>
         )}
       </p>
@@ -164,7 +182,7 @@ export function AsOfBanner({ asOf, loading }: { asOf: AsOfState; loading: boolea
         Back to now
       </Button>
       <span className="sr-only" role="status" aria-live="polite">
-        {off ? `Can't show ${day}; showing now.` : loading ? "" : `Showing the graph as of ${day}.`}
+        {off ? `Can't show ${day}; showing now.` : busy || error ? "" : `Showing the graph as of ${day}.`}
       </span>
     </div>
   );

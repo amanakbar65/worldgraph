@@ -51,13 +51,15 @@ export function UndoShortcuts() {
 export interface UndoRedoButtonsProps {
   /** Which edits these buttons act on (a page's own, say); all by default. */
   scope?: UndoScope;
-  /** Read in the buttons' names: "Undo note change". */
+  /** Read in the group's name and when there is nothing to do: "Nothing to undo in this note". */
   noun?: string;
+  /** Icons only (tight rows); the words stay in the names and tooltips. */
+  compact?: boolean;
   className?: string;
 }
 
 /** Undo and Redo for the viewer's own edits, shown where the edits happen. */
-export function UndoRedoButtons({ scope, noun, className }: UndoRedoButtonsProps) {
+export function UndoRedoButtons({ scope, noun, compact = false, className }: UndoRedoButtonsProps) {
   const toUndo = useUndo((s) => nextUndo(s, scope));
   const toRedo = useUndo((s) => nextRedo(s, scope));
   useEffect(() => void loadUndoLog(), []);
@@ -67,27 +69,27 @@ export function UndoRedoButtons({ scope, noun, className }: UndoRedoButtonsProps
     <div role="group" aria-label={noun ? `Undo and redo ${noun}` : "Undo and redo"} className={cn("flex items-center", className)}>
       <Button
         variant="ghost"
-        size="sm"
-        className="px-2"
+        size={compact ? "icon" : "sm"}
+        className={compact ? undefined : "px-2"}
         disabled={!toUndo}
         onClick={() => void undo(scope)}
         aria-label={undoName}
         title={undoName}
       >
         <Undo2 aria-hidden />
-        Undo
+        {!compact && "Undo"}
       </Button>
       <Button
         variant="ghost"
-        size="sm"
-        className="px-2"
+        size={compact ? "icon" : "sm"}
+        className={compact ? undefined : "px-2"}
         disabled={!toRedo}
         onClick={() => void redo(scope)}
         aria-label={redoName}
         title={redoName}
       >
         <Redo2 aria-hidden />
-        Redo
+        {!compact && "Redo"}
       </Button>
     </div>
   );

@@ -340,7 +340,11 @@ export default function GraphView() {
           {asOf.enabled && !schemaView && <AsOfControl asOf={asOf} />}
         </div>
         {!schemaView && (
-          <AsOfBanner asOf={asOf} loading={!!asOf.day && query.isFetching && (query.isPlaceholderData || !query.data)} />
+          <AsOfBanner
+            asOf={asOf}
+            loading={!!asOf.day && query.isFetching && (query.isPlaceholderData || !query.data)}
+            error={asOf.day ? query.error : null}
+          />
         )}
         {graph && !empty && !schemaView && (
           <Summary

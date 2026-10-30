@@ -126,7 +126,7 @@ export function EntityNotes({ id, name, onOpen }: EntityNotesProps) {
             {near && <span className="text-fg-subtle"> · {NOTE_MAX - draft.length} characters left</span>}
           </span>
         </div>
-        <UndoRedoButtons scope={scope} noun="this note" className="-mr-2 ml-auto" />
+        <UndoRedoButtons scope={scope} noun="this note" compact className="-my-1 -mr-2 ml-auto" />
       </div>
       {links.length > 0 && (
         <div className="flex flex-col gap-1.5 border-t border-line pt-2">
