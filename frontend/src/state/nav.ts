@@ -15,7 +15,10 @@ export type Panel =
   | { kind: "forecast"; id: string }
   | { kind: "compare"; ids: string[] }
   | { kind: "ask"; q?: string; scope?: string }
-  | { kind: "settings" };
+  | { kind: "settings" }
+  // "Why is this here?" (kg.provenance): where a node, an edge or a cause-and-effect link
+  // comes from (api.provenance). `id` is the node id, or the edge / causal link id.
+  | { kind: "why"; target: "node" | "edge" | "link"; id: string };
 
 /**
  * The one minimum-confidence setting (Phase A3): links and items less sure
@@ -62,7 +65,26 @@ const samePanel = (a: Panel, b: Panel) => JSON.stringify(a) === JSON.stringify(b
 // minimum confidence live in the URL hash (only bare #anchors survive inside
 // claude.ai), e.g.
 //   #globe   #story=story:abc   #region=region:in-gj&w=24h   #graph&s=energy&c=0.7
+//   #why=org:dp-world   #why=edge-5326   #why=link-12   ("Why is this here?")
 // ---------------------------------------------------------------------------
+
+/** The "Why is this here?" panel for a node id, or an edge or causal link id (keys in this order). */
+export function whyPanel(target: "node" | "edge" | "link", id: string | number): Extract<Panel, { kind: "why" }> {
+  return { kind: "why", target, id: String(id) };
+}
+
+/** Its part of a link: the node id, or "edge-<id>" / "link-<id>". */
+function whyPart(panel: Extract<Panel, { kind: "why" }>): string {
+  return `why=${panel.target === "node" ? panel.id : `${panel.target}-${panel.id}`}`;
+}
+
+function parseWhy(raw: string): Extract<Panel, { kind: "why" }> | null {
+  const value = decode(raw);
+  if (!value) return null;
+  const numbered = /^(edge|link)-(\d{1,15})$/.exec(value);
+  if (numbered) return whyPanel(numbered[1] as "edge" | "link", numbered[2]!);
+  return NODE_ID.test(value) ? whyPanel("node", value) : null;
+}
 
 /** The part of the navigation state that a link carries. */
 export interface LinkState {
@@ -148,6 +170,12 @@ export function parseHash(hash: string): LinkState | null {
     } else if (key === "settings" && eq === -1) {
       state.panel = { kind: "settings" };
       recognised = true;
+    } else if (key === "why") {
+      const why = parseWhy(raw);
+      if (why) {
+        state.panel = why;
+        recognised = true;
+      }
     } else if (key === "ask") {
       const q = eq === -1 ? null : decodeText(raw);
       ask = { ...(ask ?? {}), ...(q ? { q: q.slice(0, 300) } : {}) };
@@ -167,6 +195,8 @@ function panelPart(panel: Panel): string {
       return `compare=${panel.ids.join(",")}`;
     case "settings":
       return "settings";
+    case "why":
+      return whyPart(panel);
     case "ask": {
       const parts = [panel.q ? `ask=${encodeText(panel.q)}` : "ask"];
       if (panel.scope) parts.push(`scope=${panel.scope}`);

@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 /**
  * A loading placeholder in the shape of what is coming (never a spinner).
  * The shimmer stops under reduced motion. Mark the loading region itself
- * with aria-busy; skeletons are hidden from screen readers.
+ * with aria-busy (a role="status" block with a label such as "Loading");
+ * skeletons are hidden from screen readers.
  */
 function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
   return (

@@ -20,7 +20,7 @@ import type {
   SectorId,
   TimeWindow,
 } from "@/api/contract";
-import { isWeak, polarityInfo, WEAK_LINK_LABEL } from "@/lib/meaning";
+import { isWeak, polarityInfo, showsWeak, WEAK_LINK_LABEL } from "@/lib/meaning";
 import { MIN_CONFIDENCE } from "@/state/nav";
 
 import { nodeColorVar } from "./graph-colors";
@@ -360,6 +360,8 @@ export interface VizLink {
   delayed: boolean | null;
   /** The api's id: the edge id, or the causal_link id for cause and effect (for "Why is this here?"). */
   apiId: number | null;
+  /** Wears the "?" mark: under 50 % sure, or nothing to cite (lib/meaning showsWeak). */
+  weak: boolean;
 }
 
 /**
@@ -476,6 +478,7 @@ export function shapeGraph(data: GraphData, options: { focusId?: string | null }
       strength: causal ? (l.strength ?? null) : null,
       delayed: causal ? (l.delayed ?? null) : null,
       apiId: l.id ?? null,
+      weak: showsWeak(l, causal),
     });
     neighbours.get(l.source)!.add(l.target);
     neighbours.get(l.target)!.add(l.source);
@@ -776,8 +779,10 @@ export function describeLink(link: VizLink, index: RelationIndex | null, byId?: 
   if (link.linkType) {
     text += ` ${link.linkType.charAt(0).toUpperCase()}${link.linkType.slice(1)}`;
     text += link.confidence !== null ? `, confidence ${Math.round(link.confidence * 100)}%.` : ", confidence unknown.";
-    if (isWeak(link.confidence)) text += ` ${WEAK_LINK_LABEL}.`;
+  } else if (link.confidence !== null) {
+    text += ` Confidence ${Math.round(link.confidence * 100)}%.`;
   }
+  if (link.weak || (link.linkType && isWeak(link.confidence))) text += ` ${WEAK_LINK_LABEL}.`;
   return text;
 }
 

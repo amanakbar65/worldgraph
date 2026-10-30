@@ -77,6 +77,19 @@ export function TrustSwatch({ kind }: { kind: "width" | "opacity" }) {
 }
 
 /**
+ * The "?" row of the one trust legend on its own, for lists and pages that
+ * show "?" marks without drawing lines (entity links, the graph's list).
+ */
+export function WeakLegend({ className }: { className?: string }) {
+  return (
+    <p className={cn("flex items-center gap-1.5 text-label text-fg-muted", className)}>
+      <WeakMark />
+      {TRUST_LEGEND.weak}
+    </p>
+  );
+}
+
+/**
  * The trust part of every legend, in the same words everywhere
  * (TRUST_LEGEND): thicker is stronger, fainter is less certain, "?" is weak.
  * Renders list items; the caller supplies the list.

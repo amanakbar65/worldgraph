@@ -31,7 +31,7 @@ interface GraphState {
   /**
    * The link tapped in the drawing or chosen in the list (a VizLink id,
    * "source|target|type"). Its card shows the relation, polarity and
-   * confidence; Phase A3 opens "Why is this here?" from it.
+   * confidence, and "Why is this here?" opens from it (kg.provenance).
    */
   selectedLink: string | null;
   setScope: (scope: GraphScope) => void;

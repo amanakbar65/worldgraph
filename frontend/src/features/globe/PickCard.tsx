@@ -7,12 +7,15 @@ import { ForecastRow } from "@/components/ForecastRow";
 import { ImpactBadge } from "@/components/ImpactBadge";
 import { StoryCard } from "@/components/StoryCard";
 import { Button } from "@/components/ui/button";
+import { WeakMark } from "@/components/WeakMark";
+import { useWhyAvailable } from "@/features/provenance/use-why";
+import { WhyButton } from "@/features/provenance/WhyButton";
 import { IMPACT_ICONS } from "@/lib/icons";
-import { IMPACT_TONES, WEAK_CONFIDENCE, balanceLean } from "@/lib/meaning";
+import { IMPACT_TONES, WEAK_LINK_LABEL, balanceLean } from "@/lib/meaning";
 import { cn } from "@/lib/utils";
 
 import type { PickInfo } from "./GlobeMap";
-import { GLASS, WeakMark } from "./GlobeControls";
+import { GLASS } from "./GlobeControls";
 import {
   arcTrust,
   countryName,
@@ -82,6 +85,13 @@ export function BalanceLine({ score }: { score: number }) {
   );
 }
 
+/** A cascade arc in words, for its "Why is this here?" button: "Cause, leads to, effect". */
+function arcWords(arc: Extract<PickInfo, { kind: "arc" }>["arc"], context: PickContext): string {
+  const src = context.eventsById.get(arc.src_story)?.headline ?? "An earlier story";
+  const dst = context.eventsById.get(arc.dst_story)?.headline ?? "a later story";
+  return `${src}, leads to, ${dst}`;
+}
+
 function Hint({ icon: Icon, children }: { icon: typeof ArrowRight; children: ReactNode }) {
   return (
     <p className="flex items-center gap-1.5 border-t border-line px-3 py-2 text-label text-fg-subtle">
@@ -135,7 +145,7 @@ export function PickContent({
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-label font-medium text-fg-muted">Cascade link</span>
               <ConfidenceMeter confidence={arc.confidence} linkType={arc.link_type} />
-              {weak && <WeakMark label={`Weak link: under ${Math.round(WEAK_CONFIDENCE * 100)}% sure`} />}
+              {weak && <WeakMark label={WEAK_LINK_LABEL} />}
             </div>
             <ol className="flex flex-col gap-1 text-body">
               <li className="flex min-w-0 flex-col">
@@ -254,6 +264,7 @@ export function SelectionCard({
   className?: string;
 }) {
   const openLabel = info.kind === "arc" ? "See the cascade" : info.kind === "forecast" ? "Details" : "Open";
+  const whyOn = useWhyAvailable();
   return (
     <section
       aria-label="Selected on the globe"
@@ -271,7 +282,17 @@ export function SelectionCard({
           <X aria-hidden />
         </Button>
       </div>
-      <div className="flex justify-end border-t border-line p-2">
+      <div className="flex flex-wrap justify-end gap-2 border-t border-line p-2">
+        {info.kind === "arc" && whyOn && (
+          // Where this cause-and-effect link comes from; Back returns to this card.
+          <WhyButton
+            target="link"
+            id={info.arc.id}
+            subject={arcWords(info.arc, context)}
+            weak={arcTrust(info.arc).weak}
+            className="h-10"
+          />
+        )}
         <Button size="sm" className="h-10" onClick={onOpen}>
           {openLabel}
           <ArrowRight aria-hidden />
