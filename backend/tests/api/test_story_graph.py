@@ -157,7 +157,8 @@ def assert_graph_consistent(data: dict[str, Any]) -> set[str]:
     degree: Counter[str] = Counter()
     for link in data["links"]:
         assert link["source"] in node_ids and link["target"] in node_ids
-        assert (link["confidence"] is not None) == link["causal"]
+        # causal links always carry confidence; edges only when they have one (0023)
+        assert link["confidence"] is not None or not link["causal"]
         degree[link["source"]] += 1
         degree[link["target"]] += 1
     for node in data["nodes"]:

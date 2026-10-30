@@ -160,6 +160,9 @@
               "boolean",
               "null"
             ]
+          },
+          "weak": {
+            "type": "boolean"
           }
         },
         "required": [

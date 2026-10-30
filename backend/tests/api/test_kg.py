@@ -174,13 +174,21 @@ def test_connections_read_from_each_side(sdb):
     assert [i["id"] for i in dp[("operates", "out")]["items"]] == ["infra:jebel-ali-port"]
     port = groups(call(sdb, "entity", {"id": "infra:jebel-ali-port"}))
     assert port[("operates", "in")]["label"] == "Operated by"
-    assert port[("operates", "in")]["items"][0] == {
+    item = port[("operates", "in")]["items"][0]
+    assert item == {
         "id": "org:dp-world",
         "name": "DP World",
         "type": "organization",
         "subtype": "company",
         "is_sample": False,
         "confidence": None,
+        "edge_id": item["edge_id"],
+        "weak": False,
+    }
+    assert sdb.execute("select src, dst, type from edge where id = %s", (item["edge_id"],)).fetchone() == {
+        "src": "org:dp-world",
+        "dst": "infra:jebel-ali-port",
+        "type": "operates",
     }
     oil = groups(call(sdb, "entity", {"id": "commodity:crude-oil"}))
     assert oil[("produces", "in")]["label"] == "Produced by"

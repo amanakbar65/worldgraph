@@ -16,11 +16,15 @@ schema_app = typer.Typer(
     help="The graph schema (schema/types.yaml): node types and relations.", no_args_is_help=True
 )
 kg_app = typer.Typer(help="Knowledge graph upkeep: the owner's review list.", no_args_is_help=True)
+history_app = typer.Typer(
+    help="The graph's change log: look at changes, undo one, prune old ones.", no_args_is_help=True
+)
 app.add_typer(db_app, name="db")
 app.add_typer(seed_app, name="seed")
 app.add_typer(geo_app, name="geo")
 app.add_typer(schema_app, name="schema")
 app.add_typer(kg_app, name="kg")
+app.add_typer(history_app, name="history")
 
 
 def _pipeline_app() -> typer.Typer:
@@ -111,6 +115,62 @@ def kg_review(
     typer.secho(f"Wrote {path}", fg=typer.colors.GREEN)
     for label, value in data["summary"].items():
         typer.echo(f"  {label}: {value}")
+
+
+@history_app.command("show")
+def history_show(
+    entity_id: str = typer.Argument(
+        ..., help="A node id, an edge or causal link id, or a story (its mentions)."
+    ),
+    limit: int = typer.Option(20, help="How many changes, newest first."),
+) -> None:
+    """List the latest changes to one node, edge, causal link or story's mentions."""
+    import json
+
+    from worldgraph.db import connect
+
+    with connect() as conn:
+        rows = conn.execute(
+            """select id, at, entity, op, actor, before, after from history.change_log
+               where entity_id = %s order by id desc limit %s""",
+            (entity_id, limit),
+        ).fetchall()
+    if not rows:
+        typer.echo(f"No changes to {entity_id}.")
+    for r in rows:
+        typer.echo(f"{r['id']:>8}  {r['at']:%Y-%m-%d %H:%M}  {r['entity']:<11} {r['op']:<8} {r['actor']}")
+        for side in ("before", "after"):
+            if r[side] is not None:
+                typer.echo(f"          {side}: {json.dumps(r[side], ensure_ascii=False)[:300]}")
+
+
+@history_app.command("revert")
+def history_revert(
+    change_id: int = typer.Argument(..., help="The change to undo (wg history show lists ids)."),
+    force: bool = typer.Option(False, help="Undo it even though a later change touched the same item."),
+) -> None:
+    """Undo one change to the world graph (an owner correction; it is logged too)."""
+    import json
+
+    from worldgraph.db import connect
+
+    with connect() as conn:
+        result = conn.execute("select history.revert(%s, %s) as r", (change_id, force)).fetchone()
+        conn.commit()
+    typer.secho(json.dumps(result["r"] if result else None), fg=typer.colors.GREEN)
+
+
+@history_app.command("prune")
+def history_prune(days: int = typer.Option(90, help="Keep this many days (at least 30).")) -> None:
+    """Drop change-log rows older than the window (the latest state of each item stays)."""
+    import json
+
+    from worldgraph.db import connect
+
+    with connect() as conn:
+        result = conn.execute("select history.prune(%s) as r", (days,)).fetchone()
+        conn.commit()
+    typer.echo(json.dumps(result["r"] if result else None, default=str))
 
 
 @seed_app.command("check")

@@ -168,7 +168,7 @@ Sources: `docs/KNOWLEDGE_GRAPH_UPGRADE.md` (the spec, word for word), `docs/know
 11. New sections are welcome.
 12. Nothing half done: each phase is complete, simple and connected before the next starts.
 
-**Status:** Phase A approved and under way. A0–A2 (database, pipeline and API) are built; their screens, A3–A5 and the rest follow. Each phase ends with the build, tests, steps to try it, an update to this plan and a stop for the owner's review.
+**Status:** Phase A approved and under way. A0–A5 database, pipeline and API work is built (A0–A2 merged 28 Oct; A3–A5 on 29 Oct); the screens follow. Each phase ends with the build, tests, steps to try it, an update to this plan and a stop for the owner's review.
 
 **Rules for every phase:**
 - Migrations are additive and come with a down file; a test runs up, then down, then up.
@@ -351,6 +351,7 @@ These sizes are rough token estimates for the build agents.
 - **Done when:** every edge and causal link has a relation type, entity pages group by relation, and links can be filtered by relation. Tests cover the endpoint rules and the polarity backfill.
 
 **A3. Sources on everything (migration 0023)**
+- **Status (29 Oct): database, writers and API done; screens next.** Every node and edge has `source_id` (NOT NULL, → `source`), `confidence`, `kind` and `created_by` (NOT NULL), edges and causal links `updated_at`, causal links `created_by`. Backfill as below; new sources "WorldGraph curated" (`curated`) and "Crowd forecast providers" (`crowd-forecasts`, for a provider without its own source row, so no real-money platform is ever listed). Writers set them (pipeline stories and mentions: the story's feed and `pipeline:news`; forecasts: the provider and `pipeline:forecasts`; `api.save_analysis`: `ai:<model>`; seed: `natural-earth`/`gazetteer`, `curated`, `sample`); a session may instead declare `wg.actor` and `wg.source` (column defaults); a row with neither is refused. `evidence` can back an edge or a node (exactly one target). API: `api.provenance({target, id})`; graph links carry the edge's own confidence and `weak`, cascade links `weak`, entity connection items `edge_id` and `weak`; edges below `min_confidence` leave the graph like causal links. To try: `select api.provenance('{"target":"node","id":"org:dp-world"}')`; `select api.provenance('{"target":"edge","id":<a graph link id with causal false>}')`; `select api.provenance('{"target":"link","id":<a cascade link id>}')`.
 - **Evidence:** `evidence` gains nullable `edge_id` and `node_id`. Exactly one target is required. This reuses the table rather than adding a new one.
 - **Provenance columns:** `node` and `edge` gain `source_id` (references `source`), `confidence`, `kind` (reported / inferred / projected / conditional / user / ai_suggested), `created_by` and `updated_at`. `causal_link` gains `created_by` and `updated_at`.
 - **Backfill:**
@@ -372,6 +373,7 @@ These sizes are rough token estimates for the build agents.
 - **Done when:** tapping any node or link shows its provenance, the database refuses new rows without it, and the confidence filter works in every lens.
 
 **A4. History and "as of" dates (migration 0024)**
+- **Status (29 Oct): database, pipeline and API done; screens and personal undo/redo next.** `history.change_log` (append-only for every role: update, delete and truncate raise; only `history.prune()` may delete rows past the window) logs live nodes (a story's node carries its story fields), edges and causal links; `mentions` per story and statement (`{"add": [[id, dst, created_at]…]}` / `{"remove": …}`); an update's `before` keeps only the changed keys. Sample data isn't logged. Actor: `wg.actor` (`pipeline:<job>`, `ai:<model>`, `seed`, `owner:revert:<id>`), else `pipeline`. Baseline snapshot at migration time (`history.info.started_at`). Retention: `history.maybe_prune()` from the prune job, at most daily, keeps `keep_days` = 90 exactly (an entity's latest state at the cut stays). The graph functions read `api._g_nodes/_g_stories/_g_edges/_g_links` (live tables, or the state at `wg.as_of`), so live graphs and `api.graph_as_of` / `api.local_graph_as_of` share every line; live graphs now leave out links outside `valid_from`/`valid_to`. Owner undo: `wg history show <id>`, `wg history revert <change_id> [--force]`, `wg history prune`. Measured: about 2 KB and 4 log rows per pipeline story over its life, 4–5 KB and 8 rows when AI analysis rewrites it; as-of answers in about 1–2 s at production scale. To try: `select api.graph_as_of('{"at":"<today>","window":"7d"}')`; `select * from history.change_log order by id desc limit 20`; `uv run wg history show org:dp-world`.
 - **Change log:**
   - Columns: `history.change_log(id, at, entity: node|edge|causal_link, entity_id, op: snapshot|insert|update|delete, before, after, actor)`.
   - It is append-only: update and delete raise errors, and no role has those rights.
@@ -389,6 +391,7 @@ These sizes are rough token estimates for the build agents.
 - **Done when:** pytest replays a scripted sequence of changes and `as_of(t)` equals the graph at `t`, including valid dates; the log refuses updates and deletes; and personal undo and redo are tested.
 
 **A5. Schema map (migration 0025)**
+- **Status (29 Oct): API done; the Schema view next.** `by_pair` checked against direct counts (also at production scale, about 50–70 ms). `api.schema` adds, under kg.schema_map, each stored property's `coverage` (share of the type's nodes with a value) and each type's `links` (its 6 biggest relations, read from its side); counts follow the graph (valid today, both ends shown). To try: `select api.schema('{"sample":true}') -> 'types' -> 1`.
 - `api.schema()` returns type bubbles (counts, property definitions) and relation links: counts per source type, relation and target type.
 - **UI:** a third graph view next to Graph and List: "Schema". Type bubbles are sized by count with icons, and links are labelled with counts.
   - Tapping a type opens the list filtered to that type for now, and the table lens after B3.
@@ -411,7 +414,8 @@ These sizes are rough token estimates for the build agents.
 
 **How to try Phase A:** Settings → Sample data On. Then:
 - open `#entity=` on a curated company and check its property chips and grouped links;
-- tap any graph link and open "Why is this here?";
+- tap any graph link and open "Why is this here?" (`api.provenance`);
+- move the time slider back (`api.graph_as_of`; live data only);
 - use Graph → Schema;
 - run the as-of tests.
 

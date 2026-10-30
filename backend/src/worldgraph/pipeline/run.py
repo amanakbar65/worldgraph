@@ -38,12 +38,19 @@ def http_client() -> httpx.Client:
     )
 
 
+def set_actor(conn: psycopg.Connection, actor: str) -> None:
+    """Who is writing, for this session: the change log's actor and the default
+    created_by of new rows (migrations 0023 and 0024), e.g. 'pipeline:news'."""
+    conn.execute("select set_config('wg.actor', %s, false)", (actor,))
+
+
 def logged(conn: psycopg.Connection, job: str, fn: Callable[[], dict[str, Any]]) -> dict[str, Any]:
     """Run one job in its own transaction and record the outcome."""
     with conn.cursor() as cur:
         cur.execute("insert into ingest_run (job) values (%s) returning id", (job,))
         run_id = cur.fetchone()["id"]  # type: ignore[index]
     conn.commit()
+    set_actor(conn, f"pipeline:{job}")
     started = time.monotonic()
     try:
         stats = fn()

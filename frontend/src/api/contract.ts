@@ -204,6 +204,9 @@ export const GraphLink = z.object({
   polarity: Polarity.nullable().optional(), // causal links; null when unknown or not causal
   strength: Prob.nullable().optional(), // causal links: own strength, else confidence; null otherwise
   delayed: z.boolean().nullable().optional(), // causal links: lag_days > 0; null when unknown
+  // Since 0023 (kg.provenance; false while it is off). Edge links also carry
+  // the edge's own confidence in `confidence` when it has one.
+  weak: z.boolean().optional(), // show the "?" badge: confidence < 0.5, or a causal link with no evidence
 });
 export type GraphLink = z.infer<typeof GraphLink>;
 
@@ -236,6 +239,7 @@ export const CascadeLink = z.object({
   polarity: Polarity.nullable().optional(),
   strength: Prob.optional(), // own strength, else confidence
   delayed: z.boolean().nullable().optional(), // lag_days > 0
+  weak: z.boolean().optional(), // since 0023: confidence < 0.5 or no evidence ("?" badge; kg.provenance)
 });
 export type CascadeLink = z.infer<typeof CascadeLink>;
 
@@ -322,6 +326,10 @@ export const ConnectionGroup = z.object({
       subtype: z.string().nullable(),
       is_sample: z.boolean(),
       confidence: Prob.nullable(), // when the link has one
+      // Since 0023: the edge behind this item (api.provenance target "edge"),
+      // and whether to show the "?" badge (confidence < 0.5; kg.provenance).
+      edge_id: z.number().int().optional(),
+      weak: z.boolean().optional(),
     }),
   ), // newest stories first, then the most populous places, then by name
 });
@@ -567,6 +575,20 @@ export type GraphResponse = z.infer<typeof GraphResponse>;
 export const LocalGraphResponse = GraphData.extend({ focus: Id, truncated: z.boolean() });
 export type LocalGraphResponse = z.infer<typeof LocalGraphResponse>;
 
+/**
+ * "As of" (migration 0024, kg.history): api.graph_as_of({at, ...graph args})
+ * and api.local_graph_as_of({at, ...local_graph args}) return the graph as
+ * WorldGraph knew it at `at` (links outside their valid dates left out),
+ * live data only (sample data has no history). `at`: a time, or a date
+ * (YYYY-MM-DD: the end of that day, UTC); a future time means now. Before
+ * `history_starts` the call fails with "History starts on <d Mon yyyy>".
+ */
+const AsOf = { as_of: Iso, history_starts: Iso };
+export const GraphAsOfResponse = GraphResponse.extend(AsOf);
+export type GraphAsOfResponse = z.infer<typeof GraphAsOfResponse>;
+export const LocalGraphAsOfResponse = LocalGraphResponse.extend(AsOf);
+export type LocalGraphAsOfResponse = z.infer<typeof LocalGraphAsOfResponse>;
+
 /** api.forecasts({sectors?, regions?, categories?, sort?, include_thin?, profile?, sample?}) */
 export const ForecastsResponse = z.object({ forecasts: z.array(ForecastSummary) });
 export type ForecastsResponse = z.infer<typeof ForecastsResponse>;
@@ -736,7 +758,21 @@ export const SchemaResponse = z.object({
       tone: z.string(), // a CSS token in styles/tokens.css: colour = var(--<tone>)
       description: z.string(),
       count: z.number().int().min(0), // nodes of this type (sample ones only with sample data on)
-      properties: z.array(PropertyDef), // in display order
+      // In display order. Since 0025 each also has `coverage` (kg.schema_map):
+      // the share of this type's nodes with a value (0–1; null for derived ones).
+      properties: z.array(PropertyDef.extend({ coverage: Prob.nullable().optional() })),
+      // Since 0025 (kg.schema_map; [] while off): the type's biggest relations,
+      // read from its side ("In sector", "Owned by"), at most 6, biggest first.
+      links: z
+        .array(
+          z.object({
+            relation: z.string(),
+            label: z.string(),
+            direction: RelationDirection,
+            count: z.number().int().min(0),
+          }),
+        )
+        .optional(),
     }),
   ), // in display order
   relations: z.array(
@@ -750,7 +786,7 @@ export const SchemaResponse = z.object({
       src_types: z.array(EntityType), // allowed source types ([] = any)
       dst_types: z.array(EntityType), // allowed target types ([] = any)
       description: z.string(),
-      count: z.number().int().min(0), // links (edges, plus causal links for drives)
+      count: z.number().int().min(0), // links (edges, plus causal links for drives); since 0025 only links shown in the graph (valid today, both ends visible)
       by_pair: z.array(
         z.object({ src_type: EntityType, dst_type: EntityType, count: z.number().int().min(0) }),
       ), // biggest first; [] while kg.schema_map is off
@@ -758,6 +794,55 @@ export const SchemaResponse = z.object({
   ),
 });
 export type SchemaResponse = z.infer<typeof SchemaResponse>;
+
+// ---------------------------------------------------------------------------
+// Provenance (migration 0023, kg.provenance): "Why is this here?"
+// ---------------------------------------------------------------------------
+
+export const PROVENANCE_KINDS = [
+  "reported",
+  "inferred",
+  "projected",
+  "conditional",
+  "user",
+  "ai_suggested",
+] as const;
+export const ProvenanceKind = z.enum(PROVENANCE_KINDS);
+export type ProvenanceKind = z.infer<typeof ProvenanceKind>;
+
+/** One thing to cite: an article, an evidence snippet, a provider or the source dataset. */
+export const ProvenanceSource = z.object({
+  name: z.string(), // outlet, provider or dataset: "Reuters", "Natural Earth"
+  url: z.string().nullable(), // null for sample data and sources without a page
+  snippet: z.string().nullable(), // at most one sentence
+  published_at: Iso.nullable(),
+  title: z.string().nullable(), // the article headline (or forecast question), when there is one
+});
+export type ProvenanceSource = z.infer<typeof ProvenanceSource>;
+
+/**
+ * api.provenance({target, id}): where a node, an edge (graph link with
+ * causal false, or a connection's edge_id) or a causal link (causal true,
+ * cascade and globe arcs) comes from.
+ */
+export const ProvenanceResponse = z.object({
+  target: z.enum(["node", "edge", "link"]),
+  id: z.union([Id, z.number().int()]), // node id, or the edge / causal link id
+  title: z.string(), // "DP World operates Jebel Ali Port"; "Cause → effect" for causal links
+  sources: z.array(ProvenanceSource), // most specific first; [] means nothing to cite (weak)
+  source: z
+    .object({ id: z.string(), name: z.string(), url: z.string().nullable(), attribution: z.string() })
+    .nullable(), // the source row it came from (null for causal links: see sources)
+  confidence: Prob.nullable(),
+  kind: ProvenanceKind, // causal links: their link_type
+  added_by: z.string(), // plain words: "News pipeline · AI analysis · 22 Oct"
+  created_by: z.string(), // raw: "pipeline:news", "ai:<model>", "curated", "gazetteer", "sample"…
+  created_at: Iso,
+  updated_at: Iso,
+  is_sample: z.boolean(),
+  weak: z.boolean(), // confidence < 0.5, or nothing to cite: show the "?" badge
+});
+export type ProvenanceResponse = z.infer<typeof ProvenanceResponse>;
 
 // ---------------------------------------------------------------------------
 // The function table
@@ -773,6 +858,8 @@ export const RESPONSES = {
   entity: EntityResponse,
   graph: GraphResponse,
   local_graph: LocalGraphResponse,
+  graph_as_of: GraphAsOfResponse,
+  local_graph_as_of: LocalGraphAsOfResponse,
   forecasts: ForecastsResponse,
   forecast: ForecastResponse,
   search: SearchResponse,
@@ -784,6 +871,7 @@ export const RESPONSES = {
   pending_analysis: PendingAnalysisResponse,
   save_analysis: SaveAnalysisResponse,
   schema: SchemaResponse,
+  provenance: ProvenanceResponse,
 } as const;
 
 export type RpcName = keyof typeof RESPONSES;
@@ -845,6 +933,9 @@ export interface RpcArgs {
     direction?: RelationDirection;
     sample?: boolean;
   };
+  /** The graph as it was at `at` (see GraphAsOfResponse). */
+  graph_as_of: RpcArgs["graph"] & { at: string };
+  local_graph_as_of: RpcArgs["local_graph"] & { at: string };
   forecasts: {
     sectors?: SectorId[];
     regions?: string[];
@@ -869,6 +960,8 @@ export interface RpcArgs {
   ask_context: { q: string; limit?: number; sample?: boolean };
   pending_analysis: { limit?: number };
   schema: { sample?: boolean };
+  /** "Why is this here?" (kg.provenance). id: a node id, or an edge / causal link id. */
+  provenance: { target: "node" | "edge" | "link"; id: string | number };
   save_analysis: {
     engine: "artifact" | "api";
     model: string;

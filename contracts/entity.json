@@ -343,6 +343,14 @@
                       "type": "null"
                     }
                   ]
+                },
+                "edge_id": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "weak": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -1094,6 +1102,9 @@
                   "boolean",
                   "null"
                 ]
+              },
+              "weak": {
+                "type": "boolean"
               }
             },
             "required": [

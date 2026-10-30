@@ -83,14 +83,25 @@ def migrate(conn: psycopg.Connection, directory: Path = MIGRATIONS_DIR) -> list[
     applied = []
     for migration in pending(conn, directory):
         with conn.transaction():
+            actor = _actor(conn)
             conn.execute(SEARCH_PATH_SQL)
             conn.execute(migration.sql())
             conn.execute(
                 "insert into public.schema_migrations (version, name) values (%s, %s)",
                 (migration.version, migration.name),
             )
+            # A migration may name itself as the change log's actor (0023 on);
+            # the caller's actor comes back afterwards.
+            conn.execute("select set_config('wg.actor', %s, true)", (actor,))
         applied.append(migration)
     return applied
+
+
+def _actor(conn: psycopg.Connection) -> str:
+    row = conn.execute("select coalesce(current_setting('wg.actor', true), '') as actor").fetchone()
+    if row is None:
+        return ""
+    return row["actor"] if isinstance(row, dict) else row[0]
 
 
 def rollback(conn: psycopg.Connection, to_version: str, directory: Path = MIGRATIONS_DIR) -> list[Migration]:

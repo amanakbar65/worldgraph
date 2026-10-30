@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "target": {
+      "type": "string",
+      "enum": [
+        "node",
+        "edge",
+        "link"
+      ]
+    },
+    "id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-z_]+:[a-z0-9][a-z0-9.-]*$"
+        },
+        {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        }
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "snippet": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "published_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "url",
+          "snippet",
+          "published_at",
+          "title"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "source": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "url": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "attribution": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "url",
+            "attribution"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "confidence": {
+      "anyOf": [
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "reported",
+        "inferred",
+        "projected",
+        "conditional",
+        "user",
+        "ai_suggested"
+      ]
+    },
+    "added_by": {
+      "type": "string"
+    },
+    "created_by": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string"
+    },
+    "is_sample": {
+      "type": "boolean"
+    },
+    "weak": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "target",
+    "id",
+    "title",
+    "sources",
+    "source",
+    "confidence",
+    "kind",
+    "added_by",
+    "created_by",
+    "created_at",
+    "updated_at",
+    "is_sample",
+    "weak"
+  ],
+  "additionalProperties": false
+}

@@ -7,6 +7,8 @@ Rules (live data only; sample data is never touched):
   cascade; nothing is kept beyond 60 days
 - links of stories the AI skipped (not business news): 7 days
 - run log: 14 days; AI usage log: 90 days
+- the graph's change log (migration 0024): history.maybe_prune() keeps 90
+  days, and runs at most once a day
 """
 
 from __future__ import annotations
@@ -57,4 +59,8 @@ def prune(conn: psycopg.Connection) -> dict[str, int]:
         for name, sql in RULES:
             cur.execute(sql)
             counts[name] = cur.rowcount
+        cur.execute("select history.maybe_prune() as r")
+        row = cur.fetchone()
+        result = (row or {}).get("r") or {}
+        counts["history"] = int(result.get("deleted") or 0)
     return counts
