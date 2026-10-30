@@ -2,9 +2,7 @@ import { List, Maximize2, Network, SearchX, Shapes, SlidersHorizontal, X, ZoomIn
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { EntityType, GraphData, RpcArgs, TimeWindow } from "@/api/contract";
-import { useRpc } from "@/api/client";
 import { EmptyState } from "@/components/EmptyState";
-import { ErrorState } from "@/components/ErrorState";
 import { SampleBadge } from "@/components/SampleBadge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -35,6 +33,7 @@ import {
   type VizLink,
   type VizNode,
 } from "./graph-data";
+import { AsOfBanner, AsOfControl, AsOfErrorState } from "./GraphAsOf";
 import { GraphFilters } from "./GraphFilters";
 import { useGraphState, type GraphMode } from "./graph-state";
 import { LinkHoverCard, NodeHoverCard } from "./GraphHoverCard";
@@ -45,6 +44,7 @@ import { GraphTimelapseBar } from "./GraphTimelapseBar";
 import type { SchemaEdge } from "./schema-data";
 import { SchemaView } from "./SchemaView";
 import { useGraphFeatures, useRelationIndex } from "./use-graph-schema";
+import { useAsOf, useGraphQueries } from "./use-as-of";
 import { useElementSize, useGraphTheme } from "./use-graph-theme";
 import { useGraphNav } from "./use-graph-nav";
 import { useTimelapse } from "./use-timelapse";
@@ -113,21 +113,14 @@ export default function GraphView() {
     () => buildGraphArgs(filters, { window: navWindow, sectors, minConfidence }, sampleArg(sample), features),
     [filters, navWindow, sectors, minConfidence, sample, features],
   );
-  const globalQuery = useRpc("graph", globalArgs, {
-    enabled: !local && !noTypes,
-    placeholderData: (previous) => previous,
-    refetchInterval: 300_000,
-  });
   const localArgs: RpcArgs["local_graph"] = buildLocalArgs(
     { id: scope.kind === "local" ? scope.id : "", depth: scope.kind === "local" ? scope.depth : 1 },
     filters,
     features,
   );
-  const localQuery = useRpc("local_graph", localArgs, {
-    enabled: local,
-    placeholderData: (previous) => (previous && previous.focus === focusId ? previous : undefined),
-    refetchInterval: 300_000,
-  });
+  // Live, or "as of" a past day (kg.history; the day is in the URL).
+  const asOf = useAsOf();
+  const { globalQuery, localQuery } = useGraphQueries(globalArgs, localArgs, { local, noTypes, focusId }, asOf);
   const query = local ? localQuery : globalQuery;
 
   const raw = useMemo<GraphData | undefined>(() => {
@@ -324,7 +317,7 @@ export default function GraphView() {
       {loading && !schemaView && <GraphSkeleton />}
       {failed && !schemaView && (
         <CenterCard>
-          <ErrorState error={query.error!} onRetry={() => void query.refetch()} />
+          <AsOfErrorState error={query.error!} onRetry={() => void query.refetch()} />
         </CenterCard>
       )}
       {!loading && !failed && !schemaView && (noTypes || empty) && (
@@ -344,7 +337,11 @@ export default function GraphView() {
           <FiltersButton local={local} />
           <ViewToggle schema={features.schemaMap} />
           {scope.kind === "local" ? <ScopeBar name={scope.name} depth={scope.depth} /> : <WindowSwitch />}
+          {asOf.enabled && !schemaView && <AsOfControl asOf={asOf} />}
         </div>
+        {!schemaView && (
+          <AsOfBanner asOf={asOf} loading={!!asOf.day && query.isFetching && (query.isPlaceholderData || !query.data)} />
+        )}
         {graph && !empty && !schemaView && (
           <Summary
             graph={graph}

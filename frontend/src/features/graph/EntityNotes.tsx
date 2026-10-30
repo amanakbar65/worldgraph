@@ -1,14 +1,16 @@
 import { Check, Link2, LockKeyhole, Search } from "lucide-react";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import type { EntityType } from "@/api/contract";
 import { useRpc } from "@/api/client";
 import { EntityChip } from "@/components/EntityChip";
+import { UndoRedoButtons } from "@/components/UndoRedo";
 import { Chip } from "@/components/ui/chip";
 import { cn } from "@/lib/utils";
-import { getUserStore, useUserValue } from "@/platform/storage";
+import { notesValue, saveNote, useNotes } from "@/state/notes";
+import { touching } from "@/state/undo";
 
-import { NOTE_MAX, noteChanged, noteFor, noteLinks, SAVE_DELAY_MS, savedWhere, withNote, type Notes } from "./entity-notes";
+import { NOTE_MAX, noteFor, noteLinks, SAVE_DELAY_MS, savedWhere } from "./entity-notes";
 import { useDebounced } from "./use-debounced";
 
 export interface EntityNotesProps {
@@ -23,51 +25,55 @@ type SaveState = "idle" | "pending" | "saved";
 /**
  * A short private note on this page. It saves itself a moment after you
  * stop typing (and when you leave the box or the page), says where it is
- * kept, and turns [[Entity Name]] into links to those pages.
+ * kept, and turns [[Entity Name]] into links to those pages. Each saved
+ * change joins the viewer's undo list (a burst of typing is one step), and
+ * Undo and Redo here act on this page's note.
  */
 export function EntityNotes({ id, name, onOpen }: EntityNotesProps) {
-  const notes = useUserValue<Notes>("notes", {});
+  const notes = useNotes();
   const inputId = useId();
   const hintId = useId();
   const [draft, setDraft] = useState("");
-  const [ready, setReady] = useState(false);
   const [state, setState] = useState<SaveState>("idle");
+  // The stored note as last put in the box; null until the notes have loaded.
+  const [shown, setShown] = useState<string | null>(null);
+  const ready = shown !== null;
 
-  // Fill the box once the stored notes have loaded.
-  if (!ready && !notes.loading) {
-    setReady(true);
-    setDraft(noteFor(notes.value, id));
+  // Fill the box once the notes have loaded, and again when the stored note
+  // changes elsewhere (undo, redo) while nothing typed is waiting to save.
+  const stored = noteFor(notes.value, id);
+  if (notes.loaded && shown !== stored) {
+    setShown(stored);
+    if (state !== "pending") setDraft(stored);
   }
 
+  // Read the notes again on arrival: another tab or device may have changed them.
+  useEffect(() => {
+    void notesValue.store.getState().refresh();
+  }, [id]);
+
   // The latest values, for timers and for saving on the way out.
-  const live = useRef({ draft, value: notes.value as unknown, pending: false });
+  const live = useRef({ draft, pending: false });
   useEffect(() => {
     live.current.draft = draft;
-    live.current.value = notes.value;
-  }, [draft, notes.value]);
+  }, [draft]);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const setValue = notes.setValue;
 
   const commit = useCallback(() => {
     clearTimeout(timer.current);
     if (!live.current.pending) return;
     live.current.pending = false;
-    const { draft: text, value } = live.current;
-    if (noteChanged(value, id, text)) setValue((prev) => withNote(prev, id, text));
+    saveNote(id, name, live.current.draft);
     setState("saved");
-  }, [id, setValue]);
+  }, [id, name]);
 
   // Leaving the page (another panel, closing it) saves what was typed.
   useEffect(
     () => () => {
       clearTimeout(timer.current);
-      const { draft: text, value, pending } = live.current;
-      if (!pending || !noteChanged(value, id, text)) return;
-      void getUserStore()
-        .then((store) => store.set("notes", withNote(value, id, text)))
-        .catch(() => undefined);
+      if (live.current.pending) saveNote(id, name, live.current.draft);
     },
-    [id],
+    [id, name],
   );
 
   const onChange = (text: string) => {
@@ -79,6 +85,7 @@ export function EntityNotes({ id, name, onOpen }: EntityNotesProps) {
     timer.current = setTimeout(commit, SAVE_DELAY_MS);
   };
 
+  const scope = useMemo(() => touching("notes", id), [id]);
   const links = noteLinks(useDebounced(draft, 600));
   const near = draft.length > NOTE_MAX * 0.85;
 
@@ -99,24 +106,27 @@ export function EntityNotes({ id, name, onOpen }: EntityNotesProps) {
         placeholder={ready ? "Jot down what matters to you here. Write [[Name]] to link another page." : "Loading your note…"}
         className="min-h-24 w-full resize-y rounded-lg border border-line bg-bg-sunken/60 px-3 py-2 text-body text-fg placeholder:text-fg-subtle hover:border-line-strong disabled:opacity-60"
       />
-      <div id={hintId} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-label text-fg-muted">
-        <span className="inline-flex min-w-0 items-center gap-1.5">
-          <LockKeyhole aria-hidden className="size-3.5 shrink-0" />
-          {savedWhere(notes.kind)}
-        </span>
-        <span role="status" aria-live="polite" className="ml-auto inline-flex items-center gap-1 tabular-nums">
-          {notes.saveError ? (
-            "Couldn't save. Kept for this visit."
-          ) : state === "pending" ? (
-            "Saving…"
-          ) : state === "saved" ? (
-            <>
-              <Check aria-hidden className="size-3.5" />
-              Saved
-            </>
-          ) : null}
-          {near && <span className="text-fg-subtle"> · {NOTE_MAX - draft.length} characters left</span>}
-        </span>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <div id={hintId} className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-label text-fg-muted">
+          <span className="inline-flex min-w-0 items-center gap-1.5">
+            <LockKeyhole aria-hidden className="size-3.5 shrink-0" />
+            {savedWhere(notes.kind)}
+          </span>
+          <span role="status" aria-live="polite" className="ml-auto inline-flex items-center gap-1 tabular-nums">
+            {notes.saveError ? (
+              "Couldn't save. Kept for this visit."
+            ) : state === "pending" ? (
+              "Saving…"
+            ) : state === "saved" ? (
+              <>
+                <Check aria-hidden className="size-3.5" />
+                Saved
+              </>
+            ) : null}
+            {near && <span className="text-fg-subtle"> · {NOTE_MAX - draft.length} characters left</span>}
+          </span>
+        </div>
+        <UndoRedoButtons scope={scope} noun="this note" className="-mr-2 ml-auto" />
       </div>
       {links.length > 0 && (
         <div className="flex flex-col gap-1.5 border-t border-line pt-2">

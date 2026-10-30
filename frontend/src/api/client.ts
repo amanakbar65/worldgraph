@@ -1,6 +1,6 @@
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
-import { create } from "zustand";
 
+import { useConnection } from "./connection";
 import type { RpcArgs, RpcName, RpcResponse } from "./contract";
 import { DataError, stableJson, type CallOptions, type DataSource } from "./source";
 import { ConnectorSource } from "./sources/connector";
@@ -9,19 +9,8 @@ import { loadSnapshot, snapshotKey, StaticSource, useSnapshot } from "./sources/
 import { TARGET } from "@/platform/runtime";
 import { sampleArg, useIndiaBorders, useServerViewer, useSettings } from "@/state/settings";
 
-/** What the app is currently showing: live data, the bundled snapshot, or nothing. */
-export type ConnectionState =
-  | { status: "connecting" }
-  | { status: "live"; source: DataSource["kind"] }
-  | { status: "snapshot"; reason: DataError }
-  // No live connection, and no snapshot this viewer may see: nothing is shown in its place.
-  | { status: "disconnected"; reason: DataError }
-  | { status: "error"; reason: DataError };
-
-export const useConnection = create<{ state: ConnectionState; set: (s: ConnectionState) => void }>((set) => ({
-  state: { status: "connecting" },
-  set: (state) => set({ state }),
-}));
+/** What the app is currently showing: live data, the bundled snapshot, or nothing (connection.ts). */
+export { useConnection, type ConnectionState } from "./connection";
 
 const FALL_BACK_TO_SNAPSHOT: ReadonlySet<DataError["kind"]> = new Set([
   "connector_missing",
@@ -136,6 +125,8 @@ const SAMPLE_ARG: ReadonlySet<RpcName> = new Set<RpcName>([
   "entity",
   "graph",
   "local_graph",
+  "graph_as_of",
+  "local_graph_as_of",
   "forecasts",
   "forecast",
   "search",
