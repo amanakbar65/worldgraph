@@ -146,7 +146,10 @@ Load the \`artifact-capabilities\` skill first. Then publish with the Artifact t
 - \`capabilities\`: the JSON above
 - \`icon\`: \`globe\`
 
-To update the same link later, publish again with its \`url\`.
+To update the same link later, run \`node scripts/artifact-publish-plan.mjs\`: it prints one \`files\` map per
+publish (this build plus removals of the last build's leftovers, at most 255 entries each). Publish each
+with the link's \`url\`, in order, leaving out \`capabilities\` unless they changed. Then run it with
+\`--record\` and commit \`scripts/artifact-published.json\`.
 
 ## Sizes
 
