@@ -99,5 +99,7 @@ export function rpcFailure(error: unknown): RpcResult {
   }
   if (/^not found/i.test(message)) return { status: 404, body: { error: message } };
   if (/invalid|must|unknown|needs/i.test(message)) return { status: 400, body: { error: message } };
+  // "As of" (kg.history): a day before history starts is an answer the screen shows, not a failure.
+  if (/^history (starts on|is switched off)/i.test(message)) return { status: 400, body: { error: message } };
   return { status: 500, body: { error: "Database error." } };
 }

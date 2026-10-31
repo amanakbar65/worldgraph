@@ -3,7 +3,7 @@ import { Suspense, useEffect, useRef, useState, type ReactNode, type Ref } from 
 import { Drawer } from "vaul";
 
 import { usePanelFocus } from "./panel-focus";
-import { openingSnap, SNAP_POINTS } from "./panel-snap";
+import { openingSnap, SNAP_POINTS, snapForFocus } from "./panel-snap";
 import { PANEL_COMPONENTS, WIDE_PANELS } from "./registry";
 import { leaveEscapeToApp } from "./use-escape";
 import { useIsDesktop } from "@/lib/hooks";
@@ -149,6 +149,13 @@ export function PanelHost() {
           // Escape is the app's: useEscapeClosesPanel steps back one panel, and a
           // drawer inside a panel (the cascade's evidence) closes only itself.
           onEscapeKeyDown={leaveEscapeToApp}
+          // Focus below the half-height sheet's edge (Tab, a screen reader) raises it, so it isn't off screen.
+          onFocus={(e) => {
+            const sheetTop = e.currentTarget.getBoundingClientRect().top;
+            const { top, bottom } = e.target.getBoundingClientRect();
+            const next = snapForFocus(snap, { top: top - sheetTop, bottom: bottom - sheetTop }, window.innerHeight);
+            if (next !== null) setSnap(next);
+          }}
           className="fixed inset-x-0 bottom-0 z-40 flex h-[94dvh] flex-col rounded-t-2xl border-t border-line bg-surface shadow-panel outline-none"
         >
           <Drawer.Title className="sr-only">Details</Drawer.Title>
@@ -157,12 +164,6 @@ export function PanelHost() {
           <div
             ref={scroller}
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom,0px)]"
-            // At half height the sheet's lower part is off the screen, and no scrolling
-            // reaches it: focus landing there (Tab, or focus given back) raises the sheet.
-            onFocus={(e) => {
-              if (snap !== SNAP_POINTS[0]) return;
-              if (e.target.getBoundingClientRect().bottom > window.innerHeight) setSnap(SNAP_POINTS[1]);
-            }}
           >
             {panel && <PanelContent panel={panel} />}
           </div>

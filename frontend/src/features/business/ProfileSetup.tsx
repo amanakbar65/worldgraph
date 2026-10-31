@@ -3,6 +3,7 @@ import { useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import { SECTOR_IDS, type Profile } from "@/api/contract";
 import { SectorChip } from "@/components/SectorChip";
+import { UndoRedoButtons } from "@/components/UndoRedo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -17,6 +18,7 @@ import {
   useProfile,
   type EntityRole,
 } from "@/state/profile";
+import { touching } from "@/state/undo";
 
 import { RemovableChip, StoreNote } from "./business-parts";
 import { stepFilled } from "./business-data";
@@ -28,6 +30,9 @@ const SETUP_STEPS = [
   { id: "places", title: "Your places", short: "Places", icon: MapPin },
   { id: "inputs", title: "Inputs and keywords", short: "Inputs", icon: Package },
 ] as const;
+
+/** Undo and Redo here act on profile edits. */
+const PROFILE_EDITS = touching("profile");
 
 export interface ProfileSetupProps {
   /** "first-run": the welcome flow with Skip; "edit": the same steps with Done. */
@@ -118,7 +123,10 @@ export function ProfileSetup({ mode, initialStep = 0, onDone }: ProfileSetupProp
         {step === 2 && <InputsStep profile={profile.value} update={update} />}
       </div>
 
-      <StoreNote kind={profile.kind} error={profile.saveError} showDetail />
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <StoreNote kind={profile.kind} error={profile.saveError} showDetail className="min-w-0 flex-1" />
+        <UndoRedoButtons scope={PROFILE_EDITS} noun="your profile" className="-mr-2" />
+      </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="ghost" onClick={onDone}>

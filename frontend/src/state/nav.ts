@@ -44,6 +44,11 @@ interface NavState {
   sectors: SectorId[]; // empty = all sectors (lens off)
   /** Hide links (and items) less sure than this, 0–0.9 (see MIN_CONFIDENCE). */
   minConfidence: number;
+  /**
+   * The graph "as of" this day (YYYY-MM-DD, kg.history), or null for now.
+   * Only the graph screen has one: leaving it goes back to now.
+   */
+  asOf: string | null;
   /** A camera request for the globe: fly to this region or point. */
   focus: { regionId?: string; lon?: number; lat?: number; zoom?: number; nonce: number } | null;
   setView: (view: View) => void;
@@ -55,16 +60,19 @@ interface NavState {
   toggleSector: (sector: SectorId) => void;
   clearSectors: () => void;
   setMinConfidence: (value: number) => void;
+  /** Show the graph as of this day (YYYY-MM-DD), or null for now. Ignored off the graph screen. */
+  setAsOf: (day: string | null) => void;
   flyTo: (focus: Omit<NonNullable<NavState["focus"]>, "nonce">) => void;
 }
 
 const samePanel = (a: Panel, b: Panel) => JSON.stringify(a) === JSON.stringify(b);
 
 // ---------------------------------------------------------------------------
-// Deep links: the view, the top panel, the window, the sector lens and the
-// minimum confidence live in the URL hash (only bare #anchors survive inside
-// claude.ai), e.g.
+// Deep links: the view, the top panel, the window, the sector lens, the
+// minimum confidence and the graph's "as of" day live in the URL hash (only
+// bare #anchors survive inside claude.ai), e.g.
 //   #globe   #story=story:abc   #region=region:in-gj&w=24h   #graph&s=energy&c=0.7
+//   #graph&at=2026-10-29
 //   #why=org:dp-world   #why=edge-5326   #why=link-12   ("Why is this here?")
 // ---------------------------------------------------------------------------
 
@@ -94,6 +102,8 @@ export interface LinkState {
   sectors: SectorId[];
   /** Missing means the default (0.5); parseHash always fills it in. */
   minConfidence?: number;
+  /** The graph as of this day (YYYY-MM-DD); only on the graph screen. Missing means now. */
+  asOf?: string | null;
 }
 
 const DEFAULT_VIEW: View = "globe";
@@ -106,6 +116,13 @@ type IdPanelKind = (typeof ID_PANELS)[number];
 const isView = (v: string): v is View => (VIEWS as readonly string[]).includes(v);
 const isIdPanel = (k: string): k is IdPanelKind => (ID_PANELS as readonly string[]).includes(k);
 const isSector = (s: string): s is SectorId => (SECTOR_IDS as readonly string[]).includes(s);
+
+/** A real calendar day written YYYY-MM-DD (from 2000 on), e.g. "2026-10-29". */
+export function isAsOfDay(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value) || value < "2000-01-01") return false;
+  const t = Date.parse(`${value}T00:00:00Z`);
+  return Number.isFinite(t) && new Date(t).toISOString().slice(0, 10) === value;
+}
 
 function decode(value: string): string | null {
   try {
@@ -135,6 +152,7 @@ export function parseHash(hash: string): LinkState | null {
     minConfidence: MIN_CONFIDENCE.default,
   };
   let recognised = false;
+  let asOf: string | null = null;
   let ask: { q?: string; scope?: string } | null = null;
   for (const part of body.split("&")) {
     const eq = part.indexOf("=");
@@ -152,6 +170,8 @@ export function parseHash(hash: string): LinkState | null {
     } else if (key === "c" && /^\d*\.?\d+$/.test(raw)) {
       state.minConfidence = clampMinConfidence(Number(raw));
       recognised = true;
+    } else if (key === "at" && isAsOfDay(raw)) {
+      asOf = raw;
     } else if (isIdPanel(key)) {
       const id = decode(raw);
       if (id && NODE_ID.test(id)) {
@@ -186,6 +206,8 @@ export function parseHash(hash: string): LinkState | null {
     }
   }
   if (ask && !state.panel) state.panel = { kind: "ask", ...ask };
+  // "As of" belongs to the graph screen; elsewhere it is ignored.
+  if (asOf && state.view === "graph") state.asOf = asOf;
   return recognised ? state : null;
 }
 
@@ -216,24 +238,27 @@ export function formatHash(state: LinkState): string {
   if (state.sectors.length) parts.push(`s=${state.sectors.join(",")}`);
   const c = clampMinConfidence(state.minConfidence ?? MIN_CONFIDENCE.default);
   if (c !== MIN_CONFIDENCE.default) parts.push(`c=${c}`);
+  if (state.view === "graph" && isAsOfDay(state.asOf)) parts.push(`at=${state.asOf}`);
   return `#${parts.join("&")}`;
 }
 
 /** The link state of the store right now. */
 export function linkStateOf(
-  s: Pick<NavState, "view" | "panels" | "window" | "sectors"> & { minConfidence?: number },
+  s: Pick<NavState, "view" | "panels" | "window" | "sectors"> & { minConfidence?: number; asOf?: string | null },
 ): LinkState {
-  return {
+  const state: LinkState = {
     view: s.view,
     panel: s.panels[s.panels.length - 1] ?? null,
     window: s.window,
     sectors: s.sectors,
     minConfidence: s.minConfidence ?? MIN_CONFIDENCE.default,
   };
+  if (s.view === "graph" && s.asOf) state.asOf = s.asOf;
+  return state;
 }
 
 function initialFromLocation(): Partial<
-  Pick<NavState, "view" | "panels" | "window" | "sectors" | "minConfidence">
+  Pick<NavState, "view" | "panels" | "window" | "sectors" | "minConfidence" | "asOf">
 > {
   try {
     const link = parseHash(window.location.hash);
@@ -244,6 +269,7 @@ function initialFromLocation(): Partial<
       window: link.window,
       sectors: link.sectors,
       minConfidence: link.minConfidence ?? MIN_CONFIDENCE.default,
+      asOf: link.asOf ?? null,
     };
   } catch {
     return {};
@@ -256,9 +282,11 @@ export const useNav = create<NavState>((set) => ({
   window: "7d",
   sectors: [],
   minConfidence: MIN_CONFIDENCE.default,
+  asOf: null,
   focus: null,
   ...initialFromLocation(),
-  setView: (view) => set({ view }),
+  // "As of" is the graph's: any other screen is now.
+  setView: (view) => set((s) => (view === "graph" || s.asOf === null ? { view } : { view, asOf: null })),
   open: (panel) =>
     set((s) => {
       const top = s.panels[s.panels.length - 1];
@@ -275,6 +303,11 @@ export const useNav = create<NavState>((set) => ({
     })),
   clearSectors: () => set({ sectors: [] }),
   setMinConfidence: (value) => set({ minConfidence: clampMinConfidence(value) }),
+  setAsOf: (day) =>
+    set((s) => {
+      const asOf = s.view === "graph" && isAsOfDay(day) ? day : null;
+      return asOf === s.asOf ? s : { asOf };
+    }),
   flyTo: (focus) => set({ focus: { ...focus, nonce: Date.now() } }),
 }));
 
@@ -301,6 +334,7 @@ export function applyLink(link: LinkState): void {
       window: link.window,
       sectors: link.sectors,
       minConfidence: clampMinConfidence(link.minConfidence ?? MIN_CONFIDENCE.default),
+      asOf: link.view === "graph" && isAsOfDay(link.asOf) ? link.asOf : null,
     };
   });
 }
@@ -308,7 +342,8 @@ export function applyLink(link: LinkState): void {
 /**
  * Keep the hash and the store in step, and make the browser's Back button
  * walk back through screens and panels:
- * - opening a screen or panel adds a history entry;
+ * - opening a screen or panel, or moving the graph to another "as of" day
+ *   (or back to now), adds a history entry;
  * - changing the window, sector lens or minimum confidence replaces the current entry;
  * - closing a panel with the app's own Back goes back in history when the
  *   previous entry is that same place, so history doesn't fill with repeats;
@@ -354,7 +389,10 @@ export function startHashSync(win: Window = window): () => void {
     const after = linkStateOf(next);
     const hash = formatHash(after);
     if (hash === stack[depth]) return;
-    const moved = before.view !== after.view || !samePanelOrNull(before.panel, after.panel);
+    const moved =
+      before.view !== after.view ||
+      !samePanelOrNull(before.panel, after.panel) ||
+      (before.asOf ?? null) !== (after.asOf ?? null);
     if (!moved) {
       stack[depth] = hash;
       writeState("replace", hash);
