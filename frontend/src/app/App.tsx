@@ -6,6 +6,7 @@ import { PanelHost } from "./PanelHost";
 import { StatusBar } from "./StatusBar";
 import { VIEW_COMPONENTS } from "./registry";
 import { useEscapeClosesPanel } from "./use-escape";
+import { UndoShortcuts } from "@/components/UndoRedo";
 import { CommandSearch } from "@/features/search/CommandSearch";
 import { useNav } from "@/state/nav";
 
@@ -34,6 +35,7 @@ export function App() {
       <StatusBar />
       <MobileTabs />
       <CommandSearch />
+      <UndoShortcuts />
     </div>
   );
 }

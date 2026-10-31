@@ -5,6 +5,7 @@ import {
   applyLink,
   clampMinConfidence,
   formatHash,
+  isAsOfDay,
   linkStateOf,
   parseHash,
   startHashSync,
@@ -194,5 +195,99 @@ describe("startHashSync", () => {
     window.location.hash = "#main";
     await new Promise((r) => setTimeout(r, 20));
     expect(linkStateOf(useNav.getState()).panel).toEqual({ kind: "story", id: "story:a" });
+  });
+});
+
+describe("the graph's as-of day", () => {
+  const graph: LinkState = { ...base, view: "graph" };
+
+  it.each<[string, LinkState]>([
+    ["#graph&at=2026-10-29", { ...graph, asOf: "2026-10-29" }],
+    ["#graph&w=30d&c=0.7&at=2026-10-01", { ...graph, window: "30d", minConfidence: 0.7, asOf: "2026-10-01" }],
+    [
+      "#graph&entity=commodity:crude-oil&at=2026-10-29",
+      { ...graph, panel: { kind: "entity", id: "commodity:crude-oil" }, asOf: "2026-10-29" },
+    ],
+  ])("round-trips %s", (hash, state) => {
+    expect(parseHash(hash)).toEqual(state);
+    expect(formatHash(state)).toBe(hash);
+  });
+
+  it("belongs to the graph screen and to real days only", () => {
+    expect(parseHash("#globe&at=2026-10-29")).toEqual(base);
+    expect(parseHash("#story=story:a&at=2026-10-29")?.asOf).toBeUndefined();
+    expect(parseHash("#at=2026-10-29")).toBeNull();
+    expect(formatHash({ ...base, asOf: "2026-10-29" })).toBe("#globe");
+    for (const bad of ["2026-02-30", "2026-13-01", "26-10-29", "1999-12-31", "2026-10-29T10:00", "today"]) {
+      expect(isAsOfDay(bad)).toBe(false);
+      expect(parseHash(`#graph&at=${bad}`)).toEqual(graph);
+    }
+    expect(isAsOfDay("2024-02-29")).toBe(true);
+  });
+
+  it("is set on the graph screen only, and leaving the graph goes back to now", () => {
+    useNav.setState({ view: "globe", panels: [], asOf: null });
+    useNav.getState().setAsOf("2026-10-29");
+    expect(useNav.getState().asOf).toBeNull();
+    useNav.getState().setView("graph");
+    useNav.getState().setAsOf("2026-10-29");
+    expect(useNav.getState().asOf).toBe("2026-10-29");
+    useNav.getState().setAsOf("not a day");
+    expect(useNav.getState().asOf).toBeNull();
+    useNav.getState().setAsOf("2026-10-28");
+    useNav.getState().open({ kind: "entity", id: "commodity:crude-oil" });
+    expect(useNav.getState().asOf).toBe("2026-10-28"); // a panel keeps it
+    useNav.getState().setView("globe");
+    expect(useNav.getState().asOf).toBeNull();
+  });
+
+  it("is applied from a link, and a link without it means now", () => {
+    applyLink({ ...graph, asOf: "2026-10-29" });
+    expect(useNav.getState().asOf).toBe("2026-10-29");
+    expect(linkStateOf(useNav.getState()).asOf).toBe("2026-10-29");
+    applyLink(graph);
+    expect(useNav.getState().asOf).toBeNull();
+    applyLink({ ...base, asOf: "2026-10-29" }); // not the graph
+    expect(useNav.getState().asOf).toBeNull();
+  });
+
+  describe("in the URL", () => {
+    let stop: () => void = () => {};
+    beforeEach(() => {
+      window.history.replaceState(null, "", "/");
+      useNav.setState({ view: "graph", panels: [], window: "7d", sectors: [], minConfidence: 0.5, asOf: null });
+      stop = startHashSync(window);
+    });
+    afterEach(() => {
+      stop();
+      useNav.setState({ view: "globe", asOf: null });
+    });
+
+    it("adds a history entry for each day and for going back to now", () => {
+      const before = window.history.length;
+      useNav.getState().setAsOf("2026-10-29");
+      expect(window.location.hash).toBe("#graph&at=2026-10-29");
+      useNav.getState().setAsOf("2026-10-28");
+      useNav.getState().setAsOf(null);
+      expect(window.location.hash).toBe("#graph");
+      expect(window.history.length).toBe(before + 3);
+    });
+
+    it("walks back through days with the browser's Back button", async () => {
+      useNav.getState().setAsOf("2026-10-29");
+      useNav.getState().setAsOf("2026-10-28");
+      window.history.back();
+      await vi.waitFor(() => expect(useNav.getState().asOf).toBe("2026-10-29"));
+      window.history.back();
+      await vi.waitFor(() => expect(useNav.getState().asOf).toBeNull());
+      window.history.forward();
+      await vi.waitFor(() => expect(useNav.getState().asOf).toBe("2026-10-29"));
+    });
+
+    it("opens a deep link at that day", async () => {
+      window.location.hash = "#graph&at=2026-10-20&w=24h";
+      await vi.waitFor(() => expect(useNav.getState().asOf).toBe("2026-10-20"));
+      expect(useNav.getState().window).toBe("24h");
+    });
   });
 });

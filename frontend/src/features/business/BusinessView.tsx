@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Profile, TimeWindow } from "@/api/contract";
 import { EmptyState } from "@/components/EmptyState";
 import { SectorChip } from "@/components/SectorChip";
+import { UndoRedoButtons } from "@/components/UndoRedo";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Segmented } from "@/components/ui/segmented";
@@ -19,6 +20,7 @@ import {
   useProfile,
   useWatchlist,
 } from "@/state/profile";
+import { touchingAny } from "@/state/undo";
 
 import { AffectsFeed } from "./AffectsFeed";
 import { AlertsCard, AlertSettings } from "./Alerts";
@@ -29,6 +31,9 @@ import { ProfileSetup } from "./ProfileSetup";
 import { useAffects, useBusinessAlerts, useWatchQueries } from "./use-business";
 import { useFirstRun } from "./setup-state";
 import { SuggestedForecasts, Watchlist } from "./Watchlist";
+
+/** What Undo and Redo on this screen act on: the profile, the watchlist and alert settings. */
+const BUSINESS_EDITS = touchingAny(["profile", "watchlist", "alerts"]);
 
 /**
  * My Business: a two-minute setup on the first visit, then what affects
@@ -282,6 +287,7 @@ function DashboardHeader({
       )}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <StoreNote kind={storeKind} error={saveError} />
+        <UndoRedoButtons scope={BUSINESS_EDITS} noun="My Business" />
         <Segmented<TimeWindow>
           aria-label="Time window"
           value={timeWindow}

@@ -11,10 +11,11 @@
  * Each value lives in one shared store, so the onboarding, the feed and the
  * Opportunities screen always agree (separate `useUserValue` calls would each
  * hold their own copy). The pure helpers below (isEmpty, matches, alerts)
- * are tested on their own.
+ * are tested on their own. Edits to the profile, watchlist and alert rules
+ * join the viewer's undo list (state/undo.ts); the visit time does not.
  */
 import { useEffect } from "react";
-import { create, type StoreApi, type UseBoundStore } from "zustand";
+import { create } from "zustand";
 
 import {
   SECTOR_IDS,
@@ -24,7 +25,10 @@ import {
   type SectorId,
   type StorySummary,
 } from "@/api/contract";
-import { getUserStore, type UserStore } from "@/platform/storage";
+import { sectorLabel } from "@/lib/icons";
+
+import { createStoredValue, useStored } from "./stored-value";
+import { nameForLabel } from "./undo";
 
 // ---------------------------------------------------------------------------
 // The profile
@@ -451,90 +455,61 @@ function moveSize(alert: Alert): number {
 // Shared stored values
 // ---------------------------------------------------------------------------
 
-export interface StoredValue<T> {
-  value: T;
-  /** False until the stored value has been read. */
-  loaded: boolean;
-  /** Where it's saved: "cloud" (your Claude account), "browser", or "memory" (this visit only). */
-  kind: UserStore["kind"] | null;
-  saveError: Error | null;
-  /** Change the value; it's saved right away. */
-  set: (next: T | ((prev: T) => T)) => void;
-  /** Read the stored value again (another screen may have changed it). */
-  refresh: () => Promise<void>;
+export type { StoredValue } from "./stored-value";
+
+/** How a profile edit reads in the undo list: "added Gujarat to where you buy from". */
+export function describeProfileChange(before: Profile, after: Profile): string {
+  const changed = [...PROFILE_ROLES, "keywords" as const].filter(
+    (k) => JSON.stringify(before[k]) !== JSON.stringify(after[k]),
+  );
+  if (changed.length !== 1) return "profile changes";
+  const role = changed[0];
+  const was = before[role] as string[];
+  const now = after[role] as string[];
+  const added = now.filter((x) => !was.includes(x));
+  const removed = was.filter((x) => !now.includes(x));
+  const one = added.length + removed.length === 1 ? (added[0] ?? removed[0]) : null;
+  if (!one) return role === "keywords" ? "keywords" : `${ROLE_INFO[role].label.toLowerCase()}`;
+  const verb = added.length ? "added" : "removed";
+  const to = added.length ? "to" : "from";
+  if (role === "keywords") return `${verb} keyword "${one}"`;
+  if (role === "sectors") return `${verb} ${sectorLabel(one as SectorId)} ${to} your sectors`;
+  return `${verb} ${nameForLabel(one)} ${to} ${ROLE_INFO[role].label.toLowerCase()}`;
 }
 
-interface StoredValueHandle<T> {
-  store: UseBoundStore<StoreApi<StoredValue<T>>>;
-  /** Load once (later calls do nothing). */
-  ensure: () => void;
-  reset: () => void;
+/** "added Gujarat to your watchlist" (or "watchlist changes"). */
+export function describeWatchChange(before: string[], after: string[]): string {
+  const added = after.filter((x) => !before.includes(x));
+  const removed = before.filter((x) => !after.includes(x));
+  if (added.length + removed.length !== 1) return "watchlist changes";
+  return added.length
+    ? `added ${nameForLabel(added[0])} to your watchlist`
+    : `removed ${nameForLabel(removed[0])} from your watchlist`;
 }
 
-function createStoredValue<T>(
-  key: string,
-  fallback: T,
-  normalize: (raw: unknown) => T,
-): StoredValueHandle<T> {
-  let version = 0; // bumped by every local change, so a slower read never overwrites it
-  let started = false;
-  const initial = { value: fallback, loaded: false, kind: null, saveError: null };
-  const store = create<StoredValue<T>>((set, get) => ({
-    ...initial,
-    set: (next) => {
-      const resolved = normalize(typeof next === "function" ? (next as (prev: T) => T)(get().value) : next);
-      version += 1;
-      set({ value: resolved });
-      void getUserStore()
-        .then((userStore) => userStore.set(key, resolved))
-        .then(() => set({ saveError: null }))
-        .catch((error: unknown) =>
-          set({ saveError: error instanceof Error ? error : new Error(String(error)) }),
-        );
-    },
-    refresh: async () => {
-      const at = version;
-      const userStore = await getUserStore();
-      let value: T | undefined;
-      try {
-        const raw = await userStore.get<unknown>(key);
-        value = raw === null ? undefined : normalize(raw);
-      } catch {
-        // Unreadable: keep what we have.
-      }
-      if (version !== at) {
-        set({ loaded: true, kind: userStore.kind });
-        return;
-      }
-      set({ loaded: true, kind: userStore.kind, ...(value !== undefined ? { value } : {}) });
-    },
-  }));
-  return {
-    store,
-    ensure: () => {
-      if (started) return;
-      started = true;
-      void store.getState().refresh();
-    },
-    reset: () => {
-      version = 0;
-      started = false;
-      store.setState({ ...initial });
-    },
-  };
+/** "alert threshold" or "alert settings". */
+export function describeRulesChange(before: AlertRules, after: AlertRules): string {
+  const onlyThresholds =
+    JSON.stringify({ ...before, thresholds: null }) === JSON.stringify({ ...after, thresholds: null });
+  return onlyThresholds ? "forecast alert threshold" : "alert settings";
 }
 
-const profileValue = createStoredValue<Profile>("profile", emptyProfile, normalizeProfile);
-const watchValue = createStoredValue<string[]>("watchlist", [], normalizeWatchlist);
-const rulesValue = createStoredValue<AlertRules>("alerts", DEFAULT_ALERT_RULES, normalizeAlertRules);
+const profileValue = createStoredValue<Profile>("profile", emptyProfile, normalizeProfile, {
+  key: "profile",
+  describe: describeProfileChange,
+});
+const watchValue = createStoredValue<string[]>("watchlist", [], normalizeWatchlist, {
+  key: "watchlist",
+  describe: describeWatchChange,
+});
+const rulesValue = createStoredValue<AlertRules>("alerts", DEFAULT_ALERT_RULES, normalizeAlertRules, {
+  key: "alerts",
+  describe: describeRulesChange,
+});
+// The visit time is housekeeping, not an edit: it stays out of undo.
 const lastSeenValue = createStoredValue<string | null>("last-seen", null, (raw) =>
   typeof raw === "string" && !Number.isNaN(Date.parse(raw)) ? raw : null,
 );
-
-function useStored<T>(handle: StoredValueHandle<T>): StoredValue<T> {
-  useEffect(() => handle.ensure(), [handle]);
-  return handle.store();
-}
 
 /** The business profile (shared by every screen). */
 export const useProfile = () => useStored(profileValue);
