@@ -100,7 +100,7 @@ describe("the graph as of a past day", () => {
     render(<GraphView />);
     expect(control().getAttribute("aria-label")).toBe("Show the graph on a past date");
     fireEvent.click(control());
-    const day = screen.getByLabelText("Day");
+    const day = screen.getByLabelText("Day to show");
     expect(day.getAttribute("max")).toBe("2026-10-30");
     fireEvent.change(day, { target: { value: "2026-10-29" } });
     fireEvent.click(screen.getByRole("button", { name: "Show" }));
@@ -149,7 +149,7 @@ describe("the graph as of a past day", () => {
     expect(screen.queryByRole("alert")).toBeNull();
     fireEvent.click(control());
     expect(screen.getByText(/Turn Sample data off in Settings/)).toBeTruthy();
-    expect(screen.queryByLabelText("Day")).toBeNull();
+    expect(screen.queryByLabelText("Day to show")).toBeNull();
   });
 
   it("is off while the app shows sample data by itself (no live data yet)", () => {
@@ -182,7 +182,7 @@ describe("the graph as of a past day", () => {
     useHistoryStart.setState({ day: "2026-10-28" });
     render(<GraphView />);
     fireEvent.click(control());
-    const day = screen.getByLabelText("Day");
+    const day = screen.getByLabelText("Day to show");
     expect(day.getAttribute("min")).toBe("2026-10-28");
     expect(screen.getByText(/History starts on 28 Oct 2026/)).toBeTruthy();
     fireEvent.change(day, { target: { value: "2026-09-01" } });
