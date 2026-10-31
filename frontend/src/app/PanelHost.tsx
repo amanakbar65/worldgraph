@@ -3,7 +3,7 @@ import { Suspense, useEffect, useRef, useState, type ReactNode, type Ref } from 
 import { Drawer } from "vaul";
 
 import { usePanelFocus } from "./panel-focus";
-import { openingSnap, SNAP_POINTS } from "./panel-snap";
+import { openingSnap, SNAP_POINTS, snapForFocus } from "./panel-snap";
 import { PANEL_COMPONENTS, WIDE_PANELS } from "./registry";
 import { useIsDesktop } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
@@ -141,6 +141,13 @@ export function PanelHost() {
           // usePanelFocus moves focus in and gives it back (Radix would drop it on <body>).
           onOpenAutoFocus={(e) => e.preventDefault()}
           onCloseAutoFocus={(e) => e.preventDefault()}
+          // Focus below the half-height sheet's edge (Tab, a screen reader) raises it, so it isn't off screen.
+          onFocus={(e) => {
+            const sheetTop = e.currentTarget.getBoundingClientRect().top;
+            const { top, bottom } = e.target.getBoundingClientRect();
+            const next = snapForFocus(snap, { top: top - sheetTop, bottom: bottom - sheetTop }, window.innerHeight);
+            if (next !== null) setSnap(next);
+          }}
           className="fixed inset-x-0 bottom-0 z-40 flex h-[94dvh] flex-col rounded-t-2xl border-t border-line bg-surface shadow-panel outline-none"
         >
           <Drawer.Title className="sr-only">Details</Drawer.Title>

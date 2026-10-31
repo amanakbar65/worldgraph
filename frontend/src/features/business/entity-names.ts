@@ -10,6 +10,7 @@ import { create } from "zustand";
 import { useRpc } from "@/api/client";
 import type { EntityType } from "@/api/contract";
 import { sectorLabel } from "@/lib/icons";
+import { setUndoNameResolver } from "@/state/undo";
 
 import { sectorOfNode, typeOfId } from "./business-data";
 
@@ -35,6 +36,9 @@ export const useKnownNames = create<{
       return changed ? { names } : s;
     }),
 }));
+
+// Undo labels name what was added or removed when this visit knows it.
+setUndoNameResolver((id) => useKnownNames.getState().names[id]?.name ?? null);
 
 export interface EntityName {
   name: string;
