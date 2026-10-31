@@ -22,7 +22,7 @@ import { WEAK_CONFIDENCE } from "@/lib/meaning";
 import { formatDate, formatDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
-import { isLinkKind, KIND_WORDS, originSource, provenanceSources, updatedSinceAdded } from "./provenance-data";
+import { addedByWho, isLinkKind, KIND_WORDS, originSource, provenanceSources, updatedSinceAdded } from "./provenance-data";
 
 /** At most this many sources are listed (the rest are counted). */
 const SOURCE_LIMIT = 6;
@@ -109,7 +109,7 @@ export function ProvenanceFacts({ data, className }: { data: ProvenanceResponse;
   const url = data.is_sample ? null : safeHttpUrl(origin?.url);
   return (
     <dl className={cn("flex flex-col gap-2", className)}>
-      <Fact term="Added by">{data.added_by}</Fact>
+      <Fact term="Added by">{addedByWho(data.added_by)}</Fact>
       {origin && (
         <Fact term="From">
           <span className="flex flex-col gap-0.5">

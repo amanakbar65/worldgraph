@@ -10,6 +10,7 @@ import {
   provenanceArgs,
   provenanceSources,
   updatedSinceAdded,
+  addedByWho,
   whyLabel,
 } from "./provenance-data";
 
@@ -38,6 +39,12 @@ describe("provenance data", () => {
     expect(originSource(EDGE_PROVENANCE)?.name).toBe("WorldGraph curated");
     expect(originSource(NODE_PROVENANCE)).toBeNull();
     expect(originSource(WEAK_LINK_PROVENANCE)).toBeNull();
+  });
+
+  it("leaves the date out of who added it (the Added line shows it)", () => {
+    expect(addedByWho("News pipeline · AI analysis · 31 Oct")).toBe("News pipeline · AI analysis");
+    expect(addedByWho("WorldGraph curated · 2 Jan 2025")).toBe("WorldGraph curated");
+    expect(addedByWho("WorldGraph curated")).toBe("WorldGraph curated");
   });
 
   it("says when it changed only if that was after it was added", () => {

@@ -83,7 +83,7 @@ describe("Why is this here?", () => {
       "Added",
       "Last changed",
     ]);
-    expect(facts[0]).toBe("News pipeline · AI analysis · 22 Oct");
+    expect(facts[0]).toBe("News pipeline · AI analysis");
     expect(facts[1]).toContain("WorldGraph curated");
     expect(facts[2]).toBe(formatDate(EDGE_PROVENANCE.created_at));
     expect(facts[3]).toBe(formatDate(EDGE_PROVENANCE.updated_at));
@@ -95,7 +95,8 @@ describe("Why is this here?", () => {
     render(<WhyPanel panel={whyPanel("link", 12)} />);
     expect(mocks.asked).toEqual([{ target: "link", id: 12 }]);
     expect(screen.getByText("Cause and effect")).toBeTruthy();
-    expect(screen.getByText("Sample data")).toBeTruthy();
+    // The sample label, and "Added by" naming the sample source.
+    expect(screen.getAllByText("Sample data")).toHaveLength(2);
     const sure = screen.getByRole("region", { name: "How sure" });
     expect(within(sure).getByText("Low confidence (35%)")).toBeTruthy();
     expect(within(sure).getByText("Inferred")).toBeTruthy();

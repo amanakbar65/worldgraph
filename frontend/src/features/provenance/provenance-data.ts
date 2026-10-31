@@ -56,6 +56,14 @@ export function originSource(data: Pick<ProvenanceResponse, "source" | "sources"
   return data.sources.some((s) => s.name === source.name) ? null : source;
 }
 
+/**
+ * Who added it, without the date the API appends ("News pipeline · AI analysis · 31 Oct"):
+ * the sheet shows that date on its own "Added" line, in the viewer's date format.
+ */
+export function addedByWho(addedBy: string): string {
+  return addedBy.replace(/ · \d{1,2} [A-Z][a-z]{2}(?: \d{4})?$/, "");
+}
+
 /** Changed since it was added (more than a minute later)? */
 export function updatedSinceAdded(data: Pick<ProvenanceResponse, "created_at" | "updated_at">): boolean {
   const created = Date.parse(data.created_at);

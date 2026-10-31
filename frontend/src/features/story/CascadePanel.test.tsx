@@ -303,7 +303,7 @@ describe("the shared minimum confidence in the cascade", () => {
     const red = screen.getByRole("button", { name: /^Cause, 1 step back: Red Sea attacks/ }).closest("li")!;
     fireEvent.click(within(red).getByRole("button", { name: "Evidence" }));
     const added = within(red).getByRole("region", { name: "Added" });
-    expect(within(added).getByText("News pipeline · AI analysis · 22 Oct")).toBeTruthy();
+    expect(within(added).getByText("News pipeline · AI analysis")).toBeTruthy();
     expect(within(added).getByText("Added by")).toBeTruthy();
   });
 
