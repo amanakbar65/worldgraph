@@ -162,8 +162,11 @@ test.describe("the logo is Home", () => {
       await goToView(page, "brief");
       await expect(page.locator("main h1")).toHaveText("Daily brief");
       await logo(page).click();
+      // The new map has loaded. Then readCamera, not camera(): a moving map is seldom
+      // loaded() when waitForFunction looks, so camera() can wait out the whole turn.
+      await expect(page.getByTestId("globe-map")).toHaveAttribute("data-ready", "true", { timeout: 30_000 });
       // Within 20 s: after 30 s without input the globe would start turning by itself anyway.
-      await expect.poll(async () => (await camera(page)).mode, { timeout: 20_000 }).toBe("turning");
+      await expect.poll(async () => (await readCamera(page)).mode, { timeout: 20_000 }).toBe("turning");
       expect((await readCamera(page)).lat).toBeCloseTo(HOME_CENTER.lat, 0);
     });
 
