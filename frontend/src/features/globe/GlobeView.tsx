@@ -14,6 +14,7 @@ import { useIsDesktop } from "@/lib/hooks";
 import { isFresh, WINDOW_MS } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { WIDE_PANELS } from "@/app/registry";
+import { useWhyAvailable } from "@/features/provenance/use-why";
 import { TARGET } from "@/platform/runtime";
 import { currentPanel, useNav } from "@/state/nav";
 import { sampleArg, useCalm, useIndiaBorders, useSettings } from "@/state/settings";
@@ -60,7 +61,7 @@ import {
   type LabelCandidate,
   type LngLat,
 } from "./model";
-import { HoverCard, SelectionCard, type PickContext } from "./PickCard";
+import { HoverCard, PinnedCard, SelectionCard, type PickContext } from "./PickCard";
 import { hoveredItem, useGlobeHover, useGlobeUi } from "./store";
 import { TopNowBody, TopNowStrip } from "./TopNow";
 import { useUi } from "@/state/ui";
@@ -113,6 +114,7 @@ export default function GlobeView() {
   const focus = useNav((s) => s.focus);
   const panel = useNav(currentPanel);
   const isDesktop = useIsDesktop();
+  const whyOn = useWhyAvailable();
   const calm = useCalm();
   const sampleSetting = useSettings((s) => s.sample);
   const worldview = worldviewFor(useIndiaBorders());
@@ -420,12 +422,19 @@ export default function GlobeView() {
   const onPick = useCallback(
     (info: PickInfo | null) => {
       if (isDesktop) {
+        // A cascade arc pins its card, which offers "Why is this here?" beside the cascade.
+        if (info?.kind === "arc" && whyOn) {
+          setHover(null);
+          setSelected(info);
+          return;
+        }
+        setSelected(null);
         if (info) act(info);
         return;
       }
       setSelected(info);
     },
-    [act, isDesktop],
+    [act, isDesktop, whyOn, setHover],
   );
 
   const onHover = useCallback(
@@ -497,12 +506,28 @@ export default function GlobeView() {
     void run();
   }, [focus, appliedFocus, setAppliedFocus, countries.data, worldview, fly, flyToShape]);
 
-  // A phone selection that no longer exists (window or lens changed) goes away.
+  // A selection that no longer exists (window, lens or minimum confidence changed) goes away.
   const selectionGone =
     selected !== null &&
     ((selected.kind === "event" && !eventsById.has(selected.id)) ||
-      (selected.kind === "forecast" && !forecasts.some((f) => f.id === selected.id)));
+      (selected.kind === "forecast" && !forecasts.some((f) => f.id === selected.id)) ||
+      (selected.kind === "arc" && !arcs.some((a) => String(a.id) === selected.id)));
   const shownSelection = isDesktop || selectionGone ? null : selected;
+  // Desktop: a clicked arc's pinned card (only with "Why is this here?" on; see onPick).
+  const pinned = isDesktop && !selectionGone && selected?.kind === "arc" ? selected : null;
+
+  // Escape closes the pinned card when no panel is open (a panel steps back first).
+  useEffect(() => {
+    if (!pinned) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented || useNav.getState().panels.length > 0) return;
+      e.preventDefault();
+      setSelected(null);
+    };
+    // Capture: before the app's own Escape handler, which would otherwise see no panel to close.
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [pinned]);
 
   // The Top 5 sends full stories, so the list and the cards show those the same way.
   const knownStories = useMemo(() => new Map((top.data?.stories ?? []).map((s) => [s.id, s])), [top.data]);
@@ -668,7 +693,12 @@ export default function GlobeView() {
                 className="pointer-events-auto absolute bottom-3 flex items-end justify-end gap-2"
                 style={{ right: rightSpace + 12, left: COLUMN + 24 }}
               >
-                <div className={cn(GLASS, "flex min-h-10 min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg px-3 py-2")}>
+                <div
+                  className={cn(
+                    GLASS,
+                    "flex min-h-10 min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg px-3 py-2",
+                  )}
+                >
                   {/* All sample: the Top 5 card and the status pill already say so. Beside live
                       news, the key is the map's only note that some dots are invented. */}
                   {sample === "some" && <SampleBadge compact />}
@@ -778,7 +808,23 @@ export default function GlobeView() {
       )}
 
       {isDesktop && !mapError && (
-        <HoverCard context={pickContext} bounds={{ width: size.width - rightSpace, height: size.height }} />
+        <HoverCard
+          context={pickContext}
+          bounds={{ width: size.width - rightSpace, height: size.height }}
+          exceptId={pinned?.id}
+        />
+      )}
+      {pinned && !mapError && (
+        <PinnedCard
+          info={pinned}
+          context={pickContext}
+          bounds={{ width: size.width - rightSpace, height: size.height }}
+          onOpen={() => {
+            act(pinned);
+            setSelected(null);
+          }}
+          onClose={() => setSelected(null)}
+        />
       )}
     </div>
   );

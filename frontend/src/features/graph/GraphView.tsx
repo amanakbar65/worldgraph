@@ -41,6 +41,7 @@ import { GraphLegend } from "./GraphLegend";
 import { GraphList } from "./GraphList";
 import { GraphSearch, type SearchPick } from "./GraphSearch";
 import { GraphTimelapseBar } from "./GraphTimelapseBar";
+import { useLinkActions } from "./link-actions";
 import type { SchemaEdge } from "./schema-data";
 import { SchemaView } from "./SchemaView";
 import { useGraphFeatures, useRelationIndex } from "./use-graph-schema";
@@ -213,8 +214,8 @@ export default function GraphView() {
   );
   /**
    * Choose a link (a tap in the drawing, or its relation in the list): its
-   * card stays open with the relation, polarity and confidence. Phase A3
-   * hangs "Why is this here?" on this selection (see `linkActions`).
+   * card stays open with the relation, polarity and confidence, and
+   * "Why is this here?" (`linkActions`).
    */
   const selectLink = useCallback(
     (link: VizLink | null) => {
@@ -246,9 +247,8 @@ export default function GraphView() {
     state.setTypes(orderTypes([...state.filters.types, edge.src, edge.dst]));
     state.setMode("graph");
   };
-  // Phase A3 (part 2): the actions under a chosen link's card, e.g. "Why is this here?"
-  // for linkTarget(selectedLink) (graph-data.ts). Nothing yet.
-  const linkActions = null;
+  // Under a chosen link's card: "Why is this here?" (kg.provenance) for its edge or causal link.
+  const linkActions = useLinkActions(selectedLink, graph, relations);
   const linkCardAt = selectedLink && linkAt?.id === selectedLink.id ? linkAt.at : null;
   const showAround = (pick: SearchPick) => useGraphState.getState().showAround({ id: pick.id, name: pick.name }, 1);
 
@@ -564,7 +564,11 @@ function FiltersButton({ local }: { local: boolean }) {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="max-h-[min(75vh,640px)] w-[min(380px,calc(100vw-24px))] overflow-y-auto p-4">
+      {/* Phones: end above the graph's bottom controls, so its edge never cuts across their labels. */}
+      <PopoverContent
+        align="start"
+        className="max-h-[min(640px,calc(100dvh-16rem))] w-[min(380px,calc(100vw-24px))] overflow-y-auto overscroll-contain p-4 sm:max-h-[min(75vh,640px)]"
+      >
         <GraphFilters local={local} />
       </PopoverContent>
     </Popover>
@@ -738,7 +742,7 @@ function GraphSkeleton() {
     [44, 24, 20],
   ];
   return (
-    <div className="absolute inset-0" aria-busy="true" aria-label="Loading the graph">
+    <div role="status" className="absolute inset-0" aria-busy="true" aria-label="Loading the graph">
       {dots.map(([x, y, s], i) => (
         <Skeleton
           key={i}

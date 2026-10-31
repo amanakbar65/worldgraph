@@ -27,7 +27,7 @@ export function App() {
       </a>
       <Header />
       <main id="main" className="relative min-h-0 flex-1" tabIndex={-1}>
-        <Suspense fallback={<div className="h-full animate-pulse bg-bg-sunken" aria-busy="true" />}>
+        <Suspense fallback={<div role="status" aria-busy="true" aria-label="Loading" className="h-full animate-pulse bg-bg-sunken" />}>
           <View />
         </Suspense>
         <PanelHost />

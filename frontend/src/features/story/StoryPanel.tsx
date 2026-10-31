@@ -257,7 +257,7 @@ function CausesEffects({ story, nav }: { story: Story; nav: Nav }) {
   let body: ReactNode;
   if (query.isPending) {
     body = (
-      <div className="flex flex-col gap-3 py-1" aria-busy="true" aria-label="Loading causes and effects">
+      <div role="status" className="flex flex-col gap-3 py-1" aria-busy="true" aria-label="Loading causes and effects">
         {[0, 1].map((i) => (
           <div key={i} className="flex items-start gap-3 p-2">
             <Skeleton className="size-9 rounded-lg" />
@@ -415,7 +415,7 @@ function DraftStory({ data, nav }: { data: StoryResponse; nav: Nav }) {
 
 function StorySkeleton() {
   return (
-    <div className="flex flex-col gap-6 p-4" aria-busy="true" aria-label="Loading story">
+    <div role="status" className="flex flex-col gap-6 p-4" aria-busy="true" aria-label="Loading story">
       <div className="flex flex-col gap-3">
         <div className="flex gap-2">
           <Skeleton className="h-8 w-24 rounded-full" />

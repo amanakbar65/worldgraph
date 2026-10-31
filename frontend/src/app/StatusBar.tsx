@@ -89,11 +89,14 @@ function StatusPill({ placement, wide }: { placement: "float" | "header"; wide: 
   const analysis = useAnalysisStatus((s) => s.status);
   const stop = useAnalysisStatus((s) => s.stop);
   const now = useNow();
-  const sampleOn = useSettings((s) => s.sample) === "on";
+  const sample = useSettings((s) => s.sample);
+  const sampleOn = sample === "on";
   const snapshotKind = useSnapshot((s) => s.kind);
   const snapshotAsOf = useSnapshot((s) => s.asOf);
 
-  const showingSample = meta.data?.data.showing_sample ?? false;
+  // meta answers for the "auto" setting (it takes no `sample`): with Sample
+  // data off, nothing invented is shown even while there is no live news.
+  const showingSample = sample !== "off" && (meta.data?.data.showing_sample ?? false);
   const snapshot = snapshotText(snapshotKind, snapshotAsOf, now);
   let data = { long: "Connecting…", short: "Connecting…" };
   if (meta.isPlaceholderData) {

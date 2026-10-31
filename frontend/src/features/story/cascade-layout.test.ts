@@ -303,4 +303,21 @@ describe("openingViewport and the legend", () => {
     expect(bottom(clear!)).toBeLessThanOrEqual(box.height - 24 - 80 + 0.01);
     expect(bottom(clear!)).toBeLessThanOrEqual(bottom(plain!));
   });
+
+  it("keeps the story clear of the zoom buttons in the top-right corner too", () => {
+    const tall = layoutCascade(shapeCascade(CASCADE), "TB");
+    const story = tall.nodes.get(FOCUS_ID)!;
+    const box = { width: 390, height: 900 };
+    const plain = openingViewport(tall, null, FOCUS_ID, box, 24, 80)!;
+    const top = (v: { y: number; zoom: number }) => story.y * v.zoom + v.y;
+    const right = (v: { x: number; zoom: number }) => (story.x + story.width) * v.zoom + v.x;
+    // Buttons that reach just below the story's top, over its right edge.
+    const buttons = { width: box.width - right(plain) + 20, height: top(plain) + 16 };
+    const clear = openingViewport(tall, null, FOCUS_ID, box, 24, 80, buttons)!;
+    expect(top(clear)).toBeGreaterThanOrEqual(buttons.height + 8 - 0.01);
+    expect((story.y + story.height) * clear.zoom + clear.y).toBeLessThanOrEqual(box.height - 24 - 80 + 0.01);
+    expect(clear.x).toBe(plain.x);
+    // Buttons out of the story's way change nothing.
+    expect(openingViewport(tall, null, FOCUS_ID, box, 24, 80, { width: 52, height: 4 })).toEqual(plain);
+  });
 });

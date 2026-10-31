@@ -499,6 +499,7 @@ function RadarList({ items, sectors, forYou, onOpen, active, onActive }: Opportu
 export function RadarSkeleton() {
   return (
     <div
+      role="status"
       aria-busy="true"
       aria-label="Loading the radar"
       className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4"

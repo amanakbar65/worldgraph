@@ -86,6 +86,7 @@ function FlowCanvas({
   const hintId = useId();
   const container = useRef<HTMLDivElement>(null);
   const legendRef = useRef<HTMLDivElement>(null);
+  const zoomRef = useRef<HTMLDivElement>(null);
   const [activeNode, setActiveNode] = useState(model.focus);
   const [hotNode, setHotNode] = useState<string | null>(null);
   const [hotEdge, setHotEdge] = useState<string | null>(null);
@@ -120,7 +121,10 @@ function FlowCanvas({
       const plan = fitPlan(model, layout, box, newAi);
       // The legend covers the bottom-left corner: keep the story clear of it.
       const legend = legendRef.current?.getBoundingClientRect().height ?? 0;
-      const opening = openingViewport(layout, plan.ids, model.focus, box, 24, legend ? legend + 12 : 0);
+      // The zoom buttons cover the top-right corner: measured from the box's top and right edges.
+      const zoomBox = zoomRef.current?.getBoundingClientRect();
+      const topRight = rect && zoomBox ? { width: rect.right - zoomBox.left, height: zoomBox.bottom - rect.top } : undefined;
+      const opening = openingViewport(layout, plan.ids, model.focus, box, 24, legend ? legend + 12 : 0, topRight);
       const animate = { duration: firstFit.current ? 0 : duration };
       if (opening) void flow.setViewport(opening, animate);
       else
@@ -291,7 +295,7 @@ function FlowCanvas({
         >
           <Background variant={BackgroundVariant.Dots} gap={22} size={1.2} color="var(--line-strong)" />
           <Panel position="top-right" className="!m-3">
-            <div className="flex flex-col overflow-hidden rounded-lg border border-line bg-glass shadow-panel backdrop-blur">
+            <div ref={zoomRef} className="flex flex-col overflow-hidden rounded-lg border border-line bg-glass shadow-panel backdrop-blur">
               <Button variant="ghost" size="icon" aria-label="Zoom in" onClick={() => void flow.zoomIn({ duration })}>
                 <Plus aria-hidden />
               </Button>

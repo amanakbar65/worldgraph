@@ -48,7 +48,7 @@ export function Exposure({
         description="Tap one to see only its stories."
       />
       {loading ? (
-        <div aria-busy="true" aria-label="Loading" className="flex flex-col gap-3 py-1">
+        <div role="status" aria-busy="true" aria-label="Loading" className="flex flex-col gap-3 py-1">
           {[0, 1, 2].map((i) => (
             <div key={i} className="flex flex-col gap-1.5">
               <Skeleton className="h-4 w-2/3" />

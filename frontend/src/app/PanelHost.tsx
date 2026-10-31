@@ -5,6 +5,7 @@ import { Drawer } from "vaul";
 import { usePanelFocus } from "./panel-focus";
 import { openingSnap, SNAP_POINTS, snapForFocus } from "./panel-snap";
 import { PANEL_COMPONENTS, WIDE_PANELS } from "./registry";
+import { leaveEscapeToApp } from "./use-escape";
 import { useIsDesktop } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { currentPanel, useNav, type Panel } from "@/state/nav";
@@ -20,7 +21,7 @@ function PanelContent({ panel }: { panel: Panel }) {
 
 export function PanelSkeleton() {
   return (
-    <div className="space-y-3 p-4" aria-busy="true" aria-label="Loading">
+    <div role="status" className="space-y-3 p-4" aria-busy="true" aria-label="Loading">
       <div className="h-6 w-2/3 animate-pulse rounded bg-surface-2" />
       <div className="h-4 w-full animate-pulse rounded bg-surface-2" />
       <div className="h-4 w-5/6 animate-pulse rounded bg-surface-2" />
@@ -51,23 +52,12 @@ function Controls({
   return (
     <div className="sticky top-0 z-10 flex items-center gap-1 border-b border-line bg-glass px-2 py-1.5 backdrop-blur">
       {depth > 1 && (
-        <button
-          type="button"
-          onClick={back}
-          className={CONTROL}
-          aria-label="Back"
-        >
+        <button type="button" onClick={back} className={CONTROL} aria-label="Back">
           <ArrowLeft aria-hidden className="size-4" />
         </button>
       )}
       <div className="min-w-0 flex-1">{children}</div>
-      <button
-        ref={closeRef}
-        type="button"
-        onClick={closePanels}
-        className={CONTROL}
-        aria-label="Close panel"
-      >
+      <button ref={closeRef} type="button" onClick={closePanels} className={CONTROL} aria-label="Close panel">
         <X aria-hidden className="size-4" />
       </button>
     </div>
@@ -94,6 +84,19 @@ export function PanelHost() {
     scroller.current?.scrollTo({ top: 0 });
   }, [panel]);
 
+  // Phones: the sheet isn't modal, but vaul's Radix dialog still turns
+  // pointer events off on <body> when the sheet opens from app state (vaul
+  // turns them back on only when it opens the sheet itself), so nothing
+  // outside the sheet would take a tap. Turn them back on once it is open.
+  const sheetOpen = !isDesktop && panel !== null;
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const frame = requestAnimationFrame(() => {
+      if (document.body.style.pointerEvents === "none") document.body.style.pointerEvents = "";
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [sheetOpen, panel]);
+
   // Phones: Ask and the cascade open at full height; other panels open at
   // half height and then keep whatever height the viewer dragged to.
   useEffect(() => {
@@ -112,7 +115,9 @@ export function PanelHost() {
         className={cn(
           "absolute z-20 flex flex-col overflow-hidden rounded-xl border border-line shadow-panel",
           // The full-width panels cover the globe: opaque, so its controls don't show through.
-          wide ? "inset-3 bg-surface" : "top-3 right-3 bottom-3 w-[min(440px,calc(100%-24px))] bg-glass backdrop-blur-xl",
+          wide
+            ? "inset-3 bg-surface"
+            : "top-3 right-3 bottom-3 w-[min(440px,calc(100%-24px))] bg-glass backdrop-blur-xl",
         )}
       >
         <Controls depth={depth} closeRef={close} />
@@ -141,6 +146,9 @@ export function PanelHost() {
           // usePanelFocus moves focus in and gives it back (Radix would drop it on <body>).
           onOpenAutoFocus={(e) => e.preventDefault()}
           onCloseAutoFocus={(e) => e.preventDefault()}
+          // Escape is the app's: useEscapeClosesPanel steps back one panel, and a
+          // drawer inside a panel (the cascade's evidence) closes only itself.
+          onEscapeKeyDown={leaveEscapeToApp}
           // Focus below the half-height sheet's edge (Tab, a screen reader) raises it, so it isn't off screen.
           onFocus={(e) => {
             const sheetTop = e.currentTarget.getBoundingClientRect().top;

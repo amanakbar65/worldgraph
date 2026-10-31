@@ -57,8 +57,8 @@ export function NodeHoverCard({ node, at }: { node: VizNode; at: { left: number;
  *
  * Hovering shows it decoratively (the list view carries the same for
  * keyboards). A tapped or chosen link shows it as a small dialog-like card
- * with a close button and an `actions` slot: Phase A3 puts "Why is this
- * here?" there.
+ * with a close button and an `actions` slot, where "Why is this
+ * here?" sits (kg.provenance).
  */
 export function LinkHoverCard({
   link,
@@ -92,7 +92,7 @@ export function LinkHoverCard({
 
   const RelationIcon = (RELATION_ICONS[link.relation] ?? DEFAULT_RELATION_ICON).icon;
   const relation = index ? linkRelationName(link, index) : null;
-  const weak = link.linkType !== null && isWeak(link.confidence);
+  const weak = link.weak || (link.linkType !== null && isWeak(link.confidence));
   const docked = at === "docked";
 
   return (
@@ -130,7 +130,7 @@ export function LinkHoverCard({
           )}
         </div>
       )}
-      {link.linkType && (
+      {link.linkType ? (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           {link.confidence !== null ? (
             <ConfidenceMeter confidence={link.confidence} linkType={link.linkType} />
@@ -139,6 +139,14 @@ export function LinkHoverCard({
           )}
           {weak && <WeakMark label={WEAK_LINK_LABEL} />}
         </div>
+      ) : (
+        // Other links show their own confidence when they have one, and "?" when weak.
+        (link.confidence !== null || weak) && (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            {link.confidence !== null && <ConfidenceMeter confidence={link.confidence} />}
+            {weak && <WeakMark label={WEAK_LINK_LABEL} />}
+          </div>
+        )
       )}
       <p className="flex flex-col gap-0.5 text-label text-fg-muted">
         <span className="line-clamp-2 text-fg">{s.name}</span>

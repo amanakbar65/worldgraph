@@ -12,7 +12,7 @@ import { TimeAgo } from "@/components/TimeAgo";
 import { Chip } from "@/components/ui/chip";
 import { WeakMark } from "@/components/WeakMark";
 import { IMPACT_ICONS } from "@/lib/icons";
-import { DIRECTION_ARROWS, DIRECTION_WORDS, impactTone, isWeak, WEAK_LINK_LABEL } from "@/lib/meaning";
+import { DIRECTION_ARROWS, DIRECTION_WORDS, impactTone, showsWeak, WEAK_LINK_LABEL } from "@/lib/meaning";
 import { cn } from "@/lib/utils";
 
 import { branchLabel, type BranchInfo } from "./cascade-data";
@@ -149,7 +149,7 @@ export function LinkLine({
   showPolarity = false,
   className,
 }: {
-  link: Pick<CascadeLink, "mechanism" | "link_type" | "confidence"> & Partial<Pick<CascadeLink, "polarity" | "delayed">>;
+  link: Pick<CascadeLink, "mechanism" | "link_type" | "confidence"> & Partial<Pick<CascadeLink, "polarity" | "delayed" | "weak">>;
   branch?: BranchInfo | null;
   ai?: boolean;
   showPolarity?: boolean;
@@ -161,7 +161,7 @@ export function LinkLine({
       {showPolarity && <PolarityMark polarity={link.polarity} className="text-label" />}
       {showPolarity && <DelayedMark delayed={link.delayed} />}
       <ConfidenceMeter confidence={link.confidence} linkType={link.link_type} />
-      {isWeak(link.confidence) && <WeakMark label={WEAK_LINK_LABEL} />}
+      {showsWeak(link, true) && <WeakMark label={WEAK_LINK_LABEL} />}
       {branch && <BranchBadge branch={branch} />}
       {ai && <span className="text-label text-fg-muted">AI projection</span>}
     </span>

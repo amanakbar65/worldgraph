@@ -755,7 +755,7 @@ export default function DesignPreview() {
                 description="Try a longer window."
                 action={{ label: "Show 7 days", onClick: () => setTimeWindow("7d") }}
               />
-              <div aria-busy="true" aria-label="Loading example" className="flex flex-col gap-3 rounded-lg border border-line p-3">
+              <div role="status" aria-busy="true" aria-label="Loading example" className="flex flex-col gap-3 rounded-lg border border-line p-3">
                 <div className="flex items-center gap-3">
                   <Skeleton className="size-9 rounded-lg" />
                   <SkeletonText lines={2} className="flex-1" />

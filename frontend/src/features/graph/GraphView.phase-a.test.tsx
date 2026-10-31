@@ -398,3 +398,57 @@ describe("trust at a glance in the graph", () => {
     expect(within(key).getByText("Raises or lowers what it leads to")).toBeTruthy();
   });
 });
+
+describe("Why is this here? from the graph (kg.provenance)", () => {
+  /** The 0023 fields: every link has its api id; the port's link is weak (40 % sure). */
+  const SOURCED = {
+    ...NAMED,
+    links: NAMED.links.map((l, i) =>
+      l.type === "located_in" ? { ...l, id: 31, confidence: 0.4, weak: true } : { ...l, id: l.id ?? 40 + i, weak: false },
+    ),
+  };
+  beforeEach(() => {
+    mocks.responses.graph = SOURCED;
+    mocks.responses.meta = { flags: { ...FLAGS_ON.flags, "kg.provenance": true } };
+  });
+  const top = () => useNav.getState().panels.at(-1);
+
+  it("offers it under a chosen link's card, for the edge or the causal link", () => {
+    render(<GraphView />);
+    const canvas = screen.getByTestId("force-graph");
+    fireEvent.click(within(canvas).getByText("link infra:mundra-port|region:in|located_in"));
+    const card = screen.getByRole("dialog", { name: /^Link: Located in: Mundra Port to India\. Confidence 40%\. Weak link/ });
+    expect(within(card).getByRole("img", { name: "Weak link: under 50% sure, or no source" })).toBeTruthy();
+    fireEvent.click(
+      within(card).getByRole("button", {
+        name: "Why is this here? Mundra Port, located in, India. Weak: under 50% sure, or no source.",
+      }),
+    );
+    expect(top()).toEqual({ kind: "why", target: "edge", id: "31" });
+
+    fireEvent.click(within(canvas).getByText("link story:red-sea-attacks|story:freight-rates-rise|inferred"));
+    const causal = screen.getByRole("dialog", { name: /^Link: Drives/ });
+    fireEvent.click(within(causal).getByRole("button", { name: /^Why is this here\? Red Sea attacks.+, drives, Freight rates/ }));
+    expect(top()).toEqual({ kind: "why", target: "link", id: "9" });
+  });
+
+  it("is reachable by keyboard from the list, which marks weak plain links with '?' and explains it once", () => {
+    render(<GraphView />);
+    fireEvent.click(screen.getByRole("radio", { name: "List" }));
+    expect(screen.getAllByText("Under 50% sure, or no source")).toHaveLength(1);
+    const list = screen.getByRole("list", { name: "Nodes, most connected first" });
+    const port = within(list).getByRole("list", { name: "Connections of Mundra Port" });
+    expect(within(port).getByRole("img", { name: "Weak link: under 50% sure, or no source" })).toBeTruthy();
+    fireEvent.click(within(port).getByRole("button", { name: "Link details: Mundra Port, located in, India" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Why is this here\? Mundra Port, located in, India\./ }));
+    expect(top()).toEqual({ kind: "why", target: "edge", id: "31" });
+  });
+
+  it("isn't offered while kg.provenance is off", () => {
+    mocks.responses.meta = FLAGS_ON;
+    render(<GraphView />);
+    fireEvent.click(within(screen.getByTestId("force-graph")).getByText("link infra:mundra-port|region:in|located_in"));
+    expect(screen.getByRole("dialog", { name: /^Link: Located in/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Why is this here/ })).toBeNull();
+  });
+});

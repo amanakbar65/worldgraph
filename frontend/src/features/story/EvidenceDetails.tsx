@@ -13,6 +13,9 @@ import { ForecastRow } from "@/components/ForecastRow";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SourcesList } from "@/components/SourcesList";
 import { Button } from "@/components/ui/button";
+import { WeakMark } from "@/components/WeakMark";
+import { CausalLinkOrigin } from "@/features/provenance/ProvenanceDetails";
+import { showsWeak, WEAK_LINK_LABEL } from "@/lib/meaning";
 import { cn } from "@/lib/utils";
 
 import type { CascadeEdge, CascadeNode } from "./cascade-data";
@@ -77,6 +80,7 @@ export function EvidenceDetails({ target, stories, onOpenStory, onOpenForecast }
         <div className="flex flex-wrap items-center gap-2">
           <ConfidenceMeter confidence={link.confidence} hideValue />
           <span className="text-label text-fg">{confidenceWords(link.confidence)}</span>
+          {showsWeak(link, true) && <WeakMark label={WEAK_LINK_LABEL} />}
         </div>
       </section>
 
@@ -104,6 +108,9 @@ export function EvidenceDetails({ target, stories, onOpenStory, onOpenForecast }
           </p>
         )}
       </section>
+
+      {/* Who added this saved link, and when ("Why is this here?", kg.provenance). */}
+      {!edge.ai && <CausalLinkOrigin linkId={link.id} />}
     </div>
   );
 }

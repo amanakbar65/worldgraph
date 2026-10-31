@@ -463,7 +463,7 @@ function ConnectionsSection({ data, nav }: { data: Data; nav: RegionNav }) {
 
 function RegionSkeleton() {
   return (
-    <div className="flex flex-col gap-6 p-4" aria-busy="true" aria-label="Loading region">
+    <div role="status" className="flex flex-col gap-6 p-4" aria-busy="true" aria-label="Loading region">
       <div className="flex flex-col gap-3">
         <Skeleton className="h-4 w-32" />
         <div className="flex items-center gap-3">

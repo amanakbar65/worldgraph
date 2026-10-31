@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useNav } from "@/state/nav";
 
-import { useEscapeClosesPanel } from "./use-escape";
+import { leaveEscapeToApp, useEscapeClosesPanel } from "./use-escape";
 
 function Screen() {
   useEscapeClosesPanel();
@@ -64,6 +64,20 @@ describe("Escape", () => {
     render(<Screen />);
     fireEvent.keyDown(screen.getByRole("textbox", { name: "Notes" }), { key: "Escape" });
     expect(useNav.getState().panels).toEqual([forecast]);
+  });
+
+  it("still steps back when the phone sheet left the key to the app", () => {
+    useNav.setState({ panels: [{ kind: "story", id: "story:a" }, forecast] });
+    render(<Screen />);
+    // The sheet's dialog listens first (capture) and leaves the key to the app.
+    const stop = (e: Event) => leaveEscapeToApp(e);
+    document.addEventListener("keydown", stop, { capture: true });
+    try {
+      fireEvent.keyDown(document.body, { key: "Escape" });
+    } finally {
+      document.removeEventListener("keydown", stop, { capture: true });
+    }
+    expect(useNav.getState().panels).toEqual([{ kind: "story", id: "story:a" }]);
   });
 
   it("ignores other keys", () => {

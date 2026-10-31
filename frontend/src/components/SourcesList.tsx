@@ -64,6 +64,10 @@ export function SourcesList({ items, sample = false, limit, className }: Sources
                 {text && (
                   <p className={cn("line-clamp-2 text-body", item.title ? "text-fg" : "text-fg-muted")}>{text}</p>
                 )}
+                {/* A headline and its one-sentence snippet (provenance sources can have both). */}
+                {item.title && item.snippet && item.snippet !== item.title && (
+                  <p className="mt-0.5 line-clamp-2 text-label text-fg-muted">{item.snippet}</p>
+                )}
               </div>
               {url && (
                 <a

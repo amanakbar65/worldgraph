@@ -1,5 +1,5 @@
 import { ArrowRight, MousePointerClick, Users, X } from "lucide-react";
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import type { StorySummary } from "@/api/contract";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
@@ -7,12 +7,15 @@ import { ForecastRow } from "@/components/ForecastRow";
 import { ImpactBadge } from "@/components/ImpactBadge";
 import { StoryCard } from "@/components/StoryCard";
 import { Button } from "@/components/ui/button";
+import { WeakMark } from "@/components/WeakMark";
+import { useWhyAvailable } from "@/features/provenance/use-why";
+import { WhyButton } from "@/features/provenance/WhyButton";
 import { IMPACT_ICONS } from "@/lib/icons";
-import { IMPACT_TONES, WEAK_CONFIDENCE, balanceLean } from "@/lib/meaning";
+import { IMPACT_TONES, WEAK_LINK_LABEL, balanceLean } from "@/lib/meaning";
 import { cn } from "@/lib/utils";
 
 import type { PickInfo } from "./GlobeMap";
-import { GLASS, WeakMark } from "./GlobeControls";
+import { GLASS } from "./GlobeControls";
 import {
   arcTrust,
   countryName,
@@ -82,6 +85,13 @@ export function BalanceLine({ score }: { score: number }) {
   );
 }
 
+/** A cascade arc in words, for its "Why is this here?" button: "Cause, leads to, effect". */
+function arcWords(arc: Extract<PickInfo, { kind: "arc" }>["arc"], context: PickContext): string {
+  const src = context.eventsById.get(arc.src_story)?.headline ?? "An earlier story";
+  const dst = context.eventsById.get(arc.dst_story)?.headline ?? "a later story";
+  return `${src}, leads to, ${dst}`;
+}
+
 function Hint({ icon: Icon, children }: { icon: typeof ArrowRight; children: ReactNode }) {
   return (
     <p className="flex items-center gap-1.5 border-t border-line px-3 py-2 text-label text-fg-subtle">
@@ -101,6 +111,8 @@ export function PickContent({
   context: PickContext;
   hint?: boolean;
 }) {
+  // With "Why is this here?" on, a desktop click pins an arc's card (its sources and the cascade).
+  const whyOn = useWhyAvailable();
   switch (info.kind) {
     case "event":
       return (
@@ -135,7 +147,7 @@ export function PickContent({
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-label font-medium text-fg-muted">Cascade link</span>
               <ConfidenceMeter confidence={arc.confidence} linkType={arc.link_type} />
-              {weak && <WeakMark label={`Weak link: under ${Math.round(WEAK_CONFIDENCE * 100)}% sure`} />}
+              {weak && <WeakMark label={WEAK_LINK_LABEL} />}
             </div>
             <ol className="flex flex-col gap-1 text-body">
               <li className="flex min-w-0 flex-col">
@@ -156,7 +168,11 @@ export function PickContent({
             </ol>
             <ImpactBadge impact={arc.impact} className="self-start" />
           </div>
-          {hint && <Hint icon={MousePointerClick}>Click to see the cascade</Hint>}
+          {hint && (
+            <Hint icon={MousePointerClick}>
+              {whyOn ? "Click for its sources and the cascade" : "Click to see the cascade"}
+            </Hint>
+          )}
         </>
       );
     }
@@ -188,33 +204,16 @@ export function PickContent({
   }
 }
 
-/**
- * The desktop hover card: follows the pointer, flips to stay inside the map,
- * and never takes the pointer itself. The list view is the keyboard and
- * screen-reader route to the same information.
- */
-export function HoverCard({
-  context,
-  bounds,
-}: {
-  context: PickContext;
-  bounds: { width: number; height: number };
-}) {
-  const info = useGlobeHover((s) => s.hover);
-  return info ? <HoverCardAt info={info} context={context} bounds={bounds} /> : null;
-}
+type Bounds = { width: number; height: number };
+type Place = { left: number; top: number };
 
-function HoverCardAt({
-  info,
-  context,
-  bounds,
-}: {
-  info: PickInfo;
-  context: PickContext;
-  bounds: { width: number; height: number };
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+/**
+ * Where a card at the pointer goes: below and right of it, flipped to stay
+ * inside the map, never off its top or left edge. Off-screen until measured,
+ * so the first frame doesn't flash in the wrong place.
+ */
+function usePlaceAtPointer(ref: RefObject<HTMLElement | null>, info: PickInfo, bounds: Bounds): Place {
+  const [pos, setPos] = useState<Place | null>(null);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -226,20 +225,73 @@ function HoverCardAt({
     if (left + w > bounds.width - 8) left = info.x - gap - w;
     if (top + h > bounds.height - 8) top = info.y - gap - h;
     setPos({ left: Math.max(8, left), top: Math.max(8, top) });
-  }, [info.x, info.y, info.id, bounds.width, bounds.height]);
+  }, [ref, info.x, info.y, info.id, bounds.width, bounds.height]);
+  return pos ?? { left: -9999, top: -9999 };
+}
+
+/**
+ * The desktop hover card: follows the pointer, flips to stay inside the map,
+ * and never takes the pointer itself. The list view is the keyboard and
+ * screen-reader route to the same information.
+ */
+export function HoverCard({
+  context,
+  bounds,
+  exceptId,
+}: {
+  context: PickContext;
+  bounds: Bounds;
+  /** The pinned card's item: pointing at it again shows no second card. */
+  exceptId?: string;
+}) {
+  const info = useGlobeHover((s) => s.hover);
+  return info && info.id !== exceptId ? <HoverCardAt info={info} context={context} bounds={bounds} /> : null;
+}
+
+function HoverCardAt({ info, context, bounds }: { info: PickInfo; context: PickContext; bounds: Bounds }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const pos = usePlaceAtPointer(ref, info, bounds);
   return (
     <div
       ref={ref}
       aria-hidden
       className={cn(GLASS, "pointer-events-none absolute z-20 w-80 overflow-hidden rounded-xl")}
-      style={pos ? { left: pos.left, top: pos.top } : { left: -9999, top: -9999 }}
+      style={pos}
     >
       <PickContent info={info} context={context} />
     </div>
   );
 }
 
-/** Phones: the tapped thing as a card at the bottom, with Open and Close. */
+/**
+ * Desktop, with "Why is this here?" on: a clicked cascade arc's card, pinned
+ * where it was clicked, with "Why is this here?" beside "See the cascade".
+ * The phone's selection card, placed like the hover card.
+ */
+export function PinnedCard({
+  info,
+  context,
+  bounds,
+  onOpen,
+  onClose,
+}: {
+  info: PickInfo;
+  context: PickContext;
+  bounds: Bounds;
+  onOpen: () => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const pos = usePlaceAtPointer(ref, info, bounds);
+  return (
+    // A little wider than the hover card, so its two buttons share one row.
+    <div ref={ref} className="pointer-events-auto absolute z-20 w-[22rem]" style={pos}>
+      <SelectionCard info={info} context={context} onOpen={onOpen} onClose={onClose} />
+    </div>
+  );
+}
+
+/** Phones: the tapped thing as a card at the bottom, with Open and Close (desktop: a clicked arc, pinned). */
 export function SelectionCard({
   info,
   context,
@@ -254,6 +306,7 @@ export function SelectionCard({
   className?: string;
 }) {
   const openLabel = info.kind === "arc" ? "See the cascade" : info.kind === "forecast" ? "Details" : "Open";
+  const whyOn = useWhyAvailable();
   return (
     <section
       aria-label="Selected on the globe"
@@ -271,7 +324,17 @@ export function SelectionCard({
           <X aria-hidden />
         </Button>
       </div>
-      <div className="flex justify-end border-t border-line p-2">
+      <div className="flex flex-wrap justify-end gap-2 border-t border-line p-2">
+        {info.kind === "arc" && whyOn && (
+          // Where this cause-and-effect link comes from; Back returns to this card.
+          <WhyButton
+            target="link"
+            id={info.arc.id}
+            subject={arcWords(info.arc, context)}
+            weak={arcTrust(info.arc).weak}
+            className="h-10"
+          />
+        )}
         <Button size="sm" className="h-10" onClick={onOpen}>
           {openLabel}
           <ArrowRight aria-hidden />

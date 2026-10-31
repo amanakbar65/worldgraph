@@ -378,8 +378,10 @@ export type MetaResponse = z.infer<typeof MetaResponse>;
 
 /**
  * api.globe({window, sectors?, sample?})
- * Hex heat is computed in the browser from `events` (h3-js), at a
- * resolution that suits the zoom level.
+ * The activity heat is drawn in the browser (features/globe/model.ts,
+ * layers.ts): zoomed out, each country is shaded by its `countries` count,
+ * coloured by the balance of risk and opportunity; zoomed in, a soft GPU
+ * glow of `events` (weighted by importance) fades in where news clusters.
  */
 export const GlobeResponse = z.object({
   window: TimeWindow,

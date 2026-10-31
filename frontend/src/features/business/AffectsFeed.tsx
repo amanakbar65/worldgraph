@@ -384,6 +384,7 @@ function HopChainSteps({ item }: { item: AffectsItem }) {
   if (query.isPending) {
     return (
       <div
+        role="status"
         aria-busy="true"
         aria-label="Loading the chain"
         className="flex flex-col gap-2 rounded-lg border border-line bg-bg-sunken/60 p-3"

@@ -5,6 +5,8 @@ import type { RpcName } from "@/api/contract";
 import { AiError } from "@/ai/engine";
 import { useNav } from "@/state/nav";
 
+import { WEAK_LINK_PROVENANCE } from "@/features/provenance/fixtures";
+
 import CascadePanel from "./CascadePanel";
 import { CASCADE, EMPTY_CASCADE, FOCUS_ID } from "./fixtures";
 import { fakeQuery, installFlowMocks } from "./test-utils";
@@ -272,6 +274,37 @@ describe("the shared minimum confidence in the cascade", () => {
     const red = screen.getByRole("button", { name: /^Cause, 1 step back: Red Sea attacks/ }).closest("li")!;
     expect(within(red).getByText("raises")).toBeTruthy();
     expect(within(red).getByRole("img", { name: "The effect shows after a delay" })).toBeTruthy();
+  });
+
+  it("marks a sure link with nothing to cite with ? too (the api's weak, kg.provenance)", async () => {
+    mocks.responses = {
+      cascade: { ...CASCADE, links: CASCADE.links.map((l) => (l.id === 174 ? { ...l, evidence: [], weak: true } : l)) },
+    };
+    await renderPanel();
+    const red = screen.getByRole("button", { name: /^Cause, 1 step back: Red Sea attacks/ }).closest("li")!;
+    expect(within(red).getByRole("img", { name: "Confidence 90%, reported link" })).toBeTruthy();
+    expect(within(red).getByRole("img", { name: "Weak link: under 50% sure, or no source" })).toBeTruthy();
+  });
+
+  it("says who added a saved link and when, under its evidence (kg.provenance)", async () => {
+    mocks.responses = {
+      cascade: CASCADE,
+      meta: { flags: { "kg.provenance": true } },
+      provenance: {
+        ...WEAK_LINK_PROVENANCE,
+        id: 174,
+        weak: false,
+        confidence: 0.9,
+        kind: "reported",
+        added_by: "News pipeline · AI analysis · 22 Oct",
+      },
+    };
+    await renderPanel();
+    const red = screen.getByRole("button", { name: /^Cause, 1 step back: Red Sea attacks/ }).closest("li")!;
+    fireEvent.click(within(red).getByRole("button", { name: "Evidence" }));
+    const added = within(red).getByRole("region", { name: "Added" });
+    expect(within(added).getByText("News pipeline · AI analysis · 22 Oct")).toBeTruthy();
+    expect(within(added).getByText("Added by")).toBeTruthy();
   });
 
   it("uses the one trust legend in the flow", async () => {

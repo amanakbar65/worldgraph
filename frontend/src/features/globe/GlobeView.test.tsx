@@ -41,6 +41,8 @@ const mocks = vi.hoisted(() => ({
   maps: [] as unknown[],
   overlays: [] as { props: { layers?: { id: string }[] } }[],
   desktop: true,
+  /** What deck.gl has under the pointer, for a pick pass over these layers. */
+  pick: null as ((layerIds: string[]) => { object: unknown; layer: { id: string } } | null) | null,
 }));
 
 vi.mock("@/api/client", () => ({
@@ -133,8 +135,8 @@ vi.mock("@deck.gl/maplibre", () => ({
     setProps(props: { layers?: { id: string }[] }) {
       this.props = { ...this.props, ...props };
     }
-    pickObject() {
-      return null;
+    pickObject({ layerIds }: { layerIds: string[] }) {
+      return mocks.pick?.(layerIds) ?? null;
     }
   },
 }));
@@ -197,6 +199,7 @@ beforeEach(() => {
   mocks.maps = [];
   mocks.overlays = [];
   mocks.desktop = true;
+  mocks.pick = null;
   useNav.setState({ view: "globe", panels: [], window: "7d", sectors: [], minConfidence: 0.5, focus: null });
   useGlobeUi.setState({
     toggles: DEFAULT_TOGGLES,
@@ -362,8 +365,11 @@ describe("GlobeView on a desktop", () => {
     renderGlobe();
     act(() => map().fire("load"));
     const arcCount = () =>
-      ((mocks.overlays[0]?.props.layers ?? []).find((l) => l.id === "arcs") as { props?: { data?: unknown[] } })
-        ?.props?.data?.length ?? 0;
+      (
+        (mocks.overlays[0]?.props.layers ?? []).find((l) => l.id === "arcs") as {
+          props?: { data?: unknown[] };
+        }
+      )?.props?.data?.length ?? 0;
     act(() => useNav.getState().setMinConfidence(0));
     const all = arcCount();
     expect(all).toBeGreaterThan(0);
@@ -374,6 +380,49 @@ describe("GlobeView on a desktop", () => {
     const slider = screen.getByRole("slider", { name: "Minimum confidence" });
     fireEvent.change(slider, { target: { value: "0.3" } });
     expect(useNav.getState().minConfidence).toBe(0.3);
+  });
+
+  describe("a clicked cascade link", () => {
+    type Arc = { id: number | string; dst_story: string };
+    const clickFirstArc = (): Arc => {
+      const layer = (mocks.overlays[0]?.props.layers ?? []).find((l) => l.id === "arcs") as
+        { props?: { data?: Arc[] } } | undefined;
+      const first = layer?.props?.data?.[0];
+      if (!first) throw new Error("no arcs drawn");
+      mocks.pick = (ids) => (ids.includes("arcs") ? { object: first, layer: { id: "arcs" } } : null);
+      act(() => map().fire("click", { point: { x: 300, y: 200 } }));
+      return first;
+    };
+
+    it("pins its card, which opens Why is this here? and the cascade (kg.provenance on)", () => {
+      mocks.responses.meta = { ...META, flags: { "kg.provenance": true } };
+      renderGlobe();
+      act(() => map().fire("load"));
+      const arc = clickFirstArc();
+      const card = screen.getByRole("region", { name: "Selected on the globe" });
+      expect(topPanel()).toBeUndefined();
+      fireEvent.click(within(card).getByRole("button", { name: /^Why is this here\? .+, leads to, / }));
+      expect(topPanel()).toEqual({ kind: "why", target: "link", id: String(arc.id) });
+      // While the sheet is open, Escape is the app's (it steps back); then it closes the card.
+      fireEvent.keyDown(document.body, { key: "Escape" });
+      expect(screen.getByRole("region", { name: "Selected on the globe" })).toBeTruthy();
+      act(() => useNav.getState().back());
+      fireEvent.keyDown(document.body, { key: "Escape" });
+      expect(screen.queryByRole("region", { name: "Selected on the globe" })).toBeNull();
+
+      clickFirstArc();
+      fireEvent.click(screen.getByRole("button", { name: "See the cascade" }));
+      expect(topPanel()).toEqual({ kind: "cascade", id: arc.dst_story });
+      expect(screen.queryByRole("region", { name: "Selected on the globe" })).toBeNull();
+    });
+
+    it("opens the cascade straight away while kg.provenance is off", () => {
+      renderGlobe();
+      act(() => map().fire("load"));
+      const arc = clickFirstArc();
+      expect(screen.queryByRole("region", { name: "Selected on the globe" })).toBeNull();
+      expect(topPanel()).toEqual({ kind: "cascade", id: arc.dst_story });
+    });
   });
 
   it("hides a layer when it is switched off", () => {

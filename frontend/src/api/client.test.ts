@@ -18,11 +18,12 @@ function source(kind: DataSource["kind"], error: unknown): DataSource {
   };
 }
 
-/** A snapshot like `source`, that this viewer may or may not see. */
+/** A snapshot like `source` (it holds only `meta`), that this viewer may or may not see. */
 function snapshot(available = true): SnapshotSource {
   return {
     ...source("static", new DataError("offline", "This view needs the live database.")),
     available: async () => available,
+    has: async (name) => name === "meta",
   };
 }
 
@@ -67,6 +68,18 @@ describe("the app-wide data status", () => {
     await expect(live.call("meta", {})).resolves.toEqual(meta);
     await live.call("story", { id: "story:x" }).catch(() => undefined);
     expect(status()).toEqual({ status: "snapshot", reason: missing });
+  });
+
+  it.each([
+    new DataError("connector_missing", "Add the Supabase connector."),
+    new DataError("not_allowed", "Live data wasn't approved."),
+  ])("fails a call the snapshot doesn't hold with the live reason, which names the fix ($kind)", async (reason) => {
+    const fallback = snapshot();
+    const call = vi.spyOn(fallback, "call");
+    const live = new LiveWithSnapshot(source("connector", reason), fallback);
+    await expect(live.call("story", { id: "story:x" })).rejects.toBe(reason);
+    expect(call).not.toHaveBeenCalled();
+    expect(status()).toEqual({ status: "snapshot", reason });
   });
 
   it.each([

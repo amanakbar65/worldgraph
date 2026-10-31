@@ -431,7 +431,7 @@ function RowSkeleton() {
 
 function PreviewSkeleton() {
   return (
-    <div className={cn("flex flex-col gap-4 p-6")} aria-busy="true" aria-label="Loading the design preview">
+    <div role="status" className={cn("flex flex-col gap-4 p-6")} aria-busy="true" aria-label="Loading the design preview">
       <Skeleton className="h-8 w-56" />
       <Skeleton className="h-4 w-80" />
       <div className="grid gap-4 sm:grid-cols-3">

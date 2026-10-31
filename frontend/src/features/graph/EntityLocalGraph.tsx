@@ -102,7 +102,7 @@ export function EntityLocalGraph({ entity, graph, onOpen, onShowInGraph }: Entit
           </div>
         )}
         {!data && !deeper.isError && (
-          <div className="absolute inset-0" aria-busy="true" aria-label="Loading connections">
+          <div role="status" className="absolute inset-0" aria-busy="true" aria-label="Loading connections">
             {[
               [50, 50, 28],
               [30, 34, 14],
