@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { openingSnap, SNAP_POINTS, snapForFocus } from "./panel-snap";
+import { openingSnap, SHEET_HEIGHT, shownHeight, SNAP_POINTS, snapForFocus } from "./panel-snap";
 
 const [HALF, FULL] = SNAP_POINTS;
 
@@ -26,21 +26,38 @@ describe("openingSnap (phone sheet heights)", () => {
   });
 });
 
+describe("sheet heights on screen", () => {
+  const screen = 800;
+
+  it("shows half the screen at half height", () => {
+    expect(shownHeight(HALF, screen)).toBeCloseTo(400);
+  });
+
+  it("shows the whole sheet at full height, so its last lines can be scrolled into view", () => {
+    expect(shownHeight(FULL, screen)).toBeCloseTo(SHEET_HEIGHT * screen);
+  });
+});
+
 describe("snapForFocus (focus below a half-height sheet)", () => {
   const screen = 800; // half height shows the sheet's top 400 px
 
   it("raises the sheet to full height when focus lands below what shows", () => {
-    expect(snapForFocus(HALF, 520, screen)).toBe(FULL);
-    expect(snapForFocus(HALF, 401, screen)).toBe(FULL);
+    expect(snapForFocus(HALF, { top: 480, bottom: 520 }, screen)).toBe(FULL);
+    expect(snapForFocus(HALF, { top: 380, bottom: 420 }, screen)).toBe(FULL);
   });
 
   it("leaves it where focus is already in view", () => {
-    expect(snapForFocus(HALF, 48, screen)).toBeNull();
-    expect(snapForFocus(HALF, 400, screen)).toBeNull();
+    expect(snapForFocus(HALF, { top: 8, bottom: 48 }, screen)).toBeNull();
+    expect(snapForFocus(HALF, { top: 360, bottom: 399 }, screen)).toBeNull();
+  });
+
+  it("leaves it when what took focus is taller than what shows and starts in view (the sheet, its scroll area)", () => {
+    expect(snapForFocus(HALF, { top: 0, bottom: 752 }, screen)).toBeNull();
+    expect(snapForFocus(HALF, { top: 60, bottom: 752 }, screen)).toBeNull();
   });
 
   it("leaves a full-height sheet alone", () => {
-    expect(snapForFocus(FULL, 740, screen)).toBeNull();
-    expect(snapForFocus(null, 740, screen)).toBeNull();
+    expect(snapForFocus(FULL, { top: 700, bottom: 740 }, screen)).toBeNull();
+    expect(snapForFocus(null, { top: 700, bottom: 740 }, screen)).toBeNull();
   });
 });

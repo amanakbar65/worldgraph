@@ -143,8 +143,9 @@ export function PanelHost() {
           onCloseAutoFocus={(e) => e.preventDefault()}
           // Focus below the half-height sheet's edge (Tab, a screen reader) raises it, so it isn't off screen.
           onFocus={(e) => {
-            const top = e.currentTarget.getBoundingClientRect().top;
-            const next = snapForFocus(snap, e.target.getBoundingClientRect().bottom - top, window.innerHeight);
+            const sheetTop = e.currentTarget.getBoundingClientRect().top;
+            const { top, bottom } = e.target.getBoundingClientRect();
+            const next = snapForFocus(snap, { top: top - sheetTop, bottom: bottom - sheetTop }, window.innerHeight);
             if (next !== null) setSnap(next);
           }}
           className="fixed inset-x-0 bottom-0 z-40 flex h-[94dvh] flex-col rounded-t-2xl border-t border-line bg-surface shadow-panel outline-none"
