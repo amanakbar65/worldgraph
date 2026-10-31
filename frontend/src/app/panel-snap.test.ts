@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { openingSnap, SNAP_POINTS } from "./panel-snap";
+import { openingSnap, SNAP_POINTS, snapForFocus } from "./panel-snap";
 
 const [HALF, FULL] = SNAP_POINTS;
 
@@ -23,5 +23,24 @@ describe("openingSnap (phone sheet heights)", () => {
 
   it("starts at half height again after the sheet closes", () => {
     expect(openingSnap(null, "ask")).toBe(HALF);
+  });
+});
+
+describe("snapForFocus (focus below a half-height sheet)", () => {
+  const screen = 800; // half height shows the sheet's top 400 px
+
+  it("raises the sheet to full height when focus lands below what shows", () => {
+    expect(snapForFocus(HALF, 520, screen)).toBe(FULL);
+    expect(snapForFocus(HALF, 401, screen)).toBe(FULL);
+  });
+
+  it("leaves it where focus is already in view", () => {
+    expect(snapForFocus(HALF, 48, screen)).toBeNull();
+    expect(snapForFocus(HALF, 400, screen)).toBeNull();
+  });
+
+  it("leaves a full-height sheet alone", () => {
+    expect(snapForFocus(FULL, 740, screen)).toBeNull();
+    expect(snapForFocus(null, 740, screen)).toBeNull();
   });
 });
