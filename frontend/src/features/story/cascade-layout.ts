@@ -332,6 +332,8 @@ export function openingViewport(
   margin = 24,
   /** Px covered at the bottom (the flow's legend): the story stays clear of it. */
   bottomInset = 0,
+  /** The box covered at the top-right corner (the zoom buttons): the story stays clear of it too. */
+  topRight: { width: number; height: number } = { width: 0, height: 0 },
 ): { x: number; y: number; zoom: number } | null {
   if (box.width <= 0 || box.height <= 0) return null;
   const groups = new Map<string, Box>(layout.groups.map((g) => [g.id, g]));
@@ -360,6 +362,18 @@ export function openingViewport(
     if (right > box.width - margin) x -= right - (box.width - margin);
     const floor = box.height - margin - Math.max(0, bottomInset);
     if (bottom > floor) y -= bottom - floor;
+    // Under the zoom buttons (a narrow screen): move it down below them if it still
+    // clears the floor, else left of them if it still clears the left margin.
+    const gap = 8;
+    const left = story.x * zoom + x;
+    const top = story.y * zoom + y;
+    const besideX = box.width - topRight.width - gap;
+    const belowY = topRight.height + gap;
+    const over = (story.x + story.width) * zoom + x - besideX;
+    if (topRight.width > 0 && over > 0 && top < belowY) {
+      if ((story.y + story.height) * zoom + y + (belowY - top) <= floor) y += belowY - top;
+      else if (left - over >= margin) x -= over;
+    }
   }
   return { x, y, zoom };
 }

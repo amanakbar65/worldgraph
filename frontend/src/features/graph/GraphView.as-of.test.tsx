@@ -117,7 +117,8 @@ describe("the graph as of a past day", () => {
     fireEvent.click(within(banner).getByRole("button", { name: "Back to now" }));
     expect(useNav.getState().asOf).toBeNull();
     expect(screen.queryByTestId("as-of-banner")).toBeNull();
-    expect(mocks.calls.filter((c) => c.enabled).at(-1)?.name).toBe("graph");
+    // The live graph again (flag reads of api.meta, e.g. for "Why is this here?" marks, aside).
+    expect(mocks.calls.filter((c) => c.enabled && c.name !== "meta").at(-1)?.name).toBe("graph");
   });
 
   it("reads the neighbourhood of one node as of the day too", () => {

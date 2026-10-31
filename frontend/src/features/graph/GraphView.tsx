@@ -564,7 +564,11 @@ function FiltersButton({ local }: { local: boolean }) {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="max-h-[min(75vh,640px)] w-[min(380px,calc(100vw-24px))] overflow-y-auto p-4">
+      {/* Phones: end above the graph's bottom controls, so its edge never cuts across their labels. */}
+      <PopoverContent
+        align="start"
+        className="max-h-[min(640px,calc(100dvh-16rem))] w-[min(380px,calc(100vw-24px))] overflow-y-auto overscroll-contain p-4 sm:max-h-[min(75vh,640px)]"
+      >
         <GraphFilters local={local} />
       </PopoverContent>
     </Popover>

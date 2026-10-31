@@ -284,7 +284,8 @@ export function PinnedCard({
   const ref = useRef<HTMLDivElement>(null);
   const pos = usePlaceAtPointer(ref, info, bounds);
   return (
-    <div ref={ref} className="pointer-events-auto absolute z-20 w-80" style={pos}>
+    // A little wider than the hover card, so its two buttons share one row.
+    <div ref={ref} className="pointer-events-auto absolute z-20 w-[22rem]" style={pos}>
       <SelectionCard info={info} context={context} onOpen={onOpen} onClose={onClose} />
     </div>
   );

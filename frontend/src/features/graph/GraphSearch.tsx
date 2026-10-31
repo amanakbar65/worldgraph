@@ -132,7 +132,11 @@ export function GraphSearch({ graph, onFocus, onShowAround, className }: GraphSe
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         onKeyDown={onKeyDown}
-        className="h-10 w-full rounded-lg border border-line bg-surface pr-9 pl-9 text-body text-fg placeholder:text-fg-subtle hover:border-line-strong [&::-webkit-search-cancel-button]:hidden"
+        // Room on the right only for the clear button, so the placeholder fits on a phone.
+        className={cn(
+          "h-10 w-full rounded-lg border border-line bg-surface pl-9 text-body text-fg placeholder:text-fg-subtle hover:border-line-strong [&::-webkit-search-cancel-button]:hidden",
+          query ? "pr-9" : "pr-2",
+        )}
       />
       {query && (
         <button
