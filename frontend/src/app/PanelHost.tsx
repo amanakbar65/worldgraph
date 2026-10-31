@@ -52,23 +52,12 @@ function Controls({
   return (
     <div className="sticky top-0 z-10 flex items-center gap-1 border-b border-line bg-glass px-2 py-1.5 backdrop-blur">
       {depth > 1 && (
-        <button
-          type="button"
-          onClick={back}
-          className={CONTROL}
-          aria-label="Back"
-        >
+        <button type="button" onClick={back} className={CONTROL} aria-label="Back">
           <ArrowLeft aria-hidden className="size-4" />
         </button>
       )}
       <div className="min-w-0 flex-1">{children}</div>
-      <button
-        ref={closeRef}
-        type="button"
-        onClick={closePanels}
-        className={CONTROL}
-        aria-label="Close panel"
-      >
+      <button ref={closeRef} type="button" onClick={closePanels} className={CONTROL} aria-label="Close panel">
         <X aria-hidden className="size-4" />
       </button>
     </div>
@@ -126,7 +115,9 @@ export function PanelHost() {
         className={cn(
           "absolute z-20 flex flex-col overflow-hidden rounded-xl border border-line shadow-panel",
           // The full-width panels cover the globe: opaque, so its controls don't show through.
-          wide ? "inset-3 bg-surface" : "top-3 right-3 bottom-3 w-[min(440px,calc(100%-24px))] bg-glass backdrop-blur-xl",
+          wide
+            ? "inset-3 bg-surface"
+            : "top-3 right-3 bottom-3 w-[min(440px,calc(100%-24px))] bg-glass backdrop-blur-xl",
         )}
       >
         <Controls depth={depth} closeRef={close} />
@@ -166,6 +157,12 @@ export function PanelHost() {
           <div
             ref={scroller}
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom,0px)]"
+            // At half height the sheet's lower part is off the screen, and no scrolling
+            // reaches it: focus landing there (Tab, or focus given back) raises the sheet.
+            onFocus={(e) => {
+              if (snap !== SNAP_POINTS[0]) return;
+              if (e.target.getBoundingClientRect().bottom > window.innerHeight) setSnap(SNAP_POINTS[1]);
+            }}
           >
             {panel && <PanelContent panel={panel} />}
           </div>

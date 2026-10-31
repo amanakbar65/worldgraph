@@ -86,11 +86,21 @@ test.describe("graph and entities", () => {
 
     // Back returns to the page; the mark after a link opens that link's sheet.
     await panel.getByRole("button", { name: "Back" }).click();
-    const links = panel.getByRole("region", { name: "Links" });
-    await links.getByRole("button", { name: /^Why is this link here\? DP World, / }).first().click();
+    await expect(panel.getByRole("heading", { level: 2, name: "DP World" })).toBeVisible();
+    const mark = panel
+      .getByRole("region", { name: "Links" })
+      .getByRole("button", { name: /^Why is this link here\? DP World, / })
+      .first();
+    // Phones: the sheet opens at half height, with Links below the screen's edge; focus there
+    // raises it to full height (as Tab would), and then the mark takes a tap.
+    await mark.focus();
+    await expect(mark).toBeInViewport();
+    await mark.click();
     const link = panel.getByRole("article", { name: /^Why is this here\? DP World / });
     await expect(link.getByText("Link", { exact: true })).toBeVisible();
+    await expect(link.getByRole("region", { name: /^Sources/ })).toBeVisible();
     await expect.poll(() => currentHash(page)).toMatch(/^#why=edge-\d+$/);
+    await snap(page, testInfo, "why-link");
   });
 
   test("a private note saves, links [[pages]] and survives a reload", async ({ page }) => {
