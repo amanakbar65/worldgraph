@@ -156,6 +156,18 @@ describe("StatusBar", () => {
     expect(screen.queryByText(/Updated/)).toBeNull();
   });
 
+  it("doesn't say sample data is showing while Sample data is off", () => {
+    useSettings.setState({ sample: "off" });
+    try {
+      mocks.meta = meta(null, true);
+      render(<StatusBar />);
+      expect(screen.queryByText(/Sample/)).toBeNull();
+      expect(screen.getByText("Live data")).toBeTruthy();
+    } finally {
+      useSettings.setState({ sample: "auto" });
+    }
+  });
+
   it("explains the sample snapshot when the connector isn't there", () => {
     useConnection.setState({
       state: {

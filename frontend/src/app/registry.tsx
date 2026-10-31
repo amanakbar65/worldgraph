@@ -28,6 +28,7 @@ export const PANEL_COMPONENTS: { [K in Panel["kind"]]: Lazy<PanelProps<K>> } = {
   forecast: lazy(() => import("@/features/forecasts/ForecastPanel")),
   ask: lazy(() => import("@/features/ask/AskPanel")),
   settings: lazy(() => import("@/features/settings/SettingsPanel")),
+  why: lazy(() => import("@/features/provenance/WhyPanel")),
 };
 
 /** Panels that need the full width (the cascade flow). */

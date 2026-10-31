@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
-import { DelayedMark, PolarityMark } from "@/components/LinkMarks";
+import { DelayedMark, PolarityMark, WeakLegend } from "@/components/LinkMarks";
 import { SampleBadge } from "@/components/SampleBadge";
 import { Button } from "@/components/ui/button";
 import { WeakMark } from "@/components/WeakMark";
 import { DEFAULT_RELATION_ICON, ENTITY_TYPE_ICONS, IMPACT_ICONS, RELATION_ICONS } from "@/lib/icons";
-import { entityTypeTone, impactTone, isWeak, WEAK_LINK_LABEL } from "@/lib/meaning";
+import { entityTypeTone, impactTone, WEAK_LINK_LABEL } from "@/lib/meaning";
 import { cn } from "@/lib/utils";
 
 import {
@@ -25,7 +25,7 @@ export interface GraphListProps {
   /** Named relations (kg.relations): label links by relation, from each end's side. */
   relations?: RelationIndex | null;
   /**
-   * Choose a link (its card opens with the relation and, in Phase A3, "Why
+   * Choose a link (its card opens with the relation and "Why
    * is this here?"). Given, each connection's relation becomes a button, so
    * every link is reachable by keyboard.
    */
@@ -43,8 +43,11 @@ export interface GraphListProps {
 export function GraphList({ graph, onOpen, relations = null, onSelectLink, selectedLinkId = null, className }: GraphListProps) {
   const [count, setCount] = useState(40);
   const entries = useMemo(() => topConnections(graph, count, 6, relations), [graph, count, relations]);
+  // The list draws no lines, so the one legend's "?" row comes along when a "?" is shown.
+  const anyWeak = entries.some((e) => e.connections.some((c) => c.link.weak));
   return (
     <div className={cn("flex flex-col gap-3", className)}>
+      {anyWeak && <WeakLegend className="rounded-lg border border-line bg-surface/80 px-3 py-2" />}
       <ul aria-label="Nodes, most connected first" className="flex flex-col gap-2">
         {entries.map((entry) => (
           <li key={entry.node.id} className="rounded-xl border border-line bg-surface/80 p-2">
@@ -172,14 +175,16 @@ function ConnectionRow({
         <Icon aria-hidden className={cn("size-3.5 shrink-0", tone.text)} />
         <span className="truncate text-body text-fg-muted">{node.name}</span>
       </button>
-      {causal && (
+      {causal ? (
         <span className="flex flex-wrap items-center gap-x-2 gap-y-1 pl-2 text-label">
           {/* Polarity reads from the cause, so it is said on the cause's row. */}
           {named && outgoing && <PolarityMark polarity={link.polarity} />}
           {named && <DelayedMark delayed={link.delayed} />}
           {link.confidence !== null && <ConfidenceMeter confidence={link.confidence} linkType={link.linkType!} />}
-          {isWeak(link.confidence) && <WeakMark label={WEAK_LINK_LABEL} />}
+          {link.weak && <WeakMark label={WEAK_LINK_LABEL} />}
         </span>
+      ) : (
+        link.weak && <WeakMark label={WEAK_LINK_LABEL} className="mr-2" />
       )}
     </li>
   );

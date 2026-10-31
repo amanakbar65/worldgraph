@@ -41,7 +41,7 @@ export function SchemaView({ onOpenType, onOpenRelation, insetTop, insetRight = 
 
   if (schema.isPending && !schema.data) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center" aria-busy="true" aria-label="Loading the schema">
+      <div role="status" className="absolute inset-0 flex items-center justify-center" aria-busy="true" aria-label="Loading the schema">
         <Skeleton className="size-40 rounded-full" />
       </div>
     );

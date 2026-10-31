@@ -27,8 +27,8 @@ interface Forecast {
   short_title: string;
 }
 
-/** A sample forecast whose resolution rule says "trading day" (it has its own test below). */
-const KNOWN_TRADING_WORDING = "forecast:arabica-record-high-three-months";
+/** A sample forecast whose resolution rule once said "trading day" (it keeps its own test below). */
+const ARABICA = "forecast:arabica-record-high-three-months";
 
 /** Move the app with a hash change (no reload), as a link inside the page would. */
 async function go(page: Page, hash: string) {
@@ -120,8 +120,7 @@ test.describe("product rules", () => {
     expect(all.length).toBeGreaterThan(0);
     const panel = detailsPanel(page);
     const found: string[] = [];
-    // The one with a known wording bug has its own test below (expected to fail until fixed).
-    for (const f of all.filter((f) => f.id !== KNOWN_TRADING_WORDING)) {
+    for (const f of all) {
       await go(page, `forecasts&forecast=${f.id}`);
       await expect(panel.getByRole("heading", { level: 2, name: f.short_title })).toBeVisible();
       await expect(panel.getByRole("region", { name: "How it resolves" })).toBeVisible();
@@ -131,11 +130,9 @@ test.describe("product rules", () => {
   });
 
   test("the arabica forecast resolves without trading wording", async ({ page }) => {
-    // App bug (sample data): backend/src/worldgraph/seed/storylines/brazil-coffee-frost.yaml has the
-    // forecast resolve "if … settles above its all-time highest settlement on any trading day":
-    // "trade" wording on a forecast panel. Remove test.fail() once it says e.g. "on any business day".
-    test.fail();
-    await openApp(page, `#forecasts&forecast=${KNOWN_TRADING_WORDING}`);
+    // Its rule (backend/src/worldgraph/seed/storylines/brazil-coffee-frost.yaml) said "on any
+    // trading day"; it says "on any business day" now.
+    await openApp(page, `#forecasts&forecast=${ARABICA}`);
     const panel = detailsPanel(page);
     await expect(panel.getByRole("region", { name: "How it resolves" })).toBeVisible();
     expect(bettingWords(await panel.innerText())).toEqual([]);

@@ -432,7 +432,7 @@ function ProjectionNote({ status, onRetry }: { status: ProjectionStatus; onRetry
 
 function CascadeSkeleton() {
   return (
-    <div className="flex h-full min-h-0 flex-col" aria-busy="true" aria-label="Loading the cascade">
+    <div role="status" className="flex h-full min-h-0 flex-col" aria-busy="true" aria-label="Loading the cascade">
       <div className="flex items-center gap-3 border-b border-line px-4 py-3">
         <Skeleton className="size-10 rounded-lg" />
         <div className="flex flex-1 flex-col gap-2">

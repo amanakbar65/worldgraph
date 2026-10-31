@@ -15,14 +15,16 @@ import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode 
 
 import { SECTOR_IDS, type SectorId, type TimeWindow } from "@/api/contract";
 import { LinkTypeSwatch } from "@/components/ConfidenceMeter";
+import { TrustSwatch } from "@/components/LinkMarks";
 import { SectorChip } from "@/components/SectorChip";
 import { Button } from "@/components/ui/button";
 import { ChipButton } from "@/components/ui/chip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Segmented } from "@/components/ui/segmented";
 import { SwitchField } from "@/components/ui/switch";
+import { WeakMark } from "@/components/WeakMark";
 import { IMPACT_ICONS, SECTORS } from "@/lib/icons";
-import { DIRECTION_ARROWS, IMPACT_TONES, TRUST_LEGEND, TRUST_OPACITY, TRUST_WIDTH } from "@/lib/meaning";
+import { DIRECTION_ARROWS, IMPACT_TONES, TRUST_LEGEND } from "@/lib/meaning";
 import { TIME_WINDOWS, WINDOW_LABELS } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { MIN_CONFIDENCE } from "@/state/nav";
@@ -399,24 +401,6 @@ function KeyItem({ children }: { children: ReactNode }) {
   return <li className="flex items-center gap-1.5 [&>*:not(:last-child)]:shrink-0">{children}</li>;
 }
 
-/** The "?" mark on weak items (confidence under 50 % or unknown). Decorative unless labelled. */
-export function WeakMark({ label, className }: { label?: string; className?: string }) {
-  return (
-    <span
-      role={label ? "img" : undefined}
-      aria-label={label}
-      aria-hidden={label ? undefined : true}
-      title={label}
-      className={cn(
-        "inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-line-strong text-label leading-none font-semibold text-fg-muted",
-        className,
-      )}
-    >
-      ?
-    </span>
-  );
-}
-
 /** Country shading: amber ▼ through slate to teal ▲, as on the globe. */
 const SHADE_SWATCH: CSSProperties = {
   backgroundImage: `linear-gradient(90deg, ${["--risk", "--neutral", "--opportunity"]
@@ -427,37 +411,6 @@ const SHADE_SWATCH: CSSProperties = {
 const GLOW_SWATCH: CSSProperties = {
   backgroundImage: "radial-gradient(circle, var(--globe-glow) 0%, transparent 70%)",
 };
-
-/** Two short lines: a thin and a thick one, or a faint and a solid one. */
-function TrustSwatch({ kind }: { kind: "width" | "opacity" }) {
-  const lines =
-    kind === "width"
-      ? [
-          { y: 2, width: TRUST_WIDTH.min, opacity: 1 },
-          { y: 7, width: TRUST_WIDTH.max, opacity: 1 },
-        ]
-      : [
-          { y: 2, width: 2, opacity: TRUST_OPACITY.min },
-          { y: 7, width: 2, opacity: TRUST_OPACITY.max },
-        ];
-  return (
-    <svg aria-hidden viewBox="0 0 24 9" className="h-2.5 w-6 shrink-0 overflow-visible">
-      {lines.map((l) => (
-        <line
-          key={l.y}
-          x1="1"
-          x2="23"
-          y1={l.y}
-          y2={l.y}
-          className="stroke-fg-muted"
-          strokeWidth={l.width}
-          strokeOpacity={l.opacity}
-          strokeLinecap="round"
-        />
-      ))}
-    </svg>
-  );
-}
 
 /**
  * What the colours and shapes mean. Every colour sits next to its icon (and

@@ -270,11 +270,8 @@ for (const theme of ["dark", "light"] as const) {
 
 test.describe("accessibility while loading", () => {
   test("a story panel still loading has no serious or critical axe problems", async ({ page }) => {
-    // App bug: the loading placeholders (StorySkeleton in src/features/story/StoryPanel.tsx,
-    // PanelSkeleton in src/app/PanelHost.tsx and about 30 more `aria-busy` blocks) put aria-label
-    // on a <div> with no role, which axe reports as aria-prohibited-attr (serious): screen
-    // readers may never say "Loading". Remove test.fail() once they carry a role (e.g. "status").
-    test.fail();
+    // Loading placeholders are labelled `role="status"` blocks (a label on a plain <div> is
+    // axe's aria-prohibited-attr, and screen readers may never say "Loading").
     // Hold the story's answer so its placeholder stays on screen while axe looks.
     let release = () => {};
     const held = new Promise<void>((resolve) => (release = resolve));

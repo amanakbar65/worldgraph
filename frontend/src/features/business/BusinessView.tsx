@@ -87,6 +87,7 @@ export default function BusinessView() {
 function BusinessSkeleton() {
   return (
     <div
+      role="status"
       aria-busy="true"
       aria-label="Loading My Business"
       className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6"

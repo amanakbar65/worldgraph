@@ -11,7 +11,7 @@ import { useId } from "react";
 import { PolarityMark } from "@/components/LinkMarks";
 import { WeakMark } from "@/components/WeakMark";
 import { formatProbability } from "@/lib/format";
-import { isWeak, LINK_TYPES, polarityInfo, WEAK_LINK_LABEL } from "@/lib/meaning";
+import { LINK_TYPES, polarityInfo, showsWeak, WEAK_LINK_LABEL } from "@/lib/meaning";
 import { cn } from "@/lib/utils";
 
 import { useCascadeUi } from "./cascade-context";
@@ -32,7 +32,7 @@ export function CascadeEdgeView({ id, sourceX, sourceY, targetX, targetY, data }
   const path = flowPath(source, target, laid.points, direction);
   const at = laid.label ?? midpoint(source, target, laid.points);
   const look = edgeLook(link.link_type, link.confidence, link.strength);
-  const weak = isWeak(link.confidence);
+  const weak = showsWeak(link, true);
   const polarity = ui.showPolarity ? polarityInfo(link.polarity) : null;
   const note = [polarity ? `${capitalise(polarity.word)} what follows.` : "", weak ? `${WEAK_LINK_LABEL}.` : ""]
     .filter(Boolean)

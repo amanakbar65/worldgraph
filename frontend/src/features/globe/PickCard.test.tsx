@@ -1,11 +1,20 @@
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { useNav } from "@/state/nav";
 
 import { GLOBE } from "./fixtures";
 import { arcPath, type ArcDatum, type GlobeCountry } from "./model";
-import { PickContent, type PickContext } from "./PickCard";
+import { PickContent, SelectionCard, type PickContext } from "./PickCard";
 
-afterEach(cleanup);
+const flags = vi.hoisted(() => ({ provenance: true }));
+vi.mock("@/lib/flags", () => ({ useFlag: (key: string) => key === "kg.provenance" && flags.provenance }));
+
+afterEach(() => {
+  cleanup();
+  flags.provenance = true;
+  useNav.setState({ panels: [] });
+});
 
 const context = (countries: GlobeCountry[] = []): PickContext => ({
   sample: "all",
@@ -24,7 +33,7 @@ const arc = (confidence: number): ArcDatum => ({
 describe("globe pick cards", () => {
   it("marks a weak cascade link with a '?'", () => {
     render(<PickContent info={{ kind: "arc", id: "1", x: 0, y: 0, arc: arc(0.4) }} context={context()} />);
-    expect(screen.getByRole("img", { name: "Weak link: under 50% sure" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Weak link: under 50% sure, or no source" })).toBeTruthy();
     expect(screen.getByRole("img", { name: /Confidence 40%/ })).toBeTruthy();
   });
 
@@ -79,5 +88,47 @@ describe("globe pick cards", () => {
     );
     expect(screen.getByText("Nothing new here in this window")).toBeTruthy();
     expect(screen.queryByText(/Leans/)).toBeNull();
+  });
+});
+
+describe("the phone's selection card for a cascade link", () => {
+  const select = (confidence: number) => ({ kind: "arc" as const, id: "7", x: 0, y: 0, arc: arc(confidence) });
+
+  it("opens Why is this here? for the link, beside See the cascade", () => {
+    const onOpen = vi.fn();
+    render(<SelectionCard info={select(0.72)} context={context()} onOpen={onOpen} onClose={() => {}} />);
+    const why = screen.getByRole("button", { name: /^Why is this here\? .+, leads to, .+\.$/ });
+    expect(why.textContent).toBe("Why is this here?");
+    fireEvent.click(why);
+    expect(useNav.getState().panels.at(-1)).toEqual({ kind: "why", target: "link", id: "7" });
+    expect(onOpen).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "See the cascade" }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("says when the link is weak", () => {
+    render(<SelectionCard info={select(0.4)} context={context()} onOpen={() => {}} onClose={() => {}} />);
+    expect(
+      screen.getByRole("button", { name: /^Why is this here\? .+ Weak: under 50% sure, or no source\.$/ }),
+    ).toBeTruthy();
+  });
+
+  it("has no Why button while kg.provenance is off, nor for other picks", () => {
+    flags.provenance = false;
+    const { unmount } = render(
+      <SelectionCard info={select(0.72)} context={context()} onOpen={() => {}} onClose={() => {}} />,
+    );
+    expect(screen.queryByRole("button", { name: /Why is this here/ })).toBeNull();
+    unmount();
+    flags.provenance = true;
+    render(
+      <SelectionCard
+        info={{ kind: "country", id: "region:fr", x: 0, y: 0, name: "France" }}
+        context={context()}
+        onOpen={() => {}}
+        onClose={() => {}}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /Why is this here/ })).toBeNull();
   });
 });

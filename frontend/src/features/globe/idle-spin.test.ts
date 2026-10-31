@@ -224,6 +224,44 @@ describe("attachIdleSpin (the driver)", () => {
     handle.dispose();
   });
 
+  it.each([
+    ["is still flying when the map loads", true],
+    ["has landed before the map loads", false],
+  ])("turns after a Home press made before the map loaded, when the flight %s", (_label, flying) => {
+    // Another screen's logo mounts the globe: Home is asked for before the map is ready.
+    const fake = fakeMap();
+    const handle = attachIdleSpin(fake.map, el, { now: () => performance.now() });
+    handle.update({ blocked: false, allowed: false });
+    fake.state.moving = true;
+    handle.home();
+    expect(handle.mode).toBe("still");
+    if (!flying) {
+      fake.state.moving = false;
+      fake.fire("moveend");
+    }
+    handle.update({ blocked: false, allowed: true }); // loaded
+    if (flying) {
+      expect(handle.mode).toBe("after-flight");
+      fake.state.moving = false;
+      fake.fire("moveend");
+    }
+    expect(handle.mode).toBe("turning");
+    vi.advanceTimersByTime(EASE_MS + 1000);
+    expect(fake.state.lng).toBeGreaterThan(25);
+    handle.dispose();
+  });
+
+  it("forgets a Home press made before the map loaded once the viewer moves it", () => {
+    const fake = fakeMap();
+    const handle = attachIdleSpin(fake.map, el, { now: () => performance.now() });
+    handle.update({ blocked: false, allowed: false });
+    handle.home();
+    document.body.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    handle.update({ blocked: false, allowed: true });
+    expect(handle.mode).toBe("still");
+    handle.dispose();
+  });
+
   it("holds while the tab is hidden or the pointer is on something, then eases in again", () => {
     let paused = false;
     const { state, handle } = attach(1.8, { isPaused: () => paused });

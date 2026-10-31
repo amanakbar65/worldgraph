@@ -530,11 +530,8 @@ test.describe("inside claude.ai without live data", () => {
       test.describe("with Sample data on", () => {
         test.use({ settings: SAMPLE_ON });
         test("a story from the snapshot says how to fix it", async ({ page, isPhone }, testInfo) => {
-          // App bug: LiveWithSnapshot (src/api/client.ts) falls back to the snapshot for every call,
-          // and a call the snapshot doesn't cover (a story) then fails with the snapshot's own
-          // "offline" error ("This view needs live data"), not the connector's reason, so the panel
-          // never names the fix. Remove test.fail() once it rethrows the live error in that case.
-          test.fail();
+          // A call the snapshot doesn't cover (a story) fails with the connector's own reason
+          // (LiveWithSnapshot in src/api/client.ts), so the panel names the fix.
           await page.goto("/");
           // The first frame still comes from the snapshot, and the status says why.
           await expect(topRows(page, isPhone).first()).toBeVisible();

@@ -33,6 +33,8 @@ export class IdleSpin {
   private easeFrom = 0;
   private blocked = false;
   private allowed = true;
+  /** Home was pressed before motion was allowed (the map still loading): turn once it is. */
+  private homePending = false;
 
   constructor(
     now: number,
@@ -46,6 +48,7 @@ export class IdleSpin {
     const was = this.mode;
     this.mode = "still";
     this.lastInput = now;
+    this.homePending = false;
     return was === "turning";
   }
 
@@ -54,10 +57,15 @@ export class IdleSpin {
     this.lastInput = now;
   }
 
-  /** Home was pressed: turn once the flight back ends. */
+  /**
+   * Home was pressed: turn once the flight back ends. Pressed before motion
+   * is allowed (another screen's logo mounts the globe, and Home is asked
+   * for before the map has loaded), the request waits until it is.
+   */
   home(now: number): void {
     this.lastInput = now;
     this.mode = this.allowed ? "after-flight" : "still";
+    this.homePending = !this.allowed;
   }
 
   /** A camera flight ended; after Home, the turn starts. */
@@ -78,13 +86,22 @@ export class IdleSpin {
     }
     const was = this.mode;
     this.mode = "still";
+    this.homePending = false;
     return was === "turning";
   }
 
-  /** Motion allowed (no Calm setting, no reduced motion). Turning it off stops a turn for good. */
+  /**
+   * Motion allowed (no Calm setting, no reduced motion, the map loaded).
+   * Turning it off stops a turn for good; turning it on carries out a Home
+   * press that came before (the caller starts the turn if the flight is over).
+   */
   setAllowed(allowed: boolean): boolean {
     this.allowed = allowed;
-    if (allowed) return false;
+    if (allowed) {
+      if (this.homePending && this.mode === "still") this.mode = "after-flight";
+      this.homePending = false;
+      return false;
+    }
     const was = this.mode;
     this.mode = "still";
     return was === "turning";
@@ -262,6 +279,8 @@ export function attachIdleSpin(map: SpinMap, el: HTMLElement, hooks: SpinHooks =
       const now = clock();
       const a = spin.setAllowed(allowed);
       const b = spin.setBlocked(blocked, now);
+      // A Home press from before the map loaded whose flight has already landed.
+      if (spin.mode === "after-flight" && !map.isMoving()) onMoveEnd();
       stopped(a || b);
     },
     get moving() {

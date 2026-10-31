@@ -315,6 +315,21 @@ export function isWeak(confidence: number | null | undefined): boolean {
   return c === null || c < WEAK_CONFIDENCE;
 }
 
+/**
+ * Does an item wear the "?" mark? The api's own verdict counts first (`weak`,
+ * kg.provenance: under 50 % sure, or nothing to cite); a cause-and-effect
+ * link is also weak when its confidence is under 50 % or unknown. Any other
+ * link with no confidence of its own isn't weak by that alone.
+ */
+export function showsWeak(
+  item: { weak?: boolean | null; confidence?: number | null },
+  causal: boolean,
+): boolean {
+  if (item.weak === true) return true;
+  if (causal) return isWeak(item.confidence);
+  return unit(item.confidence) !== null && isWeak(item.confidence);
+}
+
 /** The words for the one legend that explains link weight (shared by every view). */
 export const TRUST_LEGEND = {
   width: "Thicker line: stronger effect",

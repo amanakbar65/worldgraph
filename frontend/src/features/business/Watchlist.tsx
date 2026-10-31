@@ -91,7 +91,7 @@ export function SuggestedForecasts({
         description="About your places and inputs. Crowd forecasts are estimates and can be wrong."
       />
       {loading ? (
-        <div aria-busy="true" aria-label="Loading crowd forecasts" className="flex flex-col gap-3 py-2">
+        <div role="status" aria-busy="true" aria-label="Loading crowd forecasts" className="flex flex-col gap-3 py-2">
           {[0, 1].map((i) => (
             <div key={i} className="flex flex-col gap-2">
               <Skeleton className="h-4 w-4/5" />
@@ -340,7 +340,7 @@ function WatchForecastRow({
       );
     }
     return (
-      <div aria-busy="true" className="flex items-center gap-3 px-2 py-2">
+      <div role="status" aria-busy="true" aria-label="Loading" className="flex items-center gap-3 px-2 py-2">
         <Skeleton className="size-11 rounded-full" />
         <div className="flex flex-1 flex-col gap-1.5">
           <Skeleton className="h-4 w-3/4" />

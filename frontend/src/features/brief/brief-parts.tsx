@@ -229,7 +229,7 @@ export function CascadePreview({
   const query = useRpc("cascade", { id: focusId, depth: DEFAULT_CASCADE_DEPTH });
   if (query.isPending) {
     return (
-      <div className="flex flex-col gap-3 px-2.5 py-2" aria-busy="true" aria-label="Loading its effects">
+      <div role="status" className="flex flex-col gap-3 px-2.5 py-2" aria-busy="true" aria-label="Loading its effects">
         {[0, 1].map((i) => (
           <div key={i} className="flex items-start gap-3">
             <Skeleton className="size-9 rounded-lg" />

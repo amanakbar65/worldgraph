@@ -28,6 +28,7 @@ import { TimeAgo } from "@/components/TimeAgo";
 import { Button } from "@/components/ui/button";
 import { Chip, ChipButton } from "@/components/ui/chip";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
+import { WeakLegend } from "@/components/LinkMarks";
 import { WeakMark } from "@/components/WeakMark";
 import { useFlag } from "@/lib/flags";
 import { formatProbability } from "@/lib/format";
@@ -43,9 +44,12 @@ import {
   RELATION_ICONS,
   eventTypeKey,
 } from "@/lib/icons";
-import { entityTypeTone, impactTone, isWeak, WEAK_LINK_LABEL } from "@/lib/meaning";
+import { entityTypeTone, impactTone, showsWeak, WEAK_LINK_LABEL } from "@/lib/meaning";
 import { formatDate } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import { WHY, whyLabel } from "@/features/provenance/provenance-data";
+import { useOpenWhy, useWhyAvailable } from "@/features/provenance/use-why";
+import { WhyMark } from "@/features/provenance/WhyButton";
 import { useUserValue } from "@/platform/storage";
 import { useNav, type Panel } from "@/state/nav";
 
@@ -173,6 +177,8 @@ function EntityHeader({ data, nav, headingId }: { data: Data; nav: GraphNav; hea
   const onMap = entity.lon !== null && entity.lat !== null;
   const aliases = entity.aliases.filter((a) => a.trim() && a.toLowerCase() !== entity.name.toLowerCase());
   const action = "h-14 flex-col gap-1 px-2 text-label";
+  const whyOn = useWhyAvailable();
+  const openWhy = useOpenWhy();
 
   return (
     <header className="flex flex-col gap-4">
@@ -190,6 +196,19 @@ function EntityHeader({ data, nav, headingId }: { data: Data; nav: GraphNav; hea
           <p className="text-label text-fg-muted">{kindLine(entity.type, entity.subtype)}</p>
         </div>
         {sample && <SampleBadge className="mt-2" />}
+        {whyOn && (
+          // "Why is this here?": where this page's facts come from (kg.provenance).
+          <Button
+            variant="ghost"
+            size="icon"
+            className="-mt-0.5 -mr-2"
+            onClick={() => openWhy("node", entity.id)}
+            aria-label={whyLabel(entity.name)}
+            title={WHY}
+          >
+            <Info aria-hidden />
+          </Button>
+        )}
       </div>
 
       {(entity.summary || aliases.length > 0) && (
@@ -645,9 +664,15 @@ function ConnectionsSection({ data, nav }: { data: Data; nav: GraphNav }) {
     [data.forecasts, data.indicators, data.timeline],
   );
   const groups = useMemo(() => shapeConnections(data.connections, shownElsewhere), [data.connections, shownElsewhere]);
+  const whyOn = useWhyAvailable();
   if (groups.length === 0) return null;
+  const anyWeak = groups.some((g) => g.items.some((item) => showsWeak(item, g.causal)));
   return (
-    <Section icon={Link2} title="Links">
+    <Section
+      icon={Link2}
+      title="Links"
+      description={whyOn ? "The mark after each one shows where the link comes from." : undefined}
+    >
       <div className="flex flex-col gap-3">
         {groups.map((group) => (
           <ConnectionGroupRow
@@ -655,8 +680,11 @@ function ConnectionsSection({ data, nav }: { data: Data; nav: GraphNav }) {
             group={group}
             entity={data.entity}
             nav={nav}
+            why={whyOn}
           />
         ))}
+        {/* The page draws no lines, so the one legend's "?" row comes along when a "?" is shown. */}
+        {anyWeak && <WeakLegend />}
       </div>
     </Section>
   );
@@ -666,10 +694,13 @@ function ConnectionGroupRow({
   group,
   entity,
   nav,
+  why,
 }: {
   group: ShapedConnections;
   entity: Data["entity"];
   nav: GraphNav;
+  /** "Why is this here?" is on (kg.provenance): each link gets its mark. */
+  why: boolean;
 }) {
   const [all, setAll] = useState(false);
   const id = useId();
@@ -692,8 +723,9 @@ function ConnectionGroupRow({
             item={item}
             // Sample items are marked where the page itself isn't sample data.
             markSample={item.is_sample && !entity.is_sample}
-            weak={group.causal && isWeak(item.confidence)}
+            weak={showsWeak(item, group.causal)}
             onOpen={() => nav.openNode(item)}
+            why={why && item.edge_id !== undefined ? { edgeId: item.edge_id, subject: `${entity.name}, ${group.label.toLowerCase()}, ${item.name}` } : null}
           />
         ))}
         {group.items.length > limit && (
@@ -726,17 +758,25 @@ function ConnectionChip({
   markSample,
   weak,
   onOpen,
+  why,
 }: {
   item: ConnectionItem;
   markSample: boolean;
   weak: boolean;
   onOpen: () => void;
+  /** The link's edge and its words, for "Why is this here?"; null without (kg.provenance off). */
+  why: { edgeId: number; subject: string } | null;
 }) {
   return (
-    <li className="flex max-w-full items-center gap-1">
+    <li className="flex max-w-full items-center gap-0.5">
       <EntityChip size="sm" entity={item} onClick={onOpen} />
-      {weak && <WeakMark label={WEAK_LINK_LABEL} />}
-      {markSample && <SampleBadge iconOnly />}
+      {why ? (
+        // The "?" itself (or an info mark) opens where the link comes from.
+        <WhyMark target="edge" id={why.edgeId} subject={why.subject} link weak={weak} />
+      ) : (
+        weak && <WeakMark label={WEAK_LINK_LABEL} className="ml-0.5" />
+      )}
+      {markSample && <SampleBadge iconOnly className="ml-0.5" />}
     </li>
   );
 }
@@ -816,7 +856,7 @@ function BacklinkGroupRow({
 
 function EntitySkeleton() {
   return (
-    <div className="flex flex-col gap-6 p-4" aria-busy="true" aria-label="Loading">
+    <div role="status" className="flex flex-col gap-6 p-4" aria-busy="true" aria-label="Loading">
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
           <Skeleton className="size-10 rounded-xl" />

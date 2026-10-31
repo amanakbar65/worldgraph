@@ -470,7 +470,7 @@ function Source({ forecast: f }: { forecast: Detail }) {
 
 function ForecastSkeleton() {
   return (
-    <div className="flex flex-col gap-7 p-4" aria-busy="true" aria-label="Loading forecast">
+    <div role="status" className="flex flex-col gap-7 p-4" aria-busy="true" aria-label="Loading forecast">
       <div className="flex flex-col gap-3">
         <div className="flex gap-2">
           <Skeleton className="h-8 w-32 rounded-full" />

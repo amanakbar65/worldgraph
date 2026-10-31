@@ -72,6 +72,27 @@ test.describe("graph and entities", () => {
     await expect.poll(() => currentHash(page)).toBe("#region=region:sa");
   });
 
+  test("Why is this here? says where a page and its links come from", async ({ page }, testInfo) => {
+    await openApp(page, "#entity=org:dp-world");
+    const panel = detailsPanel(page);
+    await expect(panel.getByRole("heading", { level: 2, name: "DP World" })).toBeVisible();
+    await panel.getByRole("button", { name: "Why is DP World here?" }).click();
+    const why = panel.getByRole("article", { name: "Why is this here? DP World" });
+    await expect(why.getByRole("region", { name: "How sure" })).toBeVisible();
+    await expect(why.getByRole("region", { name: /^Sources/ })).toContainText("WorldGraph curated");
+    await expect(why.getByRole("region", { name: "Added" })).toContainText("Added by");
+    await expect.poll(() => currentHash(page)).toBe("#why=org:dp-world");
+    await snap(page, testInfo, "why-node");
+
+    // Back returns to the page; the mark after a link opens that link's sheet.
+    await panel.getByRole("button", { name: "Back" }).click();
+    const links = panel.getByRole("region", { name: "Links" });
+    await links.getByRole("button", { name: /^Why is this link here\? DP World, / }).first().click();
+    const link = panel.getByRole("article", { name: /^Why is this here\? DP World / });
+    await expect(link.getByText("Link", { exact: true })).toBeVisible();
+    await expect.poll(() => currentHash(page)).toMatch(/^#why=edge-\d+$/);
+  });
+
   test("a private note saves, links [[pages]] and survives a reload", async ({ page }) => {
     await openApp(page, "#entity=commodity:crude-oil");
     const panel = detailsPanel(page);

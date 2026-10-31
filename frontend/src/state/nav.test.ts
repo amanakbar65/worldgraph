@@ -34,6 +34,9 @@ describe("parseHash / formatHash", () => {
       { ...base, panel: { kind: "compare", ids: ["region:in", "region:cn"] } },
     ],
     ["#settings", { ...base, panel: { kind: "settings" } }],
+    ["#why=org:dp-world", { ...base, panel: { kind: "why", target: "node", id: "org:dp-world" } }],
+    ["#graph&why=edge-5326", { ...base, view: "graph", panel: { kind: "why", target: "edge", id: "5326" } }],
+    ["#why=link-12&w=24h", { ...base, panel: { kind: "why", target: "link", id: "12" }, window: "24h" }],
     ["#ask", { ...base, panel: { kind: "ask" } }],
     [
       "#ask=oil+prices%3F&scope=region:in",
@@ -63,6 +66,9 @@ describe("parseHash / formatHash", () => {
       sectors: ["energy"],
     });
     expect(parseHash("#compare=region:in")).toBeNull(); // needs two regions
+    expect(parseHash("#why=edge-abc")).toBeNull();
+    expect(parseHash("#why=node-12")).toBeNull();
+    expect(parseHash("#why=")).toBeNull();
     expect(parseHash("#story=%E0%A4%A")).toBeNull(); // broken escape
   });
 
