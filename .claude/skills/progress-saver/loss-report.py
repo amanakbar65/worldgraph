@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Work saved vs lost per agent for interrupted runs (not tokens: the owner cares about the work).
+"""Work and tokens saved vs lost per agent for interrupted runs.
 
 Usage (inside the repo): loss-report.py RUN_DIR... | --latest [N]
 RUN_DIR holds agent-*.meta.json and agent-*.jsonl (a workflow run dir, or a folder of links
@@ -10,6 +10,8 @@ each Edit the lines of its new text). A change is saved if the file is in the ag
 origin/wip/WORKTREE branch and the change was made before that branch's last save.
 Finished agents are 100% saved. Scratch files outside the worktree are not counted.
 Commands run after the last save (tests, checks, screenshots) are listed: they must be rerun.
+Tokens = input + output + new cache writes, each API message once. Tokens count as spent on
+saved work up to the agent's last output that is on GitHub; the rest bought work that was lost.
 """
 
 from __future__ import annotations
@@ -76,11 +78,24 @@ def lines_of(name: str, inp: dict) -> int:
     return max(1, len(str(inp.get("new_string", "")).splitlines()))
 
 
-def agent_actions(path: str) -> tuple[list[tuple[datetime, str, int]], list[datetime]]:
-    """[(time, file, lines)] for each file change that succeeded, and the times of shell commands."""
+Actions = tuple[
+    list[tuple[datetime, str, int]],
+    list[datetime],
+    list[datetime],
+    list[tuple[datetime, int]],
+]
+
+
+def agent_actions(path: str) -> Actions:
+    """File changes that succeeded [(time, file, lines)], shell command times, `git push`
+    times, and [(time, tokens)] per API message (input + output + new cache writes, each
+    message once, as the usage meter counts)."""
     writes: dict[str, tuple[datetime, str, int]] = {}
     failed: set[str] = set()
     commands: list[datetime] = []
+    pushes: list[datetime] = []
+    first_seen: dict[str, datetime] = {}
+    usage: dict[str, dict] = {}
     with open(path, encoding="utf-8") as fh:
         for line in fh:
             try:
@@ -99,6 +114,10 @@ def agent_actions(path: str) -> tuple[list[tuple[datetime, str, int]], list[date
                 continue
             if m.get("role") != "assistant" or not ts:
                 continue
+            mid = m.get("id")
+            if mid and m.get("usage"):
+                first_seen.setdefault(mid, parse_ts(ts))
+                usage[mid] = m["usage"]
             for c in content:
                 if c.get("type") != "tool_use":
                     continue
@@ -112,7 +131,26 @@ def agent_actions(path: str) -> tuple[list[tuple[datetime, str, int]], list[date
                     )
                 elif name == "Bash":
                     commands.append(parse_ts(ts))
-    return [w for i, w in writes.items() if i not in failed], commands
+                    if "git push" in str(inp.get("command", "")):
+                        pushes.append(parse_ts(ts))
+    msgs = sorted(
+        (
+            first_seen[mid],
+            (u.get("input_tokens") or 0)
+            + (u.get("output_tokens") or 0)
+            + (u.get("cache_creation_input_tokens") or 0),
+        )
+        for mid, u in usage.items()
+    )
+    return [w for i, w in writes.items() if i not in failed], commands, pushes, msgs
+
+
+def lakh(tokens: int) -> str:
+    return f"{tokens / 1e5:.1f}L"
+
+
+def pct(part: int, whole: int) -> str:
+    return f"{100 * part / whole:.0f}%" if whole else "–"
 
 
 def report(run_dir: str) -> tuple[int, int]:
@@ -132,15 +170,18 @@ def report(run_dir: str) -> tuple[int, int]:
                     and status.get(e["agentId"]) != "result"
                 ):
                     status[e["agentId"]] = kind
-    rows, saved_total, lost_total = [], 0, 0
+    rows = []
     for meta_path in sorted(glob.glob(os.path.join(run_dir, "agent-*.meta.json"))):
         agent_id = os.path.basename(meta_path)[len("agent-") : -len(".meta.json")]
         with open(meta_path, encoding="utf-8") as fh:
             meta = json.load(fh)
         label = meta.get("description") or agent_id
         worktree = os.path.realpath(meta.get("worktreePath") or "")
-        writes, commands = agent_actions(meta_path.replace(".meta.json", ".jsonl"))
-        if not writes and not commands:
+        writes, commands, pushes, msgs = agent_actions(
+            meta_path.replace(".meta.json", ".jsonl")
+        )
+        spent = sum(t for _, t in msgs)
+        if not spent:
             continue
         inside = [
             (ts, os.path.realpath(p), n)
@@ -149,7 +190,7 @@ def report(run_dir: str) -> tuple[int, int]:
         ]
         total = sum(n for _, _, n in inside)
         if status.get(agent_id) == "result":
-            saved, note = total, "finished"
+            saved, used, note = total, spent, "finished"
         else:
             save = last_remote_save(worktree) if worktree else None
             on_remote = saved_files(worktree) if save else set()
@@ -159,6 +200,13 @@ def report(run_dir: str) -> tuple[int, int]:
                 if save and ts <= save and p in on_remote
             ]
             saved = sum(n for _, _, n in kept)
+            # Tokens count as useful up to the agent's last output that is on GitHub:
+            # its last saved file change, or its own push before the last save.
+            marks = [ts for ts, _, _ in kept] + [
+                ts for ts in pushes if save and ts <= save
+            ]
+            point = max(marks) if marks else None
+            used = sum(t for ts, t in msgs if point and ts <= point)
             lost_files = sorted(
                 {os.path.basename(p) for ts, p, n in inside if (ts, p, n) not in kept}
             )
@@ -177,27 +225,34 @@ def report(run_dir: str) -> tuple[int, int]:
                     f"{after} commands after the last save (tests, checks, screenshots) to rerun"
                 )
             note = "; ".join(parts)
-        rows.append((label, total, saved, note))
-        saved_total += saved
-        lost_total += total - saved
-    print(f"{os.path.basename(run_dir.rstrip('/'))} | work saved | work lost | details")
-    for label, total, saved, note in rows:
-        pct = (
-            f"{100 * saved / total:.0f}% | {100 * (total - saved) / total:.0f}%"
-            if total
-            else "– | –"
-        )
+        if not total:
+            note = "no file changes (reading or reviewing); " + note
+        rows.append((label, total, saved, spent, used, note))
+    print(
+        f"{os.path.basename(run_dir.rstrip('/'))} | work saved | work lost"
+        " | tokens spent | on saved work | tokens lost | details"
+    )
+    sums = [0, 0, 0, 0]  # lines, lines saved, tokens, tokens on saved work
+    for label, total, saved, spent, used, note in rows:
         print(
-            f"{label[:40]} | {pct} | {note if total else 'no file changes (reading or reviewing); ' + note}"
+            f"{label[:40]} | {pct(saved, total)} | {pct(total - saved, total)}"
+            f" | {lakh(spent)} | {pct(used, spent)} | {pct(spent - used, spent)} | {note}"
         )
-    done = saved_total + lost_total
-    if done:
-        print(
-            f"TOTAL | {100 * saved_total / done:.0f}% | {100 * lost_total / done:.0f}% | {saved_total:,} of {done:,} changed lines saved"
-        )
+        for i, v in enumerate((total, saved, spent, used)):
+            sums[i] += v
+    if rows:
+        print(total_line("TOTAL", *sums))
     else:
-        print("no file changes in this run")
-    return saved_total, lost_total
+        print("no agent activity in this run")
+    return tuple(sums)
+
+
+def total_line(name: str, total: int, saved: int, spent: int, used: int) -> str:
+    return (
+        f"{name} | {pct(saved, total)} | {pct(total - saved, total)} | {lakh(spent)}"
+        f" | {pct(used, spent)} | {pct(spent - used, spent)}"
+        f" | {saved:,} of {total:,} changed lines saved; {lakh(spent - used)} of tokens lost"
+    )
 
 
 def main() -> None:
@@ -214,14 +269,12 @@ def main() -> None:
             key=os.path.getmtime,
         )
         args = runs[-n:]
-    saved = lost = 0
+    sums = [0, 0, 0, 0]
     for run_dir in args:
-        s, l_ = report(run_dir)
-        saved, lost = saved + s, lost + l_
-    if len(args) > 1 and saved + lost:
-        print(
-            f"ALL RUNS | {100 * saved / (saved + lost):.0f}% | {100 * lost / (saved + lost):.0f}% | {saved:,} of {saved + lost:,} changed lines saved"
-        )
+        for i, v in enumerate(report(run_dir)):
+            sums[i] += v
+    if len(args) > 1 and sums[2]:
+        print(total_line("ALL RUNS", *sums))
     if not args:
         print(
             "no workflow transcripts found (new container?): report saved work from status.sh"

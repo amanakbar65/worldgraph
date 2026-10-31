@@ -79,9 +79,9 @@ Then fix the remaining items with `worldgraph-qa-fix.js`: the shell agent did no
 
 ## Loss log (retained vs lost after interruptions)
 
-| When | Run | Spent / saved | Retained | Lost | Notes (from 31 Oct: work, not tokens) |
+| When | Run | Spent / saved | Retained | Lost | Notes (from 31 Oct: work and tokens) |
 | --- | --- | --- | --- | --- | --- |
-| 30 Oct ~05:52 UTC limit (previous session only) | screens 2a (provenance, bugs), 2b (as-of, undo) | 97% of work saved | 3% | 2a: 100% (3 commits, 1,851 lines); 2b: 95% (2 commits, 2,295 of 2,427 lines; lost = a 132-line screenshot script). Lost: 12 test and screenshot commands, rerun by the fresh agents. Main session: all pushed |
+| 30 Oct ~05:52 UTC limit (previous session only) | screens 2a (provenance, bugs), 2b (as-of, undo) | work 97% saved, 3% lost | tokens 11.0 L, 96% on saved work, 0.4 L lost | 2a: 100% (3 commits, 1,851 lines); 2b: 95% (2 commits, 2,295 of 2,427 lines; lost = a 132-line screenshot script). Lost: 12 test and screenshot commands, rerun by the fresh agents. Main session: all pushed |
 | 29 Oct ~14:10 UTC limit (previous session only) | screens 1, backend 2, e2e | ~26.7 L | ~60% | ~40% | screens 1: ~16.5 L, ~35% kept (code all saved at 14:02; lost = final screenshot checks); backend 2 and e2e finished and merged (100%). 49 saves, 0 failures. Screens finished by a fresh agent, not resumed |
 | 15 Oct 11:50 UTC limit | QA `wf_fe3c223c-34c` | 7.8 L | 45% | 55% | e2e 100% kept (1,167 lines of tests); correctness reviewer 0% kept (notes were in an ignored folder). Its 2 findings were rescued by hand from its transcript into `orchestration/qa-notes/`. The saver now keeps notes files. |
 | 29 Oct ~07:45 UTC limit | backend 2, screens 1, e2e (lifetime) | 96.7 L | 86% | 14% | screens 100%; backend 2 86% (0024 kept on disk and in wip); e2e 84% (final runs) |

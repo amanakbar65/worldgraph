@@ -1,6 +1,6 @@
 ---
 name: progress-saver
-description: Keeps long or multi-agent builds safe from usage limits, restarts and crashes, and spends tokens wisely without lowering quality. A silent background saver pushes every agent worktree to GitHub wip branches every 2 minutes, CHECKPOINT.md says how to resume, a loss report tells the owner what share of the interrupted work (lines, commits) was saved or lost, and the token rules keep sessions, agents and resumes lean. Use at the start of any coding project or build that runs agents or workflows or spans sessions, and when the user says approaching limit, mentions usage limits, token use, saving progress or resuming.
+description: Keeps long or multi-agent builds safe from usage limits, restarts and crashes, and spends tokens wisely without lowering quality. A silent background saver pushes every agent worktree to GitHub wip branches every 2 minutes, CHECKPOINT.md says how to resume, a loss report tells the owner what share of the interrupted work (lines, commits) and of the tokens spent was saved or lost, and the token rules keep sessions, agents and resumes lean. Use at the start of any coding project or build that runs agents or workflows or spans sessions, and when the user says approaching limit, mentions usage limits, token use, saving progress or resuming.
 ---
 
 # Progress saver and token efficiency
@@ -38,7 +38,7 @@ Do these in one go, with no other reads:
 ## Resuming (new session, or after a limit or restart)
 1. `S/status.sh`, and read CHECKPOINT.md (only that file).
 2. If the saver is stopped, start it (setup step 3).
-3. `python3 S/loss-report.py RUN_DIR...` (or `--latest`), one call for every interrupted run. Run dirs are in `~/.claude/projects/*/*/subagents/workflows/`; for Agent-tool agents, make a folder of links to their `agent-<id>.jsonl` and `.meta.json` in `~/.claude/projects/*/*/subagents/`. It measures **work, not tokens**: lines the agent wrote that are saved on GitHub, its commits, files with lost edits, and commands (tests, checks) run after the last save that must be redone. Send the owner its table: work saved % and lost %, per agent and in total, then say in plain words what was lost and what will be redone. Don't report token figures; the owner cares about the work. For "the previous session", include only the agents that ran in it. Add one line to CHECKPOINT's loss log. If the transcripts are gone (new container), say so and report from status.sh instead (what is saved on which wip branch).
+3. `python3 S/loss-report.py RUN_DIR...` (or `--latest`), one call for every interrupted run. Run dirs are in `~/.claude/projects/*/*/subagents/workflows/`; for Agent-tool agents, make a folder of links to their `agent-<id>.jsonl` and `.meta.json` in `~/.claude/projects/*/*/subagents/`. It measures **both work and tokens**: the work (lines the agent wrote that are saved on GitHub, its commits, files with lost edits, and commands such as tests and checks run after the last save that must be redone) and the tokens (spent, share spent on saved work, share lost). Send the owner its table, per agent and in total: work saved and lost first, then tokens spent, saved and lost, then say in plain words what was lost and what will be redone. The work is what matters most to the owner; tokens are context. For "the previous session", include only the agents that ran in it. Add one line to CHECKPOINT's loss log. If the transcripts are gone (new container), say so and report from status.sh instead (what is saved on which wip branch).
 4. Relaunch interrupted agents fresh (see Token efficiency). Only look in transcripts for the unsaved files the report names.
 
 ## CHECKPOINT.md template (keep it under 60 lines; history belongs elsewhere)
@@ -52,5 +52,5 @@ label: wip/BRANCH, state, one-line brief to relaunch it fresh
 1. ...
 ## Waiting on owner
 ## Loss log
-| when | run | work saved | work lost | what was lost and redone |
+| when | run | work saved / lost | tokens spent / lost | what was lost and redone |
 ```
