@@ -1,5 +1,5 @@
 import { ArrowRight, MousePointerClick, Users, X } from "lucide-react";
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import type { StorySummary } from "@/api/contract";
 import { ConfidenceMeter } from "@/components/ConfidenceMeter";
@@ -111,6 +111,8 @@ export function PickContent({
   context: PickContext;
   hint?: boolean;
 }) {
+  // With "Why is this here?" on, a desktop click pins an arc's card (its sources and the cascade).
+  const whyOn = useWhyAvailable();
   switch (info.kind) {
     case "event":
       return (
@@ -166,7 +168,11 @@ export function PickContent({
             </ol>
             <ImpactBadge impact={arc.impact} className="self-start" />
           </div>
-          {hint && <Hint icon={MousePointerClick}>Click to see the cascade</Hint>}
+          {hint && (
+            <Hint icon={MousePointerClick}>
+              {whyOn ? "Click for its sources and the cascade" : "Click to see the cascade"}
+            </Hint>
+          )}
         </>
       );
     }
@@ -198,33 +204,16 @@ export function PickContent({
   }
 }
 
-/**
- * The desktop hover card: follows the pointer, flips to stay inside the map,
- * and never takes the pointer itself. The list view is the keyboard and
- * screen-reader route to the same information.
- */
-export function HoverCard({
-  context,
-  bounds,
-}: {
-  context: PickContext;
-  bounds: { width: number; height: number };
-}) {
-  const info = useGlobeHover((s) => s.hover);
-  return info ? <HoverCardAt info={info} context={context} bounds={bounds} /> : null;
-}
+type Bounds = { width: number; height: number };
+type Place = { left: number; top: number };
 
-function HoverCardAt({
-  info,
-  context,
-  bounds,
-}: {
-  info: PickInfo;
-  context: PickContext;
-  bounds: { width: number; height: number };
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+/**
+ * Where a card at the pointer goes: below and right of it, flipped to stay
+ * inside the map, never off its top or left edge. Off-screen until measured,
+ * so the first frame doesn't flash in the wrong place.
+ */
+function usePlaceAtPointer(ref: RefObject<HTMLElement | null>, info: PickInfo, bounds: Bounds): Place {
+  const [pos, setPos] = useState<Place | null>(null);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -236,20 +225,72 @@ function HoverCardAt({
     if (left + w > bounds.width - 8) left = info.x - gap - w;
     if (top + h > bounds.height - 8) top = info.y - gap - h;
     setPos({ left: Math.max(8, left), top: Math.max(8, top) });
-  }, [info.x, info.y, info.id, bounds.width, bounds.height]);
+  }, [ref, info.x, info.y, info.id, bounds.width, bounds.height]);
+  return pos ?? { left: -9999, top: -9999 };
+}
+
+/**
+ * The desktop hover card: follows the pointer, flips to stay inside the map,
+ * and never takes the pointer itself. The list view is the keyboard and
+ * screen-reader route to the same information.
+ */
+export function HoverCard({
+  context,
+  bounds,
+  exceptId,
+}: {
+  context: PickContext;
+  bounds: Bounds;
+  /** The pinned card's item: pointing at it again shows no second card. */
+  exceptId?: string;
+}) {
+  const info = useGlobeHover((s) => s.hover);
+  return info && info.id !== exceptId ? <HoverCardAt info={info} context={context} bounds={bounds} /> : null;
+}
+
+function HoverCardAt({ info, context, bounds }: { info: PickInfo; context: PickContext; bounds: Bounds }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const pos = usePlaceAtPointer(ref, info, bounds);
   return (
     <div
       ref={ref}
       aria-hidden
       className={cn(GLASS, "pointer-events-none absolute z-20 w-80 overflow-hidden rounded-xl")}
-      style={pos ? { left: pos.left, top: pos.top } : { left: -9999, top: -9999 }}
+      style={pos}
     >
       <PickContent info={info} context={context} />
     </div>
   );
 }
 
-/** Phones: the tapped thing as a card at the bottom, with Open and Close. */
+/**
+ * Desktop, with "Why is this here?" on: a clicked cascade arc's card, pinned
+ * where it was clicked, with "Why is this here?" beside "See the cascade".
+ * The phone's selection card, placed like the hover card.
+ */
+export function PinnedCard({
+  info,
+  context,
+  bounds,
+  onOpen,
+  onClose,
+}: {
+  info: PickInfo;
+  context: PickContext;
+  bounds: Bounds;
+  onOpen: () => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const pos = usePlaceAtPointer(ref, info, bounds);
+  return (
+    <div ref={ref} className="pointer-events-auto absolute z-20 w-80" style={pos}>
+      <SelectionCard info={info} context={context} onOpen={onOpen} onClose={onClose} />
+    </div>
+  );
+}
+
+/** Phones: the tapped thing as a card at the bottom, with Open and Close (desktop: a clicked arc, pinned). */
 export function SelectionCard({
   info,
   context,

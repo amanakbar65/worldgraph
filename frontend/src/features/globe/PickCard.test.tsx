@@ -5,7 +5,7 @@ import { useNav } from "@/state/nav";
 
 import { GLOBE } from "./fixtures";
 import { arcPath, type ArcDatum, type GlobeCountry } from "./model";
-import { PickContent, SelectionCard, type PickContext } from "./PickCard";
+import { PickContent, PinnedCard, SelectionCard, type PickContext } from "./PickCard";
 
 const flags = vi.hoisted(() => ({ provenance: true }));
 vi.mock("@/lib/flags", () => ({ useFlag: (key: string) => key === "kg.provenance" && flags.provenance }));
@@ -92,7 +92,13 @@ describe("globe pick cards", () => {
 });
 
 describe("the phone's selection card for a cascade link", () => {
-  const select = (confidence: number) => ({ kind: "arc" as const, id: "7", x: 0, y: 0, arc: arc(confidence) });
+  const select = (confidence: number) => ({
+    kind: "arc" as const,
+    id: "7",
+    x: 0,
+    y: 0,
+    arc: arc(confidence),
+  });
 
   it("opens Why is this here? for the link, beside See the cascade", () => {
     const onOpen = vi.fn();
@@ -130,5 +136,42 @@ describe("the phone's selection card for a cascade link", () => {
       />,
     );
     expect(screen.queryByRole("button", { name: /Why is this here/ })).toBeNull();
+  });
+});
+
+describe("the desktop's pinned card for a cascade link", () => {
+  const clicked = { kind: "arc" as const, id: "7", x: 120, y: 80, arc: arc(0.72) };
+
+  it("sits by the click and offers Why is this here?, See the cascade and Close", () => {
+    const onOpen = vi.fn();
+    const onClose = vi.fn();
+    const { container } = render(
+      <PinnedCard
+        info={clicked}
+        context={context()}
+        bounds={{ width: 1200, height: 800 }}
+        onOpen={onOpen}
+        onClose={onClose}
+      />,
+    );
+    const card = container.firstElementChild as HTMLElement;
+    // jsdom measures the card as 0 × 0, so it lands just below and right of the click.
+    expect([card.style.left, card.style.top]).toEqual(["136px", "96px"]);
+    expect(screen.getByRole("region", { name: "Selected on the globe" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /^Why is this here\? .+, leads to, .+\.$/ }));
+    expect(useNav.getState().panels.at(-1)).toEqual({ kind: "why", target: "link", id: "7" });
+    fireEvent.click(screen.getByRole("button", { name: "See the cascade" }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("tells the hover card's reader that a click shows its sources", () => {
+    render(<PickContent info={clicked} context={context()} />);
+    expect(screen.getByText("Click for its sources and the cascade")).toBeTruthy();
+    cleanup();
+    flags.provenance = false;
+    render(<PickContent info={clicked} context={context()} />);
+    expect(screen.getByText("Click to see the cascade")).toBeTruthy();
   });
 });
