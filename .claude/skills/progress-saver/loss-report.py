@@ -62,6 +62,24 @@ def saved_commits(worktree: str) -> int:
     return sum(1 for s in subjects if s and not s.startswith("WIP snapshot"))
 
 
+def merged_into_main(worktree: str) -> bool:
+    """True when the agent's last own commit (below any saver snapshot) is in origin/main:
+    its work was merged, so it counts as finished even without a workflow journal."""
+    if not worktree:
+        return False
+    tip = f"origin/wip/{os.path.basename(worktree.rstrip('/'))}"
+    if git("log", "-1", "--format=%s", tip).startswith("WIP snapshot"):
+        tip += "^"
+    if not git("rev-parse", "-q", "--verify", tip):
+        return False
+    ok = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", tip, "origin/main"],
+        capture_output=True,
+        check=False,
+    )
+    return ok.returncode == 0
+
+
 def lines_of(name: str, inp: dict) -> int:
     if name == "Write":
         return max(1, len(str(inp.get("content", "")).splitlines()))
@@ -189,8 +207,8 @@ def report(run_dir: str) -> tuple[int, int]:
             if worktree and os.path.realpath(p).startswith(worktree + os.sep)
         ]
         total = sum(n for _, _, n in inside)
-        if status.get(agent_id) == "result":
-            saved, used, note = total, spent, "finished"
+        if status.get(agent_id) == "result" or merged_into_main(worktree):
+            saved, used, note = total, spent, "finished and merged"
         else:
             save = last_remote_save(worktree) if worktree else None
             on_remote = saved_files(worktree) if save else set()
