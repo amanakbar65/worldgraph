@@ -4,19 +4,24 @@ Newest entries first. Each entry says what changed, how it was checked, and what
 
 ## Current status
 
-- **Done:** data model and API (Postgres functions), sample data (21 storylines, 230 stories, 31 forecasts, 163 KPI series), the live pipeline (news, hazards, forecasts, retention, website AI job), CI and the 15-minute workflow, shared AI prompts. Supabase has the schema (migrations 0001–0005, 0007, 0008), the sample data and a 30-minute sample clock.
-- **In progress:** the screens (7 agents).
-- **Next:** QA (end-to-end tests plus five reviews), fixes, then publish the claude.ai test link.
-- **Waiting on the owner:**
-  - add the GitHub secret `DATABASE_URL` (Supabase "Session pooler" URI) to switch on the 15-minute live data;
-  - the leftover `worldgraph` branch in `amanakbar65/Others` can be deleted (the integration couldn't).
-- **Before a public launch (owner decisions):** feed and Manifold terms for commercial use, the GDACS reuse licence, an Anthropic API key and budget, and the go-ahead to deploy on Netlify.
+- **Done:** the app (globe, stories and cascades, graph and entity pages, forecasts, business view, Ask, brief), the live pipeline on Supabase every 15 minutes, the website (https://worldgraph-kuq2.netlify.app, deploys on `[deploy]` commits) and the claude.ai test link. **Phase A (structure and trust) is built** and waiting for the owner's review.
+- **Next:** the owner's Phase A review, then Phase K (the AI clock; needs a Claude API key) per PLAN.md.
+- **Waiting on the owner:** the Phase A review; a Claude API key before Phase K; Supabase Pro during Phase K; the domain at Phase L.
 
 ## Resume here
 
 See `CHECKPOINT.md` for the live state and resume steps.
 
 ## Log
+
+### 30 Oct–1 Nov 2026: Phase A screens (A1–A7), Phase A complete
+- Entity pages: key-fact chips from typed properties; links grouped by relation, each with "Why is this here?".
+- Graph: relation, property and direction filters; named, tappable links; one minimum confidence shared with the cascade and globe; Graph → Schema view; a "Day to show" (as-of) control with an As-of banner; the trust look (thickness = strength, opacity = confidence, "?" for weak items) with one legend.
+- "Why is this here?" sheet (`api.provenance`) from entity pages, graph links, the cascade's evidence and globe arc cards; it names who added an item, its sources, how sure and how it is known.
+- Personal undo and redo (last 50, per viewer) for notes, business profile, watchlist and alerts.
+- Fixes from the e2e suite: phone sheet taps and Escape, phone sheet reaches full height, globe turns after Home from another screen, status pill follows Sample data, loading regions announced, test-link connector errors, "business day" wording; unused h3-js and deck.gl aggregation layers removed.
+- Checks on main: lint, typecheck, 1,268 unit tests, build, full e2e 343 passed (website and test link, desktop and phone). Test link v6 with live news of 1 Nov; website deployed.
+- Progress saver: saves every 2 minutes; loss reports show work and tokens saved and lost; token-efficiency rules in the skill.
 
 ### 29 Oct 2026: Phase A, part 2 (A3–A5 database, pipeline and API)
 - Migration 0023 (sources on everything): `source_id`, `confidence`, `kind`, `created_by` on nodes and edges (NOT NULL source and creator, backfilled: Natural Earth, WorldGraph curated, the story's feed, the forecast's provider, `ai:<model>`, sample), `updated_at` on links, evidence for edges and nodes, `api.provenance`, `weak` on graph, cascade and connection links. The pipeline, the forecast sync, `api.save_analysis` and the seed loader set them.
