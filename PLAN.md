@@ -168,7 +168,7 @@ Sources: `docs/KNOWLEDGE_GRAPH_UPGRADE.md` (the spec, word for word), `docs/know
 11. New sections are welcome.
 12. Nothing half done: each phase is complete, simple and connected before the next starts.
 
-**Status (1 Nov): Phase A built, waiting for the owner's review.** Database, pipeline and API (A0–A5) merged 28–29 Oct; screens merged 30 Oct–1 Nov. Main is green: lint, typecheck, 1,268 unit tests, build, and the full e2e suite (343 passed, website and test link, desktop and phone). Test link v6 and the website carry it. Each phase ends with the build, tests, steps to try it, an update to this plan and a stop for the owner's review.
+**Status (1 Nov): Phase A done and approved by the owner.** Database, pipeline and API (A0–A5) merged 28–29 Oct; screens merged 30 Oct–1 Nov. Main is green: lint, typecheck, 1,268 unit tests, build, and the full e2e suite (343 passed, website and test link, desktop and phone). Test link v6 and the website carry it. Each phase ends with the build, tests, steps to try it, an update to this plan and a stop for the owner's review.
 
 **Rules for every phase:**
 - Migrations are additive and come with a down file; a test runs up, then down, then up.
@@ -196,7 +196,7 @@ Sources: `docs/KNOWLEDGE_GRAPH_UPGRADE.md` (the spec, word for word), `docs/know
 
 These sizes are rough token estimates for the build agents.
 
-### Phase K: knowledge engine (outline; needs the owner's Claude API key)
+### Phase K: knowledge engine (next; outline, to be written in full detail first. Needs the owner's Claude API key to switch the clock on, not to build it)
 - **K1. AI clock:** the scheduled jobs in `docs/COMMERCIAL.md` §4:
   - sort every story with Haiku;
   - Sonnet batch analysis of the most important stories;
